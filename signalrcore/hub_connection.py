@@ -19,28 +19,39 @@ class HubConnection(object):
     Raises:
         HubConnectionError: Raises an Exception if url is empty or None
     """
-    def __init__(self, hub_url):
-
+    def __init__(self, hub_url, headers=None, token=None, negotiate_headers=None):
+        """
+        :param hub_url: Hub url
+        :param headers: heaaders on hub ws
+        :param token: auth token (hub and negotiation)
+        :param negotiate_headers: (negotiate headers if not None it will activate negotiation)
+        """
         if hub_url is None or hub_url.strip() is "":
             raise HubConnectionError("hub_url must be a valid url.")
 
         self.hub_url = hub_url
         self._hub = None
         self.has_auth_configured = False
+        self.token = token
+        self.headers = headers
+        self.negotiate_headers = negotiate_headers
+        self.has_auth_configured = token is not None
         self.protocol = JsonHubProtocol()
 
     def build(self):
-        self._hub = AuthHubConnection()\
+        self._hub = AuthHubConnection(self.hub_url, self.protocol, self.token, self.negotiate_headers)\
             if self.has_auth_configured else\
             BaseHubConnection(
                 self.hub_url,
-                self.protocol
-            )
-
-    def auth(self):
-        self.has_auth_configured = True
+                self.protocol)
 
     def on(self, event, callback_function):
+        """
+        Register a callback on the specified event
+        :param event: Event name
+        :param callback_function: callback function, arguments will be binded
+        :return:
+        """
         self._hub.register_handler(event, callback_function)
 
     def start(self):
