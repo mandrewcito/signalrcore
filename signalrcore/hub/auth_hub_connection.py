@@ -1,0 +1,2 @@
+class AuthHubConnection(object):
+    pass

@@ -1,10 +1,4 @@
-# SignalR core client
 
-# Example 
-
-Using package from [aspnet core](https://codeload.github.com/aspnet/Docs/zip/master)
-example chat without auth
-```python
 from signalrcore.hub_connection import HubConnection
 
 
@@ -29,5 +23,3 @@ while message != "exit()":
     if message is not None and message is not "" and message is not "exit()":
         hub_connection.send("SendMessage", [username, message])
 hub_connection.stop()
-
-```
