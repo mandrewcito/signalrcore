@@ -1,5 +1,8 @@
 # SignalR core client
 
+![Pypi](https://img.shields.io/pypi/v/signalrcore.svg)
+![Pypi - downloads month](https://img.shields.io/pypi/dm/signalrcore.svg)
+
 # Example 
 
 Using package from [aspnet core - SignalRChat](https://codeload.github.com/aspnet/Docs/zip/master) 
