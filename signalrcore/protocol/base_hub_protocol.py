@@ -1,6 +1,15 @@
 import json
+
 from ..messages.handshake.request import HandshakeRequestMessage
 from ..messages.handshake.response import HandshakeResponseMessage
+
+from ..messages.invocation_message import InvocationMessage # 1
+from ..messages.stream_item_message import StreamItemMessage # 2
+from ..messages.completion_message import CompletionMessage # 3
+from ..messages.stream_invocation_message import StreamInvocationMessage # 4
+from ..messages.cancel_invocation_message import CancelInvocationMessage # 5
+from ..messages.ping_message import PingMessage # 6
+from ..messages.close_message import CloseMessage # 7
 
 
 class BaseHubProtocol(object):
@@ -9,6 +18,52 @@ class BaseHubProtocol(object):
         self.version = version
         self.transfer_format = transfer_format
         self.record_separator = record_separator
+
+    def get_message(self, dict_message):
+        message_type = MessageType(dict_message["type"])
+        if message_type is MessageType.invocation:
+            return InvocationMessage(
+                dict_message["type"],
+                dict_message["headers"] if "headers" in dict_message.keys() else {},
+                dict_message["invocationId"] if "invocationId" in dict_message.keys() else None,
+                dict_message["target"],
+                dict_message["arguments"])
+        if message_type is MessageType.stream_item:
+            return StreamItemMessage(
+                dict_message["type"],
+                dict_message["headers"] if "headers" in dict_message.keys() else {},
+                dict_message["invocationId"] if "invocationId" in dict_message.keys() else None,
+                dict_message["item"]
+                )
+        if message_type is MessageType.completion:
+            return CompletionMessage(
+                dict_message["type"],
+                dict_message["headers"] if "headers" in dict_message.keys() else {},
+                dict_message["invocationId"],
+                dict_message["result"] if "result" in dict_message.keys() else None,
+                dict_message["error"] if "error" in dict_message.keys() else None
+                )
+        if message_type is MessageType.stream_invocation:
+            return StreamInvocationMessage(
+                dict_message["type"],
+                dict_message["headers"] if "headers" in dict_message.keys() else {},
+                dict_message["invocationId"],
+                dict_message["target"],
+                dict_message["arguments"])
+        if message_type is MessageType.cancel_invocation:
+            return CancelInvocationMessage(
+                dict_message["type"],
+                dict_message["headers"] if "headers" in dict_message.keys() else {},
+                dict_message["invocationId"])
+        if message_type is MessageType.ping:
+            return PingMessage(
+                dict_message["type"])
+        if message_type is MessageType.close:
+            return CloseMessage(
+                dict_message["type"],
+                dict_message["headers"] if "headers" in dict_message.keys() else {},
+                dict_message["error"] if "error" in dict_message.keys() else None
+                )
 
     def decode_handshake(self, raw_message):
         data = json.loads(raw_message.replace(self.record_separator, ""))
