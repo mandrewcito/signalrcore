@@ -53,7 +53,29 @@ class HubConnection(object):
         :return:
         """
         self._hub.register_handler(event, callback_function)
-
+    def stream(self, event, event_params, next, complete, error):
+        """
+                connection.stream("Counter", 10, 500)
+            .subscribe({
+                next: (item) => {
+                    var li = document.createElement("li");
+                    li.textContent = item;
+                    document.getElementById("messagesList").appendChild(li);
+                },
+                complete: () => {
+                    var li = document.createElement("li");
+                    li.textContent = "Stream completed";
+                    document.getElementById("messagesList").appendChild(li);
+                },
+                error: (err) => {
+                    var li = document.createElement("li");
+                    li.textContent = err;
+                    document.getElementById("messagesList").appendChild(li);
+                },
+        });
+        """
+        pass
+        
     def start(self):
         self._hub.start()
 
