@@ -21,15 +21,16 @@ Example:
 }
 ```
 """
+
+
 class StreamInvocationMessage(BaseHeadersMessage):
     def __init__(
             self,
-            message_type,
-            headers
+            headers,
             invocation_id,
             target,
             arguments):
-        super(StreamInvocationMessage, self).__init__(message_type, headers)
+        super(StreamInvocationMessage, self).__init__(4, headers)
         self.invocation_id = invocation_id
         self.target = target
         self.arguments = arguments

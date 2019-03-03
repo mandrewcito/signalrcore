@@ -84,11 +84,16 @@ Close
 }
 """
 
+
 class MyEncoder(JSONEncoder):
     def default(self, o):
         if type(o) is MessageType:
             return o.value
-        return o.__dict__
+        data = o.__dict__
+        if "invocation_id" in data:
+            data["invocationId"] = data["invocation_id"]
+            del data["invocation_id"]
+        return data
 
 
 class JsonHubProtocol(BaseHubProtocol):
@@ -106,4 +111,5 @@ class JsonHubProtocol(BaseHubProtocol):
         return result
 
     def encode(self, message):
+        print(self.encoder.encode(message))
         return self.encoder.encode(message) + self.record_separator

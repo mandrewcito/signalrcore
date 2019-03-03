@@ -6,8 +6,19 @@ Single<String> accessTokenProvider, long handshakeResponseTimeout, Map<String, S
 import logging
 import websocket
 import threading
+import uuid
 
 from signalrcore.messages.message_type import MessageType
+from signalrcore.messages.stream_invocation_message import StreamInvocationMessage
+
+
+class StreamHandler(object):
+    def __init__(self, event, invocation_id, next_callback, complete_callback, error_callback):
+        self.event = event
+        self.invocation_id = invocation_id
+        self.next_callback = next_callback
+        self.complete_callback = complete_callback
+        self.error_callback = error_callback
 
 
 class BaseHubConnection(websocket.WebSocketApp):
@@ -22,6 +33,7 @@ class BaseHubConnection(websocket.WebSocketApp):
         self.handshake_received = False
         self.connection_alive = False
         self.handlers = []
+        self.stream_handlers = []
         super(BaseHubConnection, self).__init__(
             self.url,
             on_message=self.on_message,
@@ -71,6 +83,9 @@ class BaseHubConnection(websocket.WebSocketApp):
             if message.type == MessageType.invocation_binding_failure:
                 logging.error(message)
                 continue
+            if message.type == MessageType.ping:
+                continue
+
             if message.type == MessageType.invocation:
                 fired_handlers = list(filter(lambda h: h[0] == message.target, self.handlers))
                 if len(fired_handlers) == 0:
@@ -82,11 +97,43 @@ class BaseHubConnection(websocket.WebSocketApp):
                 logging.info("Close message received from server")
                 self.connection_alive = False
                 return
-            if message.type == MessageType.completion or \
-                    message.type == MessageType.stream_item or \
-                    message.type == MessageType.stream_invocation or \
-                    message.type == MessageType.cancel_invocation:
-                raise ValueError("This client doesnt support this operation yet!")
+
+            if message.type == MessageType.completion:
+                fired_handlers = list(filter(lambda h: h.invocation_id == message.invocation_id, self.stream_handlers))
+                for handler in fired_handlers:
+                    handler.complete_callback(message)
+
+                # unregister handler
+                self.stream_handlers = list(filter(
+                    lambda h: h.invocation_id != message.invocation_id, self.stream_handlers))
+
+            if message.type == MessageType.stream_item:
+                fired_handlers = list(filter(lambda h: h.invocation_id == message.invocation_id, self.stream_handlers))
+                if len(fired_handlers) == 0:
+                    logging.warn("id '{0}' hasn't fire any stream handler".format(message.invocation_id))
+                for handler in fired_handlers:
+                    handler.next_callback(message.item)
+
+            if message.type == MessageType.stream_invocation:
+                pass
+
+            if message.type == MessageType.cancel_invocation:
+                fired_handlers = list(filter(lambda h: h.invocation_id == message.invocation_id, self.stream_handlers))
+                if len(fired_handlers) == 0:
+                    logging.warn("id '{0}' hasn't fire any stream handler".format(message.invocation_id))
+
+                for handler in fired_handlers:
+                    handler.error_callback(message)
+
+                # unregister handler
+                self.stream_handlers = list(filter(
+                    lambda h: h.invocation_id != message.invocation_id, self.stream_handlers))
 
     def send(self, message):
         super(BaseHubConnection, self).send(self.protocol.encode(message))
+
+    def stream(self, event, event_params, next_callback, complete_callback, error_callback):
+        invocation_id = str(uuid.uuid4())
+        self.stream_handlers.append(
+            StreamHandler(event, invocation_id, next_callback, complete_callback, error_callback))
+        self.send(StreamInvocationMessage({}, invocation_id, event, event_params))

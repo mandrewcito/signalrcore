@@ -12,11 +12,12 @@ Example
     "invocationId": "123"
 }
 """
+
+
 class CancelInvocationMessage(BaseHeadersMessage):
     def __init__(
             self,
-            message_type,
-            headers
+            headers,
             invocation_id):
-        super(CancelInvocationMessage, self).__init__(message_type, headers)
+        super(CancelInvocationMessage, self).__init__(5, headers)
         self.invocation_id = invocation_id

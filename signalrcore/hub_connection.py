@@ -1,7 +1,7 @@
+import uuid
 from .hub.base_hub_connection import BaseHubConnection
 from .hub.auth_hub_connection import AuthHubConnection
-from .messages.message import Message
-from .messages.message_type import MessageType
+from .messages.invocation_message import InvocationMessage
 from .protocol.json_hub_protocol import JsonHubProtocol
 
 
@@ -53,7 +53,8 @@ class HubConnection(object):
         :return:
         """
         self._hub.register_handler(event, callback_function)
-    def stream(self, event, event_params, next, complete, error):
+
+    def stream(self, event, event_params, next_callback, complete_callback, error_callback):
         """
                 connection.stream("Counter", 10, 500)
             .subscribe({
@@ -74,7 +75,7 @@ class HubConnection(object):
                 },
         });
         """
-        pass
+        self._hub.stream(event, event_params, next_callback, complete_callback, error_callback)
         
     def start(self):
         self._hub.start()
@@ -87,8 +88,8 @@ class HubConnection(object):
             raise HubConnectionError("Connection is closed, cant send a message")
         if type(arguments) is not list:
             raise HubConnectionError("Arguments of a message must be a list")
-        self._hub.send(Message(
-            MessageType.invocation.value,
-            None,
+        self._hub.send(InvocationMessage(
+            {},
+            str(uuid.uuid4()),
             method,
             arguments))

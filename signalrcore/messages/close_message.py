@@ -20,11 +20,12 @@ Example - A `Close` message with an error
 }
 ```
 """
-class PingMessage(BaseHeadersMessage):
+
+
+class CloseMessage(BaseHeadersMessage):
     def __init__(
             self,
-            message_type,
             headers,
             error):
-        super(PingMessage, self).__init__(message_type, headers)
+        super(CloseMessage, self).__init__(7, headers)
         self.error = error
