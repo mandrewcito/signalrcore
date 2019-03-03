@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="signalrcore",
-    version="0.2.0",
+    version="0.3.1",
     author="mandrewcito",
     author_email="anbaalo@gmail.com",
     description="A Python SignalR Core client ",
