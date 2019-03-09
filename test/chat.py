@@ -1,5 +1,5 @@
 
-from signalrcore.hub_connection import HubConnection
+from signalrcore.hub_connection_builder import HubConnectionBuilder
 
 
 def input_with_default(input_text, default_value):
@@ -9,10 +9,8 @@ def input_with_default(input_text, default_value):
 
 server_url = input_with_default('Enter your server url(default: {0}): ', "ws://localhost:62342/chathub")
 username = input_with_default('Enter your username (default: {0}): ', "mandrewcito")
-# password = input_with_default('Enter your password (default: {0}): ', "Abc123.--123?")
 
-hub_connection = HubConnection(server_url)
-hub_connection.build()
+hub_connection = HubConnectionBuilder().with_url(server_url).build()
 hub_connection.on("ReceiveMessage", print)
 hub_connection.start()
 message = None

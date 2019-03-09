@@ -8,7 +8,8 @@
 Using package from [aspnet core - SignalRChat](https://codeload.github.com/aspnet/Docs/zip/master) 
 example chat without auth
 ```python
-from signalrcore.hub_connection import HubConnection
+
+from signalrcore.hub_connection_builder import HubConnectionBuilder
 
 
 def input_with_default(input_text, default_value):
@@ -18,10 +19,8 @@ def input_with_default(input_text, default_value):
 
 server_url = input_with_default('Enter your server url(default: {0}): ', "ws://localhost:62342/chathub")
 username = input_with_default('Enter your username (default: {0}): ', "mandrewcito")
-# password = input_with_default('Enter your password (default: {0}): ', "Abc123.--123?")
 
-hub_connection = HubConnection(server_url)
-hub_connection.build()
+hub_connection = HubConnectionBuilder().with_url(server_url).build()
 hub_connection.on("ReceiveMessage", print)
 hub_connection.start()
 message = None
@@ -33,6 +32,7 @@ while message != "exit()":
         hub_connection.send("SendMessage", [username, message])
 hub_connection.stop()
 
+
 ```
 
 Using package from [aspnet core - SignalRAuthenticationSample](https://codeload.github.com/aspnet/Docs/zip/master) ,
@@ -40,7 +40,7 @@ Using package from [aspnet core - SignalRAuthenticationSample](https://codeload.
 # Example with Auth
 ```python
 import requests
-from signalrcore.hub_connection import HubConnection
+from signalrcore.hub_connection_builder import HubConnectionBuilder
 
 
 def input_with_default(input_text, default_value):
@@ -58,14 +58,12 @@ server_url = input_with_default('Enter your server url(default: {0}): ', "ws://l
 username = input_with_default('Enter your username (default: {0}): ', "mandrewcito@mandrewcito.com")
 password = input_with_default('Enter your password (default: {0}): ', "Abc123.--123?")
 
-# Login
-token = signalr_core_example_login(login_url, username, password)
-hub_connection = HubConnection(
-    server_url,
-    token=token,
-    negotiate_headers={"Authorization": "Bearer " + token})
+hub_connection = HubConnectionBuilder()\
+    .with_url(server_url, options={
+        "access_token_factory": lambda: signalr_core_example_login(login_url, username, password)
+    })\
+    .build()
 
-hub_connection.build()
 hub_connection.on("ReceiveSystemMessage", print)
 hub_connection.on("ReceiveChatMessage", print)
 hub_connection.on("ReceiveDirectMessage", print)
@@ -83,8 +81,10 @@ Using package from [aspnet core - SignalRStreaming](https://codeload.github.com/
 
 ```python
 
+
 import time
-from signalrcore.hub_connection import HubConnection
+import sys
+from signalrcore.hub_connection_builder import HubConnectionBuilder
 
 
 def input_with_default(input_text, default_value):
@@ -94,21 +94,27 @@ def input_with_default(input_text, default_value):
 
 server_url = input_with_default('Enter your server url(default: {0}): ', "ws://localhost:57957/streamHub")
 
-hub_connection = HubConnection(server_url)
-hub_connection.build()
+hub_connection = HubConnectionBuilder().with_url(server_url).build()
 hub_connection.start()
 time.sleep(10)
+
+
+def bye(error, x):
+    if error:
+        print("error {0}".format(x))
+    else:
+        print("complete! ")
+    global hub_connection
+    hub_connection.stop()
+    sys.exit(0)
+
+
 hub_connection.stream(
     "Counter",
-    [10, 500],
-    lambda x: print("next callback: ", x),
-    lambda x: print("complete  callback", x),
-    lambda x: print("error  callback", x))
-
-message = None
-while message != "exit()":
-    message = input(">> ")
-
-hub_connection.stop()
+    [10, 500], {
+        "next": lambda x: print("next callback: ", x),
+        "complete": lambda x: bye(False, x),
+        "error": lambda x: bye(True, x)
+    })
 
 ```

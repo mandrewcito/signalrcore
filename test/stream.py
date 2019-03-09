@@ -1,6 +1,7 @@
 
 import time
-from signalrcore.hub_connection import HubConnection
+import sys
+from signalrcore.hub_connection_builder import HubConnectionBuilder
 
 
 def input_with_default(input_text, default_value):
@@ -10,19 +11,25 @@ def input_with_default(input_text, default_value):
 
 server_url = input_with_default('Enter your server url(default: {0}): ', "ws://localhost:57957/streamHub")
 
-hub_connection = HubConnection(server_url)
-hub_connection.build()
+hub_connection = HubConnectionBuilder().with_url(server_url).build()
 hub_connection.start()
 time.sleep(10)
+
+
+def bye(error, x):
+    if error:
+        print("error {0}".format(x))
+    else:
+        print("complete! ")
+    global hub_connection
+    hub_connection.stop()
+    sys.exit(0)
+
+
 hub_connection.stream(
     "Counter",
-    [10, 500],
-    lambda x: print("next callback: ", x),
-    lambda x: print("complete  callback", x),
-    lambda x: print("error  callback", x))
-
-message = None
-while message != "exit()":
-    message = input(">> ")
-
-hub_connection.stop()
+    [10, 500], {
+        "next": lambda x: print("next callback: ", x),
+        "complete": lambda x: bye(False, x),
+        "error": lambda x: bye(True, x)
+    })
