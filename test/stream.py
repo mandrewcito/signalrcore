@@ -28,7 +28,7 @@ def bye(error, x):
 
 hub_connection.stream(
     "Counter",
-    [10, 500], {
+    [10, 500]).subscribe({
         "next": lambda x: print("next callback: ", x),
         "complete": lambda x: bye(False, x),
         "error": lambda x: bye(True, x)

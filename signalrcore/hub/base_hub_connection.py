@@ -13,12 +13,23 @@ from signalrcore.messages.stream_invocation_message import StreamInvocationMessa
 
 
 class StreamHandler(object):
-    def __init__(self, event, invocation_id, next_callback, complete_callback, error_callback):
+    def __init__(self, event, invocation_id):
         self.event = event
         self.invocation_id = invocation_id
-        self.next_callback = next_callback
-        self.complete_callback = complete_callback
-        self.error_callback = error_callback
+        self.next_callback = None
+        self.complete_callback = None
+        self.error_callback = None
+
+    def subscribe(self, subscribe_callbacks):
+        if subscribe_callbacks is None:
+            raise ValueError(" subscribe object must be {0}".format({
+                "next": None,
+                "complete": None,
+                "error": None
+                }))
+        self.next_callback = subscribe_callbacks["next"]
+        self.complete_callback = subscribe_callbacks["complete"]
+        self.error_callback = subscribe_callbacks["error"]
 
 
 class BaseHubConnection(websocket.WebSocketApp):
@@ -132,8 +143,9 @@ class BaseHubConnection(websocket.WebSocketApp):
     def send(self, message):
         super(BaseHubConnection, self).send(self.protocol.encode(message))
 
-    def stream(self, event, event_params, next_callback, complete_callback, error_callback):
+    def stream(self, event, event_params):
         invocation_id = str(uuid.uuid4())
-        self.stream_handlers.append(
-            StreamHandler(event, invocation_id, next_callback, complete_callback, error_callback))
+        stream_obj = StreamHandler(event, invocation_id)
+        self.stream_handlers.append(stream_obj)
         self.send(StreamInvocationMessage({}, invocation_id, event, event_params))
+        return stream_obj

@@ -86,34 +86,8 @@ class HubConnectionBuilder(object):
         """
         self._hub.register_handler(event, callback_function)
 
-    def stream(self, event, event_params, subscribe=None):
-        """
-                connection.stream("Counter", 10, 500)
-            .subscribe({
-                next: (item) => {
-                    var li = document.createElement("li");
-                    li.textContent = item;
-                    document.getElementById("messagesList").appendChild(li);
-                },
-                complete: () => {
-                    var li = document.createElement("li");
-                    li.textContent = "Stream completed";
-                    document.getElementById("messagesList").appendChild(li);
-                },
-                error: (err) => {
-                    var li = document.createElement("li");
-                    li.textContent = err;
-                    document.getElementById("messagesList").appendChild(li);
-                },
-        });
-        """
-        if subscribe is None:
-            raise HubConnectionError(" subscribe object must be {0}".format({
-                "next": None,
-                "complete": None,
-                "error": None
-                }))
-        self._hub.stream(event, event_params, subscribe["next"], subscribe["complete"], subscribe["error"])
+    def stream(self, event, event_params):
+        return self._hub.stream(event, event_params)
         
     def start(self):
         self._hub.start()
