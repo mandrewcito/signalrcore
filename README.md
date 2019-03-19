@@ -2,6 +2,7 @@
 
 ![Pypi](https://img.shields.io/pypi/v/signalrcore.svg)
 ![Pypi - downloads month](https://img.shields.io/pypi/dm/signalrcore.svg)
+![Issues](https://img.shields.io/github/issues/:mandrewcito/:signalrcore.svg)
 ![Open issues](https://img.shields.io/github/issues-raw/:mandrewcito/:signalrcore.svg)
 
 # Example 
