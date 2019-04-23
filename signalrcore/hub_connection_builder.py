@@ -1,9 +1,13 @@
 import uuid
+import requests
+
+from urllib.parse import urlparse 
+
 from .hub.base_hub_connection import BaseHubConnection
 from .hub.auth_hub_connection import AuthHubConnection
 from .messages.invocation_message import InvocationMessage
 from .protocol.json_hub_protocol import JsonHubProtocol
-
+from .helpers import helpers
 
 class HubConnectionError(ValueError):
     pass
@@ -29,7 +33,7 @@ class HubConnectionBuilder(object):
         self.headers = None
         self.negotiate_headers = None
         self.has_auth_configured = None
-        self.protocol = None
+        self.protocol = None        
 
     def with_url(
             self,
@@ -64,11 +68,14 @@ class HubConnectionBuilder(object):
 
         """
         self.protocol = JsonHubProtocol()
-        self.headers = {}
+        self.headers = {}        
+
         if self.has_auth_configured:
             auth_function = self.options["access_token_factory"]
             self.token = auth_function()
-            self.negotiate_headers = {"Authorization": "Bearer " + self.token}
+            self.negotiate_headers = {"Authorization": "Bearer " + self.token}     
+
+        self.negotiate() 
 
         self._hub = AuthHubConnection(self.hub_url, self.protocol, self.token, self.negotiate_headers)\
             if self.has_auth_configured else\
@@ -104,4 +111,14 @@ class HubConnectionBuilder(object):
             {},
             str(uuid.uuid4()),
             method,
-            arguments))
+            arguments))    
+
+    def negotiate(self):
+        response = requests.post(helpers.get_negotiate_url(self.hub_url), headers=self.negotiate_headers)
+        data = response.json()
+
+        if 'url' in data.keys() and 'accessToken' in data.keys():
+            self.hub_url = data["url"]
+            self.token = data["accessToken"]
+            self.negotiate_headers = {"Authorization": "Bearer " + self.token}
+            self.has_auth_configured = True

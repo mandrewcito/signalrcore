@@ -1,15 +1,18 @@
 import requests
 
-from .base_hub_connection import BaseHubConnection
+from urllib import parse
 
+from .base_hub_connection import BaseHubConnection
+from ..helpers import helpers
 
 class AuthHubConnection(BaseHubConnection):
     def __init__(self, url, protocol, token, negotiate_headers):
         self.token = token
         self.negotiate_headers = negotiate_headers
-        negotiate_url = "https" + url[3:] if url.startswith("wss") else "http" + url[2:]
-        negotiate_url += "/negotiate"
-        response = requests.post(negotiate_url, headers=self.negotiate_headers)
+
+        response = requests.post(helpers.get_negotiate_url(url), headers=self.negotiate_headers)
         data = response.json()
-        url = url + "?id={0}&access_token={1}".format(data["connectionId"], self.token)
-        super(AuthHubConnection, self).__init__(url, protocol)
+
+        url = helpers.encode_connection_id(url, data["connectionId"])
+        
+        super(AuthHubConnection, self).__init__(url, protocol, headers=self.negotiate_headers)
