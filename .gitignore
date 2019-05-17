@@ -114,3 +114,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+/.vs/slnx.sqlite-journal
+/.vs/slnx.sqlite
