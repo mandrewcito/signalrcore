@@ -103,8 +103,6 @@ class HubConnectionBuilder(object):
         self._hub.stop()
 
     def send(self, method, arguments):
-        if not self._hub.connection_alive:
-            raise HubConnectionError("Connection is closed, cant send a message")
         if type(arguments) is not list:
             raise HubConnectionError("Arguments of a message must be a list")
         self._hub.send(InvocationMessage(

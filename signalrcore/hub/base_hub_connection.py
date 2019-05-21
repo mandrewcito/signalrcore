@@ -33,7 +33,7 @@ class StreamHandler(object):
 
 
 class BaseHubConnection(websocket.WebSocketApp):
-    def __init__(self, url, protocol, headers={}):
+    def __init__(self, url, protocol, headers={}, reconnect=True):
         self.logger = logging.getLogger("SignalRCoreClient")
         ch = logging.StreamHandler()
         ch.setLevel(logging.INFO)
@@ -45,6 +45,9 @@ class BaseHubConnection(websocket.WebSocketApp):
         self.connection_alive = False
         self.handlers = []
         self.stream_handlers = []
+        self._thread = None
+        self.reconnect = reconnect
+        self.reconnecting = False
         super(BaseHubConnection, self).__init__(
             self.url,
             on_message=self.on_message,
@@ -54,11 +57,15 @@ class BaseHubConnection(websocket.WebSocketApp):
             header=headers)
 
     def start(self):
-        t = threading.Thread(target=self.run_forever)
-        t.start()
+        self._thread = threading.Thread(target=self.run_forever)
+        self._thread.start()
+        self.reconnecting = False
 
     def stop(self):
-        self.close()
+        if self.connection_alive:
+            self.close()
+            self.connection_alive = False
+        self._thread.join()
 
     def register_handler(self, event, callback):
         self.handlers.append((event, callback))
@@ -68,6 +75,7 @@ class BaseHubConnection(websocket.WebSocketApp):
         if msg.error is None or msg.error == "":
             self.handshake_received = True
             self.connection_alive = True
+            self.reconnecting = False
         else:
             self.logger.error(msg.error)
             raise ValueError("Handshake error {0}".msg.error)
@@ -79,10 +87,13 @@ class BaseHubConnection(websocket.WebSocketApp):
 
     def on_close(self):
         self.logger.info("-- web socket close --")
+        if self.reconnect:
+            self.stop()
+            self.start()
 
     def on_error(self, error):
         self.logger.error("-- web socket error --")
-        self.logger.error("{0}".format(error))
+        self.logger.error("{0} {1}".format(error, type(error)))
 
     def on_message(self, raw_message):
         if not self.handshake_received:
@@ -141,7 +152,19 @@ class BaseHubConnection(websocket.WebSocketApp):
                     lambda h: h.invocation_id != message.invocation_id, self.stream_handlers))
 
     def send(self, message):
-        super(BaseHubConnection, self).send(self.protocol.encode(message))
+        try:
+            super(BaseHubConnection, self).send(self.protocol.encode(message))
+        except (websocket._exceptions.WebSocketConnectionClosedException, ConnectionResetError) as ex:
+            # Conexión cerrada
+            self.logger.error("Conexión cerrada {0}".format(ex))
+            self.connection_alive = False
+            if not self.reconnecting:
+                self.reconnecting = True
+                self.stop()
+                self.start()
+
+        except Exception as ex:
+            raise ex
 
     def stream(self, event, event_params):
         invocation_id = str(uuid.uuid4())

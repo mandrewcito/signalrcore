@@ -116,3 +116,5 @@ dmypy.json
 .pyre/
 /.vs/slnx.sqlite-journal
 /.vs/slnx.sqlite
+.vscode/settings.json
+.vscode/launch.json
