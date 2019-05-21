@@ -1,6 +1,4 @@
-import json
 from .base_hub_protocol import BaseHubProtocol
-from ..messages.message import Message
 from ..messages.message_type import MessageType
 from json import JSONEncoder  # TODO , JSONDecoder
 
@@ -12,7 +10,9 @@ from json import JSONEncoder  # TODO , JSONDecoder
 # [6]
 # [7, Error]
 
+
 class MyEncoder(JSONEncoder):
+    #  https://github.com/PyCQA/pylint/issues/414
     def default(self, o):
         if type(o) is MessageType:
             return o.value
@@ -21,7 +21,8 @@ class MyEncoder(JSONEncoder):
 
 class MessagepackProtocol(BaseHubProtocol):
     def __init__(self):
-        super(Messagepack, self).__init__("messagepack", 1, "Text", chr(0x1E))
+        super(MessagepackProtocol, self).__init__(
+            "messagepack", 1, "Text", chr(0x1E))
 
     def parse_messages(self, raw):
         raise ValueError(" NOt implemented yet")

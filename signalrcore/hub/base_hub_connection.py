@@ -1,15 +1,11 @@
-"""
-HubConnection(String url, Transport transport, boolean skipNegotiate, HttpClient httpClient,
-Single<String> accessTokenProvider, long handshakeResponseTimeout, Map<String, String> headers)
-"""
-
 import logging
 import websocket
 import threading
 import uuid
 
 from signalrcore.messages.message_type import MessageType
-from signalrcore.messages.stream_invocation_message import StreamInvocationMessage
+from signalrcore.messages.stream_invocation_message\
+    import StreamInvocationMessage
 
 
 class StreamHandler(object):
@@ -78,7 +74,7 @@ class BaseHubConnection(websocket.WebSocketApp):
             self.reconnecting = False
         else:
             self.logger.error(msg.error)
-            raise ValueError("Handshake error {0}".msg.error)
+            raise ValueError("Handshake error {0}".format(msg.error))
 
     def on_open(self):
         self.logger.info("-- web socket open --")
@@ -109,9 +105,14 @@ class BaseHubConnection(websocket.WebSocketApp):
                 continue
 
             if message.type == MessageType.invocation:
-                fired_handlers = list(filter(lambda h: h[0] == message.target, self.handlers))
+                fired_handlers = list(
+                    filter(
+                        lambda h: h[0] == message.target,
+                        self.handlers))
                 if len(fired_handlers) == 0:
-                    logging.warn("event '{0}' hasn't fire any handler".format(message.target))
+                    logging.warn(
+                        "event '{0}' hasn't fire any handler".format(
+                            message.target))
                 for _, handler in fired_handlers:
                     handler(message.arguments)
 
@@ -121,18 +122,28 @@ class BaseHubConnection(websocket.WebSocketApp):
                 return
 
             if message.type == MessageType.completion:
-                fired_handlers = list(filter(lambda h: h.invocation_id == message.invocation_id, self.stream_handlers))
+                fired_handlers = list(
+                    filter(
+                        lambda h: h.invocation_id == message.invocation_id,
+                        self.stream_handlers))
                 for handler in fired_handlers:
                     handler.complete_callback(message)
 
                 # unregister handler
-                self.stream_handlers = list(filter(
-                    lambda h: h.invocation_id != message.invocation_id, self.stream_handlers))
+                self.stream_handlers = list(
+                    filter(
+                        lambda h: h.invocation_id != message.invocation_id,
+                        self.stream_handlers))
 
             if message.type == MessageType.stream_item:
-                fired_handlers = list(filter(lambda h: h.invocation_id == message.invocation_id, self.stream_handlers))
+                fired_handlers = list(
+                    filter(
+                        lambda h: h.invocation_id == message.invocation_id,
+                        self.stream_handlers))
                 if len(fired_handlers) == 0:
-                    logging.warn("id '{0}' hasn't fire any stream handler".format(message.invocation_id))
+                    logging.warn(
+                        "id '{0}' hasn't fire any stream handler".format(
+                            message.invocation_id))
                 for handler in fired_handlers:
                     handler.next_callback(message.item)
 
@@ -140,21 +151,30 @@ class BaseHubConnection(websocket.WebSocketApp):
                 pass
 
             if message.type == MessageType.cancel_invocation:
-                fired_handlers = list(filter(lambda h: h.invocation_id == message.invocation_id, self.stream_handlers))
+                fired_handlers = list(
+                    filter(
+                        lambda h: h.invocation_id == message.invocation_id,
+                        self.stream_handlers))
                 if len(fired_handlers) == 0:
-                    logging.warn("id '{0}' hasn't fire any stream handler".format(message.invocation_id))
+                    logging.warn(
+                        "id '{0}' hasn't fire any stream handler".format(
+                            message.invocation_id))
 
                 for handler in fired_handlers:
                     handler.error_callback(message)
 
                 # unregister handler
-                self.stream_handlers = list(filter(
-                    lambda h: h.invocation_id != message.invocation_id, self.stream_handlers))
+                self.stream_handlers = list(
+                    filter(
+                        lambda h: h.invocation_id != message.invocation_id,
+                        self.stream_handlers))
 
     def send(self, message):
         try:
             super(BaseHubConnection, self).send(self.protocol.encode(message))
-        except (websocket._exceptions.WebSocketConnectionClosedException, ConnectionResetError) as ex:
+        except (
+                websocket._exceptions.WebSocketConnectionClosedException,
+                ConnectionResetError) as ex:
             # Conexión cerrada
             self.logger.error("Conexión cerrada {0}".format(ex))
             self.connection_alive = False
@@ -170,5 +190,10 @@ class BaseHubConnection(websocket.WebSocketApp):
         invocation_id = str(uuid.uuid4())
         stream_obj = StreamHandler(event, invocation_id)
         self.stream_handlers.append(stream_obj)
-        self.send(StreamInvocationMessage({}, invocation_id, event, event_params))
+        self.send(
+            StreamInvocationMessage(
+                {},
+                invocation_id,
+                event,
+                event_params))
         return stream_obj

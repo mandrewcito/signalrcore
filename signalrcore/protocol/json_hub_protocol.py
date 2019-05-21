@@ -86,6 +86,7 @@ Close
 
 
 class MyEncoder(JSONEncoder):
+    # https://github.com/PyCQA/pylint/issues/414
     def default(self, o):
         if type(o) is MessageType:
             return o.value
@@ -102,8 +103,11 @@ class JsonHubProtocol(BaseHubProtocol):
         self.encoder = MyEncoder()
 
     def parse_messages(self, raw):
-        raw_messages = [record.replace(self.record_separator, "") for record in raw.split(self.record_separator)
-                        if record is not None and record is not "" and record is not self.record_separator]
+        raw_messages = [
+            record.replace(self.record_separator, "")
+            for record in raw.split(self.record_separator)
+            if record is not None and record is not "" and record is not self.record_separator
+            ]
         result = []
         for raw_message in raw_messages:
             dict_message = json.loads(raw_message)

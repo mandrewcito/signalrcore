@@ -18,4 +18,8 @@ setuptools.setup(
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 2"
     ],
+    install_requires=[
+        "requests>=2.21.0",
+        "websocket-client>=0.55.0",
+    ]
 )
