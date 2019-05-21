@@ -21,5 +21,6 @@ setuptools.setup(
     install_requires=[
         "requests>=2.21.0",
         "websocket-client>=0.55.0",
+        "urllib3==1.25.2"
     ]
 )
