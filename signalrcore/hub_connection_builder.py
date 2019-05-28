@@ -1,11 +1,9 @@
 import uuid
-import requests
 
 from .hub.base_hub_connection import BaseHubConnection
 from .hub.auth_hub_connection import AuthHubConnection
 from .messages.invocation_message import InvocationMessage
 from .protocol.json_hub_protocol import JsonHubProtocol
-from .helpers import Helpers
 
 
 class HubConnectionError(ValueError):
@@ -22,7 +20,7 @@ class HubConnectionBuilder(object):
     Raises:
         HubConnectionError: Raises an Exception if url is empty or None
     """
-    def __init__(self):
+    def __init__(self, reconnect=False):
         self.hub_url = None
         self._hub = None
         self.options = {
@@ -33,6 +31,7 @@ class HubConnectionBuilder(object):
         self.negotiate_headers = None
         self.has_auth_configured = None
         self.protocol = None
+        self.reconnect = reconnect
 
     def with_url(
             self,
@@ -61,7 +60,7 @@ class HubConnectionBuilder(object):
         self.options = self.options if options is None else options
         return self
 
-    def build(self):
+    def build(self, reconnect=False):
         """"
         self.token = token
         self.headers = headers
@@ -71,28 +70,22 @@ class HubConnectionBuilder(object):
         """
         self.protocol = JsonHubProtocol()
         self.headers = {}
-
+        self.reconnect = reconnect
         if self.has_auth_configured:
             auth_function = self.options["access_token_factory"]
             if auth_function is None or not callable(auth_function):
                 raise HubConnectionError(
                     "access_token_factory is not function")
-            self.token = auth_function()
-            self.negotiate_headers = {
-                "Authorization": "Bearer " + self.token
-                }
-
-        self.negotiate()
 
         self._hub = AuthHubConnection(
             self.hub_url,
             self.protocol,
-            self.token,
-            self.negotiate_headers)\
+            auth_function)\
             if self.has_auth_configured else\
             BaseHubConnection(
                 self.hub_url,
                 self.protocol)
+        self._hub.reconnect = self.reconnect
         return self
 
     def on(self, event, callback_function):
@@ -121,15 +114,3 @@ class HubConnectionBuilder(object):
             str(uuid.uuid4()),
             method,
             arguments))
-
-    def negotiate(self):
-        response = requests.post(
-            Helpers.get_negotiate_url(self.hub_url),
-            headers=self.negotiate_headers)
-        data = response.json()
-
-        if 'url' in data.keys() and 'accessToken' in data.keys():
-            self.hub_url = data["url"]
-            self.token = data["accessToken"]
-            self.negotiate_headers = {"Authorization": "Bearer " + self.token}
-            self.has_auth_configured = True

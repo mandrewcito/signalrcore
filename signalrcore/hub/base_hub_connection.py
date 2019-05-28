@@ -29,7 +29,7 @@ class StreamHandler(object):
 
 
 class BaseHubConnection(websocket.WebSocketApp):
-    def __init__(self, url, protocol, headers={}, reconnect=True):
+    def __init__(self, url, protocol, headers={}):
         self.logger = logging.getLogger("SignalRCoreClient")
         ch = logging.StreamHandler()
         ch.setLevel(logging.INFO)
@@ -42,26 +42,27 @@ class BaseHubConnection(websocket.WebSocketApp):
         self.handlers = []
         self.stream_handlers = []
         self._thread = None
-        self.reconnect = reconnect
+        self.reconnect = False
         self.reconnecting = False
-        super(BaseHubConnection, self).__init__(
+        self._ws = None
+
+    def start(self):
+        self._ws = websocket.WebSocketApp(
             self.url,
+            header=self.headers,
             on_message=self.on_message,
             on_error=self.on_error,
             on_close=self.on_close,
             on_open=self.on_open,
-            header=headers)
-
-    def start(self):
-        self._thread = threading.Thread(target=self.run_forever)
+            )
+        self._thread = threading.Thread(target=self._ws.run_forever)
+        self._thread.daemon = True
         self._thread.start()
         self.reconnecting = False
 
     def stop(self):
         if self.connection_alive:
             self.close()
-            self.connection_alive = False
-        self._thread.join()
 
     def register_handler(self, event, callback):
         self.handlers.append((event, callback))
@@ -83,9 +84,6 @@ class BaseHubConnection(websocket.WebSocketApp):
 
     def on_close(self):
         self.logger.info("-- web socket close --")
-        if self.reconnect:
-            self.stop()
-            self.start()
 
     def on_error(self, error):
         self.logger.error("-- web socket error --")
@@ -171,12 +169,14 @@ class BaseHubConnection(websocket.WebSocketApp):
 
     def send(self, message):
         try:
-            super(BaseHubConnection, self).send(self.protocol.encode(message))
+            self._ws.send(self.protocol.encode(message))
         except (
                 websocket._exceptions.WebSocketConnectionClosedException,
                 ConnectionResetError) as ex:
-            # Conexión cerrada
-            self.logger.error("Conexión cerrada {0}".format(ex))
+            if not self.reconnect:
+                raise ex
+            # Connection closed
+            self.logger.error("Connection closed {0}".format(ex))
             self.connection_alive = False
             if not self.reconnecting:
                 self.reconnecting = True

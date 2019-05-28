@@ -115,5 +115,4 @@ class JsonHubProtocol(BaseHubProtocol):
         return result
 
     def encode(self, message):
-        print(self.encoder.encode(message))
         return self.encoder.encode(message) + self.record_separator

@@ -1,37 +1,39 @@
 import requests
 
-from urllib import parse
-
 from .base_hub_connection import BaseHubConnection
-from ..helpers import helpers
+from .errors import UnAuthorizedHubError, HubError
+from ..helpers import Helpers
+
 
 class AuthHubConnection(BaseHubConnection):
-    def __init__(self, url, protocol, token, negotiate_headers):
-        self.token = token
-        self.negotiate_headers = negotiate_headers
+    def __init__(self, url, protocol, auth_function):
+        self.token = None
+        self.headers = None
 
-        response = requests.post(helpers.get_negotiate_url(url), headers=self.negotiate_headers)
-        data = response.json()
-
-        self.url = helpers.encode_connection_id(url, data["connectionId"])
+        self.auth_function = auth_function
         
-        super(AuthHubConnection, self).__init__(url, protocol, headers=self.negotiate_headers)
+        super(AuthHubConnection, self).__init__(url, protocol, headers=self.headers)
 
     def negotiate(self):
-        response = requests.post(helpers.get_negotiate_url(self.url), headers=self.negotiate_headers)
+        response = requests.post(Helpers.get_negotiate_url(self.url), headers=self.headers)
+        if response.status_code != 200:
+            raise HubError(response.status_code) if response.status_code != 401 else UnAuthorizedHubError()
         data = response.json()
-        self.url = helpers.encode_connection_id(self.url, data["connectionId"])
+        self.url = Helpers.encode_connection_id(self.url, data["connectionId"])
 
-    def start(self):
-        try:
-            self.negotiate()
-            super(AuthHubConnection, self).start()
-        except Exception as ex:
-            self.reconnecting = False
+        # Azure
+        if 'url' in data.keys() and 'accessToken' in data.keys():
+            self.url = data["url"]
+            self.token = data["accessToken"]
+            self.headers = {"Authorization": "Bearer " + self.token}
+
+    def start(self, reconnect=False):
+        self.token = self.auth_function()
+        self.headers = {
+            "Authorization": "Bearer " + self.token
+        }
+        self.negotiate()
+        super(AuthHubConnection, self).start()
 
     def on_close(self):
         self.logger.info("-- web socket close --")
-        if self.reconnect:
-            self.stop()
-            self.negotiate()
-            self.start()

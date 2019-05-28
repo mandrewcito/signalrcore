@@ -10,14 +10,16 @@ def input_with_default(input_text, default_value):
 server_url = input_with_default('Enter your server url(default: {0}): ', "ws://localhost:62342/chathub")
 username = input_with_default('Enter your username (default: {0}): ', "mandrewcito")
 
-hub_connection = HubConnectionBuilder().with_url(server_url).build()
+hub_connection = HubConnectionBuilder().with_url(server_url).build(reconnect=True)
 hub_connection.on("ReceiveMessage", print)
 hub_connection.start()
 message = None
+
 # Do login
 
 while message != "exit()":
     message = input(">> ")
     if message is not None and message is not "" and message is not "exit()":
         hub_connection.send("SendMessage", [username, message])
+
 hub_connection.stop()
