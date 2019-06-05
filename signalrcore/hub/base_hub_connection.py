@@ -2,11 +2,15 @@ import logging
 import websocket
 import threading
 import uuid
+import time
 
 from signalrcore.messages.message_type import MessageType
 from signalrcore.messages.stream_invocation_message\
     import StreamInvocationMessage
 
+from signalrcore.messages.ping_message import PingMessage
+
+from .reconnection import ConnectionStateChecker, ExponentialReconnectionHandler, RawReconnectionHandler, ReconnectionType
 
 class StreamHandler(object):
     def __init__(self, event, invocation_id):
@@ -42,9 +46,12 @@ class BaseHubConnection(websocket.WebSocketApp):
         self.handlers = []
         self.stream_handlers = []
         self._thread = None
-        self.reconnect = False
-        self.reconnecting = False
         self._ws = None
+        self.connection_checker = ConnectionStateChecker(
+            lambda: self.send(PingMessage()),
+            15
+        )
+        self.reconnection_handler = None
 
     def start(self):
         self._ws = websocket.WebSocketApp(
@@ -58,11 +65,36 @@ class BaseHubConnection(websocket.WebSocketApp):
         self._thread = threading.Thread(target=self._ws.run_forever)
         self._thread.daemon = True
         self._thread.start()
-        self.reconnecting = False
+        self.connection_checker.start()
+
+    def configure_reconnection(
+            self,
+            reconnection_type,
+            keep_alive_interval=15,
+            reconnect_interval=5,
+            max_attemps=None)
+
+        self.connection_checker.keep_alive_interval = keep_alive_interval
+
+        reconn_type = ReconnectionType[reconnection_type]
+        
+        if reconn_type == ReconnectionType.raw:
+            self.reconnection_handler = ReconnectionHandler(
+                sleep_time = reconnect_interval,
+                max_attemps = max_attemps
+            )
+        if reconn_type == ReconnectionType.exponential:
+            self.reconnection_handler = ReconnectionHandler(
+                sleep_time = reconnect_interval,
+                max_attemps = max_attemps
+            )
+        
+
 
     def stop(self):
         if self.connection_alive:
             self.close()
+        self.connection_checker.stop()
 
     def register_handler(self, event, callback):
         self.handlers.append((event, callback))
@@ -72,7 +104,7 @@ class BaseHubConnection(websocket.WebSocketApp):
         if msg.error is None or msg.error == "":
             self.handshake_received = True
             self.connection_alive = True
-            self.reconnecting = False
+            self.reconnection_handler.reconnecting = False
         else:
             self.logger.error(msg.error)
             raise ValueError("Handshake error {0}".format(msg.error))
@@ -90,6 +122,7 @@ class BaseHubConnection(websocket.WebSocketApp):
         self.logger.error("{0} {1}".format(error, type(error)))
 
     def on_message(self, raw_message):
+        self.connection_checker.last_message = time.time()
         if not self.handshake_received:
             self.evaluate_handshake(raw_message)
             return
@@ -170,16 +203,17 @@ class BaseHubConnection(websocket.WebSocketApp):
     def send(self, message):
         try:
             self._ws.send(self.protocol.encode(message))
+            self.connection_checker.last_message = time.time()
         except (
                 websocket._exceptions.WebSocketConnectionClosedException,
                 ConnectionResetError) as ex:
-            if not self.reconnect:
+            if self.reconnection_handler is None:
                 raise ex
             # Connection closed
             self.logger.error("Connection closed {0}".format(ex))
             self.connection_alive = False
-            if not self.reconnecting:
-                self.reconnecting = True
+            if not self.reconnection_handler.reconnecting:
+                self.reconnection_handler.reconnecting = True
                 self.stop()
                 self.start()
 

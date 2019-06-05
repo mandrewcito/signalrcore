@@ -20,7 +20,7 @@ class HubConnectionBuilder(object):
     Raises:
         HubConnectionError: Raises an Exception if url is empty or None
     """
-    def __init__(self, reconnect=False):
+    def __init__(self):
         self.hub_url = None
         self._hub = None
         self.options = {
@@ -31,7 +31,6 @@ class HubConnectionBuilder(object):
         self.negotiate_headers = None
         self.has_auth_configured = None
         self.protocol = None
-        self.reconnect = reconnect
 
     def with_url(
             self,
@@ -60,7 +59,7 @@ class HubConnectionBuilder(object):
         self.options = self.options if options is None else options
         return self
 
-    def build(self, reconnect=False):
+    def build(self):
         """"
         self.token = token
         self.headers = headers
@@ -70,7 +69,6 @@ class HubConnectionBuilder(object):
         """
         self.protocol = JsonHubProtocol()
         self.headers = {}
-        self.reconnect = reconnect
         if self.has_auth_configured:
             auth_function = self.options["access_token_factory"]
             if auth_function is None or not callable(auth_function):
@@ -85,8 +83,25 @@ class HubConnectionBuilder(object):
             BaseHubConnection(
                 self.hub_url,
                 self.protocol)
-        self._hub.reconnect = self.reconnect
         return self
+
+    def on_disconnect(self, data):
+        reconnect_type = data["type"] if "type" in data.keys() else "raw"
+        
+        max_attemps = data["max_attemps"] if "max_attemps" in data.keys() else None # Infinite reconnect
+        
+        reconnect_interval = data["reconnect_interval"]\
+            if "reconnect_interval" in data.keys() else 5 # 5 sec interval
+        
+        keep_alive_interval =data["keep_alive_interval"]\
+            if "keep_alive_interval" in data.keys() else 15
+
+        self._hub.configure_reconnection(
+            reconnect_type,
+            keep_alive_interval=keep_alive_interval,
+            reconnect_interval=reconnect_interval,
+            max_attemps=max_attemps
+        )
 
     def on(self, event, callback_function):
         """
