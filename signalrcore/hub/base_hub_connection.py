@@ -72,7 +72,7 @@ class BaseHubConnection(websocket.WebSocketApp):
             reconnection_type,
             keep_alive_interval=15,
             reconnect_interval=5,
-            max_attemps=None)
+            max_attemps=None):
 
         self.connection_checker.keep_alive_interval = keep_alive_interval
 
