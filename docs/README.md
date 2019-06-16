@@ -2,6 +2,8 @@
 
 ![Pypi](https://img.shields.io/pypi/v/signalrcore.svg)
 ![Pypi - downloads month](https://img.shields.io/pypi/dm/signalrcore.svg)
+![Issues](https://img.shields.io/github/issues/mandrewcito/signalrcore.svg)
+![Open issues](https://img.shields.io/github/issues-raw/mandrewcito/signalrcore.svg)
 
 # Example 
 
@@ -20,7 +22,12 @@ def input_with_default(input_text, default_value):
 server_url = input_with_default('Enter your server url(default: {0}): ', "ws://localhost:62342/chathub")
 username = input_with_default('Enter your username (default: {0}): ', "mandrewcito")
 
-hub_connection = HubConnectionBuilder().with_url(server_url).build()
+hub_connection = HubConnectionBuilder().with_url(server_url).with_automatic_reconnect({
+        "type": "raw",
+        "keep_alive_interval": 10,
+        "reconnect_interval": 5,
+        "max_attempts": 5
+    }).build()
 hub_connection.on("ReceiveMessage", print)
 hub_connection.start()
 message = None
@@ -61,6 +68,10 @@ password = input_with_default('Enter your password (default: {0}): ', "Abc123.--
 hub_connection = HubConnectionBuilder()\
     .with_url(server_url, options={
         "access_token_factory": lambda: signalr_core_example_login(login_url, username, password)
+    }).with_automatic_reconnect({
+        "type": "interval",
+        "keep_alive_interval": 10,
+        "intervals": [1, 3, 5, 6, 7, 87, 3]
     })\
     .build()
 
@@ -118,7 +129,3 @@ hub_connection.stream(
     })
 
 ```
-
-# Docs from
-https://raw.githubusercontent.com/aspnet/SignalR/release/2.2/specs/TransportProtocols.md
-https://github.com/aspnet/SignalR/blob/release/2.2/specs/HubProtocol.md

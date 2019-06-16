@@ -1,7 +1,10 @@
 import uuid
-
+import logging
 from .hub.base_hub_connection import BaseHubConnection
 from .hub.auth_hub_connection import AuthHubConnection
+from .hub.reconnection import \
+    IntervalReconnectionHandler, RawReconnectionHandler, ReconnectionType
+
 from .messages.invocation_message import InvocationMessage
 from .protocol.json_hub_protocol import JsonHubProtocol
 
@@ -31,6 +34,8 @@ class HubConnectionBuilder(object):
         self.negotiate_headers = None
         self.has_auth_configured = None
         self.protocol = None
+        self.reconnection_handler = None
+        self.keep_alive_interval = None
 
     def with_url(
             self,
@@ -59,6 +64,19 @@ class HubConnectionBuilder(object):
         self.options = self.options if options is None else options
         return self
 
+    def configure_logging(self, logging_level, log_format='%(asctime)-15s %(clientip)s %(user)-8s %(message)s'):
+        """
+        Confiures signalr logging
+        :param logging_level: logging.INFO | logging.DEBUG ... from python logging class
+        :param log_format: python logging class format by default %(asctime)-15s %(clientip)s %(user)-8s %(message)s
+        :return: instance hub with logging configured
+        """
+        logging.basicConfig(
+            level=logging_level,
+            format=log_format
+        )
+        return self
+
     def build(self):
         """"
         self.token = token
@@ -78,30 +96,50 @@ class HubConnectionBuilder(object):
         self._hub = AuthHubConnection(
             self.hub_url,
             self.protocol,
-            auth_function)\
+            auth_function,
+            keep_alive_interval=self.keep_alive_interval,
+            reconnection_handler=self.reconnection_handler)\
             if self.has_auth_configured else\
             BaseHubConnection(
                 self.hub_url,
-                self.protocol)
+                self.protocol,
+                keep_alive_interval=self.keep_alive_interval,
+                reconnection_handler=self.reconnection_handler)
         return self
 
-    def on_disconnect(self, data):
+    def with_automatic_reconnect(self, data):
+        """
+        https://devblogs.microsoft.com/aspnet/asp-net-core-updates-in-net-core-3-0-preview-4/
+        :param data:
+        :return:
+        """
         reconnect_type = data["type"] if "type" in data.keys() else "raw"
-        
-        max_attemps = data["max_attemps"] if "max_attemps" in data.keys() else None # Infinite reconnect
-        
+
+        max_attempts = data["max_attempts"] if "max_attempts" in data.keys() else None # Infinite reconnect
+
         reconnect_interval = data["reconnect_interval"]\
             if "reconnect_interval" in data.keys() else 5 # 5 sec interval
         
-        keep_alive_interval =data["keep_alive_interval"]\
+        keep_alive_interval = data["keep_alive_interval"]\
             if "keep_alive_interval" in data.keys() else 15
 
-        self._hub.configure_reconnection(
-            reconnect_type,
-            keep_alive_interval=keep_alive_interval,
-            reconnect_interval=reconnect_interval,
-            max_attemps=max_attemps
-        )
+        intervals = data["intervals"]\
+            if "intervals" in data.keys() else []  # Reconnection intervals
+
+        self.keep_alive_interval = keep_alive_interval
+
+        reconnection_type = ReconnectionType[reconnect_type]
+
+        if reconnection_type == ReconnectionType.raw:
+            self.reconnection_handler = RawReconnectionHandler(
+                reconnect_interval,
+                max_attempts
+            )
+        if reconnection_type == ReconnectionType.interval:
+            self.reconnection_handler = IntervalReconnectionHandler(
+                intervals
+            )
+        return self
 
     def on(self, event, callback_function):
         """

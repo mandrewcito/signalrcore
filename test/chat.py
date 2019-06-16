@@ -10,13 +10,15 @@ def input_with_default(input_text, default_value):
 server_url = input_with_default('Enter your server url(default: {0}): ', "ws://localhost:62342/chathub")
 username = input_with_default('Enter your username (default: {0}): ', "mandrewcito")
 
-hub_connection = HubConnectionBuilder().with_url(server_url).build()
-hub_connection.on_disconnect({
-    "type":"raw",
-    "keep_alive_interval":10,
-    "reconnect_interval": 5,
-    "max_attemps": 5
-})
+hub_connection = HubConnectionBuilder()\
+    .with_url(server_url)\
+    .with_automatic_reconnect({
+        "type": "raw",
+        "keep_alive_interval": 10,
+        "reconnect_interval": 5,
+        "max_attempts": 5
+    }).build()
+
 hub_connection.on("ReceiveMessage", print)
 hub_connection.start()
 message = None

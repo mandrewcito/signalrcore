@@ -6,13 +6,18 @@ from ..helpers import Helpers
 
 
 class AuthHubConnection(BaseHubConnection):
-    def __init__(self, url, protocol, auth_function):
+    def __init__(self, url, protocol, auth_function, keep_alive_interval=15, reconnection_handler=None):
         self.token = None
         self.headers = None
 
         self.auth_function = auth_function
         
-        super(AuthHubConnection, self).__init__(url, protocol, headers=self.headers)
+        super(AuthHubConnection, self).__init__(
+            url,
+            protocol,
+            headers=self.headers,
+            keep_alive_interval=keep_alive_interval,
+            reconnection_handler=reconnection_handler)
 
     def negotiate(self):
         response = requests.post(Helpers.get_negotiate_url(self.url), headers=self.headers)
@@ -34,6 +39,3 @@ class AuthHubConnection(BaseHubConnection):
         }
         self.negotiate()
         super(AuthHubConnection, self).start()
-
-    def on_close(self):
-        self.logger.info("-- web socket close --")
