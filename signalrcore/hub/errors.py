@@ -1,4 +1,4 @@
-class HubError(ConnectionError):
+class HubError(ConnectionResetError):
     pass
 
 

@@ -1,42 +1,64 @@
-from urllib import parse
+import sys
+import urllib
+if sys.version_info.major is 2:
+    import urlparse as parse
+    query_encode = urllib.urlencode
+else:
+    import urllib.parse as parse
+    query_encode = urllib.parse.urlencode
 
 
 class Helpers:
     @staticmethod
+    def replace_scheme(
+            url,
+            root_scheme,
+            source,
+            secure_source,
+            destination,
+            secure_destination):
+        url_parts = parse.urlsplit(url)
+
+        if root_scheme not in url_parts.scheme:
+            if url_parts.scheme == secure_source:
+                url_parts = url_parts._replace(scheme=secure_destination)
+            if url_parts.scheme == source:
+                url_parts = url_parts._replace(scheme=destination)
+
+        return parse.urlunsplit(url_parts)
+
+    @staticmethod
     def websocket_to_http(url):
-        urlParts = parse.urlsplit(url)
-
-        if "http" not in urlParts.scheme:
-            if urlParts.scheme == "wss":
-                urlParts = urlParts._replace(scheme="https")
-            if urlParts.scheme == "ws":
-                urlParts = urlParts._replace(scheme="http")
-
-        return parse.urlunsplit(urlParts)
+        return Helpers.replace_scheme(
+            url,
+            "http",
+            "ws",
+            "wss",
+            "http",
+            "https")
 
     @staticmethod
     def http_to_websocket(url):
-        urlParts = parse.urlsplit(url)
-
-        if "ws" not in urlParts.scheme:
-            if urlParts.scheme == "https":
-                urlParts = urlParts._replace(scheme="wss")
-            if urlParts.scheme == "http":
-                urlParts = urlParts._replace(scheme="ws")
-
-        return parse.urlunsplit(urlParts)
+        return Helpers.replace_scheme(
+            url,
+            "ws",
+            "http",
+            "https",
+            "ws",
+            "wss"
+        )
 
     @staticmethod
     def get_negotiate_url(url):
-        urlParts = parse.urlsplit(Helpers.websocket_to_http(url))
+        url_parts = parse.urlsplit(Helpers.websocket_to_http(url))
 
         negotiate_suffix = "negotiate"\
-            if urlParts.path.endswith('/')\
+            if url_parts.path.endswith('/')\
             else "/negotiate"
 
-        urlParts = urlParts._replace(path=urlParts.path + negotiate_suffix)
+        url_parts = url_parts._replace(path=url_parts.path + negotiate_suffix)
 
-        return parse.urlunsplit(urlParts)
+        return parse.urlunsplit(url_parts)
 
     @staticmethod
     def encode_connection_id(url, id):
@@ -46,7 +68,7 @@ class Helpers:
         query_string_parts["id"] = id
 
         url_parts = url_parts._replace(
-            query=parse.urlencode(
+            query=query_encode(
                 query_string_parts,
                 doseq=True))
 
