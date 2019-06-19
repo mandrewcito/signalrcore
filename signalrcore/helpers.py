@@ -20,6 +20,7 @@ class Helpers:
         url_parts = parse.urlsplit(url)
 
         if root_scheme not in url_parts.scheme:
+            
             if url_parts.scheme == secure_source:
                 url_parts = url_parts._replace(scheme=secure_destination)
             if url_parts.scheme == source:

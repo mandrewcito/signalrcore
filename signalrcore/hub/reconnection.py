@@ -1,4 +1,9 @@
-from enum import Enum
+import sys
+if sys.version_info.major is 2:
+    from aenum import Enum
+else:
+    from enum import Enum
+
 import threading
 import time
 
