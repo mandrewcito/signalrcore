@@ -184,7 +184,7 @@ class BaseHubConnection(websocket.WebSocketApp):
             self.reconnection_handler.reset()
         except (
                 websocket._exceptions.WebSocketConnectionClosedException,
-                ConnectionResetError) as ex:
+                OSError) as ex:
             self.logger.error("Connection closed {0}".format(ex))
             self.connection_alive = False
             if self.reconnection_handler is None:

@@ -8,18 +8,24 @@ import threading
 import time
 
 
-class ConnectionStateChecker(threading.Thread):
+class ConnectionStateChecker(object):
     def __init__(
             self,
             ping_function,
             keep_alive_interval,
             sleep=1):
-        threading.Thread.__init__(self)
         self.sleep = sleep
         self.keep_alive_interval = keep_alive_interval
         self.last_message = time.time()
         self.ping_function = ping_function
+        self.running = False
+        self._thread = None
+
+    def start(self):
         self.running = True
+        self._thread = threading.Thread(target=self.run)
+        self._thread.daemon = True
+        self._thread.start()
 
     def run(self):
         while self.running:
