@@ -185,6 +185,7 @@ class BaseHubConnection(websocket.WebSocketApp):
         except (
                 websocket._exceptions.WebSocketConnectionClosedException,
                 OSError) as ex:
+            self.handshake_received = False
             self.logger.error("Connection closed {0}".format(ex))
             self.connection_alive = False
             if self.reconnection_handler is None:
