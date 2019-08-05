@@ -68,8 +68,8 @@ class BaseHubConnection(websocket.WebSocketApp):
 
     def stop(self):
         if self.connection_alive:
-            self.close()
-        self.connection_checker.stop()
+            self._ws.close()
+            self.connection_checker.stop()
 
     def register_handler(self, event, callback):
         self.handlers.append((event, callback))

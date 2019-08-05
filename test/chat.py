@@ -31,3 +31,4 @@ while message != "exit()":
         hub_connection.send("SendMessage", [username, message])
 
 hub_connection.stop()
+print("ok")
