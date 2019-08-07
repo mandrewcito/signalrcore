@@ -5,6 +5,10 @@
 ![Issues](https://img.shields.io/github/issues/mandrewcito/signalrcore.svg)
 ![Open issues](https://img.shields.io/github/issues-raw/mandrewcito/signalrcore.svg)
 
+# Installation
+
+``pip install signalrcore``
+
 # Example 
 
 Using package from [aspnet core - SignalRChat](https://codeload.github.com/aspnet/Docs/zip/master) 
