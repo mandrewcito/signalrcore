@@ -9,7 +9,7 @@ from signalrcore.messages.stream_invocation_message\
     import StreamInvocationMessage
 from .reconnection import ConnectionStateChecker
 from signalrcore.messages.ping_message import PingMessage
-
+from .connection_state import ConnectionState
 
 
 class StreamHandler(object):
@@ -42,6 +42,7 @@ class BaseHubConnection(websocket.WebSocketApp):
         self.protocol = protocol
         self.headers = headers
         self.handshake_received = False
+        self.state = ConnectionState.disconnected
         self.connection_alive = False
         self.handlers = []
         self.stream_handlers = []
@@ -52,8 +53,15 @@ class BaseHubConnection(websocket.WebSocketApp):
             keep_alive_interval
         )
         self.reconnection_handler = reconnection_handler
+        self.on_connect = None
+        self.on_disconnect = None
 
     def start(self):
+        self.logger.debug("Connection started")
+        if self.state == ConnectionState.connected:
+            self.logger.warning("Already connected unable to start")
+            return
+        self.state = ConnectionState.connecting
         self._ws = websocket.WebSocketApp(
             self.url,
             header=self.headers,
@@ -67,41 +75,52 @@ class BaseHubConnection(websocket.WebSocketApp):
         self._thread.start()
 
     def stop(self):
-        if self.connection_alive:
+        self.logger.debug("Connection stop")
+        if self.state == ConnectionState.connected:
             self._ws.close()
             self.connection_checker.stop()
+            self.state == ConnectionState.disconnected
 
     def register_handler(self, event, callback):
+        self.logger.debug("Handler registered started {0}".format(event))
+
         self.handlers.append((event, callback))
 
     def evaluate_handshake(self, message):
+        self.logger.debug("Evaluating handshake {0}".format(message))
         msg = self.protocol.decode_handshake(message)
         if msg.error is None or msg.error == "":
             self.handshake_received = True
-            self.connection_alive = True
+            self.state = ConnectionState.connected
             self.reconnection_handler.reconnecting = False
+            if not self.connection_checker.running:
+                self.connection_checker.start()
         else:
             self.logger.error(msg.error)
             raise ValueError("Handshake error {0}".format(msg.error))
 
     def on_open(self):
-        self.logger.info("-- web socket open --")
+        self.logger.debug("-- web socket open --")
         msg = self.protocol.handshake_message()
         self.send(msg)
-        if not self.connection_checker.running:
-            self.connection_checker.start()
 
     def on_close(self):
-        self.logger.info("-- web socket close --")
+        self.logger.debug("-- web socket close --")
+        if self.on_disconnect is not None:
+            self.on_disconnect()
 
     def on_error(self, error):
-        self.logger.error("-- web socket error --")
+        self.logger.debug("-- web socket error --")
         self.logger.error("{0} {1}".format(error, type(error)))
 
     def on_message(self, raw_message):
+        self.logger.debug("Message received{0}".format(raw_message))
         self.connection_checker.last_message = time.time()
         if not self.handshake_received:
             self.evaluate_handshake(raw_message)
+            if self.on_connect is not None:
+                self.state = ConnectionState.connected
+                self.on_connect()
             return
 
         messages = self.protocol.parse_messages(raw_message)
@@ -126,7 +145,7 @@ class BaseHubConnection(websocket.WebSocketApp):
 
             if message.type == MessageType.close:
                 logging.info("Close message received from server")
-                self.connection_alive = False
+                self.stop()
                 return
 
             if message.type == MessageType.completion:
@@ -178,6 +197,7 @@ class BaseHubConnection(websocket.WebSocketApp):
                         self.stream_handlers))
 
     def send(self, message):
+        self.logger.debug("Sending message {0}".format(message))
         try:
             self._ws.send(self.protocol.encode(message))
             self.connection_checker.last_message = time.time()
@@ -187,8 +207,9 @@ class BaseHubConnection(websocket.WebSocketApp):
                 OSError) as ex:
             self.handshake_received = False
             self.logger.error("Connection closed {0}".format(ex))
-            self.connection_alive = False
+            self.state = ConnectionState.disconnected
             if self.reconnection_handler is None:
+                self.on_disconnect(ex)
                 raise ex
             # Connection closed
             self.handle_reconnect()

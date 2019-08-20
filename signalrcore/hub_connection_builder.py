@@ -25,7 +25,7 @@ class HubConnectionBuilder(object):
     """
     def __init__(self):
         self.hub_url = None
-        self._hub = None
+        self.hub = None
         self.options = {
                 "access_token_factory": None
             }
@@ -60,11 +60,11 @@ class HubConnectionBuilder(object):
                 "access_token_factory" in options.keys()\
                 and callable(options["access_token_factory"])
         self.hub_url = hub_url
-        self._hub = None
+        self.hub = None
         self.options = self.options if options is None else options
         return self
 
-    def configure_logging(self, logging_level, log_format='%(asctime)-15s %(clientip)s %(user)-8s %(message)s'):
+    def configure_logging(self, logging_level):
         """
         Confiures signalr logging
         :param logging_level: logging.INFO | logging.DEBUG ... from python logging class
@@ -72,8 +72,7 @@ class HubConnectionBuilder(object):
         :return: instance hub with logging configured
         """
         logging.basicConfig(
-            level=logging_level,
-            format=log_format
+            level=logging_level
         )
         return self
 
@@ -93,7 +92,7 @@ class HubConnectionBuilder(object):
                 raise HubConnectionError(
                     "access_token_factory is not function")
 
-        self._hub = AuthHubConnection(
+        self.hub = AuthHubConnection(
             self.hub_url,
             self.protocol,
             auth_function,
@@ -141,6 +140,12 @@ class HubConnectionBuilder(object):
             )
         return self
 
+    def on_close(self, callback):
+        self.hub.on_disconnect = callback
+
+    def on_open(self, callback):
+        self.hub.on_connect = callback
+
     def on(self, event, callback_function):
         """
         Register a callback on the specified event
@@ -148,21 +153,21 @@ class HubConnectionBuilder(object):
         :param callback_function: callback function, arguments will be binded
         :return:
         """
-        self._hub.register_handler(event, callback_function)
+        self.hub.register_handler(event, callback_function)
 
     def stream(self, event, event_params):
-        return self._hub.stream(event, event_params)
+        return self.hub.stream(event, event_params)
 
     def start(self):
-        self._hub.start()
+        self.hub.start()
 
     def stop(self):
-        self._hub.stop()
+        self.hub.stop()
 
     def send(self, method, arguments):
         if type(arguments) is not list:
             raise HubConnectionError("Arguments of a message must be a list")
-        self._hub.send(InvocationMessage(
+        self.hub.send(InvocationMessage(
             {},
             str(uuid.uuid4()),
             method,

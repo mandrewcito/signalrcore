@@ -27,9 +27,13 @@ hub_connection = HubConnectionBuilder()\
     })\
     .build()
 
+hub_connection.on_open(lambda: print("connection opened and handshake received ready to send messages"))
+hub_connection.on_close(lambda: print("connection closed"))
+
 hub_connection.on("ReceiveSystemMessage", print)
 hub_connection.on("ReceiveChatMessage", print)
 hub_connection.on("ReceiveDirectMessage", print)
+
 hub_connection.start()
 message = None
 while message != "exit()":
