@@ -118,3 +118,5 @@ dmypy.json
 /.vs/slnx.sqlite
 .vscode/settings.json
 .vscode/launch.json
+# Containers code
+./test/containers/code
