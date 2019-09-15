@@ -27,15 +27,14 @@ namespace SignalRChat
 
 
             services.AddCors(options => options.AddPolicy("CorsPolicy",
-            builder =>
-            {
-                builder.AllowAnyMethod().AllowAnyHeader()
-                       //.WithOrigins("http://localhost:44317")
-                       .AllowAnyOrigin()
-                       .AllowCredentials();
-            }));
+                builder =>
+                {
+                    builder.AllowAnyMethod().AllowAnyHeader()
+                           .WithOrigins("http://localhost:44317")
+                           .AllowCredentials();
+                }));
 
-            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
+            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_3_0);
             services.AddSignalR();
         }
 
@@ -51,16 +50,18 @@ namespace SignalRChat
                 app.UseHsts();
             }
 
+            app.UseCors("CorsPolicy");
             app.UseHttpsRedirection();
             app.UseStaticFiles();
             app.UseCookiePolicy();
 
-            app.UseSignalR(route =>
+            app.UseRouting();
+
+            app.UseEndpoints(endpoints =>
             {
-                route.MapHub<ChatHub>("/chathub");
+                endpoints.MapHub<StreamHub>("/streamHub");
+                endpoints.MapControllerRoute("default", "{controller=Home}/{action=Index}/{id?}");
             });
-            app.UseCors("CorsPolicy");
-            app.UseMvc();
         }
     }
 }

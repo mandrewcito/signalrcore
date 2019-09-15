@@ -51,15 +51,15 @@ namespace SignalRChat
                 app.UseHsts();
             }
 
+            app.UseCors("CorsPolicy");
             app.UseHttpsRedirection();
             app.UseStaticFiles();
             app.UseCookiePolicy();
 
             app.UseSignalR(route =>
             {
-                route.MapHub<ChatHub>("/chathub");
+                route.MapHub<StreamHub>("/streamHub");
             });
-            app.UseCors("CorsPolicy");
             app.UseMvc();
         }
     }

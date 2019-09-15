@@ -201,7 +201,8 @@ class BaseHubConnection(object):
         try:
             self._ws.send(self.protocol.encode(message))
             self.connection_checker.last_message = time.time()
-            self.reconnection_handler.reset()
+            if self.reconnection_handler is not None:
+                self.reconnection_handler.reset()
         except (
                 websocket._exceptions.WebSocketConnectionClosedException,
                 OSError) as ex:

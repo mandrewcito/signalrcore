@@ -8,12 +8,13 @@ from subprocess import Popen, PIPE
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 
 class TestSendMethod(unittest.TestCase):
-    container_id = "netcore_chat_app"
+    container_id = "netcore_stream_app"
     connection = None
-    server_url = "ws://localhost:81/chatHub"
+    server_url = "ws://localhost:82/streamHub"
     received = False
     connected = False
-    message = None
+    items = list(range(0,10))
+
     def setUp(self):
         self.connection = HubConnectionBuilder()\
             .with_url(self.server_url)\
@@ -23,8 +24,8 @@ class TestSendMethod(unittest.TestCase):
                 "keep_alive_interval": 10,
                 "reconnect_interval": 5,
                 "max_attempts": 5
-            }).build()
-        self.connection.on("ReceiveMessage", self.receive_message)
+            })\
+            .build()
         self.connection.on_open(self.on_open)
         self.connection.on_close(self.on_close)
         self.connection.start()
@@ -35,21 +36,32 @@ class TestSendMethod(unittest.TestCase):
         self.connection.stop()
 
     def on_open(self):
+        print("opene")
         self.connected = True
 
     def on_close(self):
         self.connected = False
 
-    def receive_message(self, args):
-        self.assertEqual(args[1], self.message)
-        self.received = True
+    def on_complete(self, x):
+        self.complete = True
+    
+    def on_error(self, x):
+        pass
 
-    def test_send(self):
-        self.message = "new message {0}".format(uuid.uuid4())
-        self.username = "mandrewcito"
-        self.received = False
-        self.connection.send("SendMessage", [self.username, self.message])
-        while not self.received:
+    def on_next(self, x):
+        item = self.items[0]
+        self.items = self.items[1:]
+        self.assertEqual(x, item)
+
+    def test_stream(self):
+        self.complete = False
+        self.items = list(range(0,10))
+        self.connection.stream(
+            "Counter",
+            [len(self.items), 500]).subscribe({
+                "next": self.on_next,
+                "complete": self.on_complete,
+                "error": self.on_error
+            })
+        while not self.complete:
             time.sleep(0.1)
-        
-

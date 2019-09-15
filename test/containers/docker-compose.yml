@@ -1,0 +1,14 @@
+version: '3'
+services:
+  chatsapmple:
+    build: ./code/signalr/hubs/sample
+    ports:
+      - "81:80"
+    expose:
+      - "81"
+  streaming2.1:
+    build: ./code/signalr/streaming/samples/2.1
+    ports:
+      - "82:80"
+    expose:
+      - "82"
