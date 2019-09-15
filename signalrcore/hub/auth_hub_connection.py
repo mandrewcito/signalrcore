@@ -1,5 +1,4 @@
 import requests
-
 from .base_hub_connection import BaseHubConnection
 from .errors import UnAuthorizedHubError, HubError
 from ..helpers import Helpers

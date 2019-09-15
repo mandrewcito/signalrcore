@@ -32,7 +32,7 @@ class StreamHandler(object):
         self.error_callback = subscribe_callbacks["error"]
 
 
-class BaseHubConnection(websocket.WebSocketApp):
+class BaseHubConnection(object):
     def __init__(self, url, protocol, headers={}, keep_alive_interval=15, reconnection_handler=None):
         self.logger = logging.getLogger("SignalRCoreClient")
         ch = logging.StreamHandler()
@@ -53,8 +53,8 @@ class BaseHubConnection(websocket.WebSocketApp):
             keep_alive_interval
         )
         self.reconnection_handler = reconnection_handler
-        self.on_connect = None
-        self.on_disconnect = None
+        self.on_connect = print
+        self.on_disconnect = print
 
     def start(self):
         self.logger.debug("Connection started")
@@ -106,7 +106,7 @@ class BaseHubConnection(websocket.WebSocketApp):
 
     def on_close(self):
         self.logger.debug("-- web socket close --")
-        if self.on_disconnect is not None:
+        if self.on_disconnect is not None and callable(self.on_disconnect):
             self.on_disconnect()
 
     def on_error(self, error):
@@ -118,7 +118,7 @@ class BaseHubConnection(websocket.WebSocketApp):
         self.connection_checker.last_message = time.time()
         if not self.handshake_received:
             self.evaluate_handshake(raw_message)
-            if self.on_connect is not None:
+            if self.on_connect is not None and callable(self.on_connect):
                 self.state = ConnectionState.connected
                 self.on_connect()
             return
@@ -209,7 +209,8 @@ class BaseHubConnection(websocket.WebSocketApp):
             self.logger.error("Connection closed {0}".format(ex))
             self.state = ConnectionState.disconnected
             if self.reconnection_handler is None:
-                self.on_disconnect(ex)
+                if self.on_disconnect is not None and callable(self.on_disconnect):
+                    self.on_disconnect(ex)
                 raise ex
             # Connection closed
             self.handle_reconnect()

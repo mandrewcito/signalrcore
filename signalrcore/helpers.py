@@ -10,6 +10,15 @@ else:
 
 class Helpers:
     @staticmethod
+    def has_querystring(url):
+        return "?" in url
+
+    @staticmethod
+    def split_querystring(url):
+        parts = url.split("?")
+        return parts[0], parts[1]
+
+    @staticmethod
     def replace_scheme(
             url,
             root_scheme,
@@ -19,8 +28,7 @@ class Helpers:
             secure_destination):
         url_parts = parse.urlsplit(url)
 
-        if root_scheme not in url_parts.scheme:
-            
+        if root_scheme not in url_parts.scheme:            
             if url_parts.scheme == secure_source:
                 url_parts = url_parts._replace(scheme=secure_destination)
             if url_parts.scheme == source:
@@ -51,6 +59,10 @@ class Helpers:
 
     @staticmethod
     def get_negotiate_url(url):
+        querystring = ""
+        if Helpers.has_querystring(url):
+            url, querystring = Helpers.split_querystring(url)
+            
         url_parts = parse.urlsplit(Helpers.websocket_to_http(url))
 
         negotiate_suffix = "negotiate"\
@@ -59,12 +71,13 @@ class Helpers:
 
         url_parts = url_parts._replace(path=url_parts.path + negotiate_suffix)
 
-        return parse.urlunsplit(url_parts)
+        return parse.urlunsplit(url_parts) \
+            if querystring is "" else\
+                parse.urlunsplit(url_parts) + "?" + querystring
 
     @staticmethod
     def encode_connection_id(url, id):
         url_parts = parse.urlsplit(url)
-
         query_string_parts = parse.parse_qs(url_parts.query)
         query_string_parts["id"] = id
 

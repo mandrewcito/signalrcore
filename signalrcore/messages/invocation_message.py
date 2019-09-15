@@ -48,3 +48,7 @@ class InvocationMessage(BaseHeadersMessage):
         self.invocation_id = invocation_id
         self.target = target
         self.arguments = arguments
+    
+    def __repr__(self):
+        print(type(self.arguments))
+        return "InvocationMessage: invocation_id {0}, target {1}, arguments {2}".format(self.invocation_id, self.target, self.arguments)
