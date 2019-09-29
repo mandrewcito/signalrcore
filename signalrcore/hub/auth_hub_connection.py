@@ -1,4 +1,5 @@
 import requests
+import logging
 from .base_hub_connection import BaseHubConnection
 from .errors import UnAuthorizedHubError, HubError
 from ..helpers import Helpers
@@ -19,12 +20,14 @@ class AuthHubConnection(BaseHubConnection):
             reconnection_handler=reconnection_handler)
 
     def negotiate(self):
-        response = requests.post(Helpers.get_negotiate_url(self.url), headers=self.headers)
+        negotiate_url = Helpers.get_negotiate_url(self.url)
+        logging.debug("Negotiate url:" + negotiate_url)
+        response = requests.post(negotiate_url, headers=self.headers)
         if response.status_code != 200:
             raise HubError(response.status_code) if response.status_code != 401 else UnAuthorizedHubError()
         data = response.json()
         self.url = Helpers.encode_connection_id(self.url, data["connectionId"])
-
+        
         # Azure
         if 'url' in data.keys() and 'accessToken' in data.keys():
             self.url = data["url"]

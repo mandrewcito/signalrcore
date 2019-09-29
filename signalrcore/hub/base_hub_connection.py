@@ -62,6 +62,7 @@ class BaseHubConnection(object):
             self.logger.warning("Already connected unable to start")
             return
         self.state = ConnectionState.connecting
+        logging.debug("start url:" + self.url)
         self._ws = websocket.WebSocketApp(
             self.url,
             header=self.headers,

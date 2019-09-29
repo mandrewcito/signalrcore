@@ -12,3 +12,9 @@ services:
       - "82:80"
     expose:
       - "82"
+  chatauth:
+    build: ./code/signalr/authn-and-authz/sample
+    ports:
+      - "83:80"
+    expose:
+      - "83"
