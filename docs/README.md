@@ -5,7 +5,142 @@
 ![Issues](https://img.shields.io/github/issues/mandrewcito/signalrcore.svg)
 ![Open issues](https://img.shields.io/github/issues-raw/mandrewcito/signalrcore.svg)
 
-# Example 
+# Links 
+
+* [Dev to posts with library examples and implementation](https://dev.to/mandrewcito/singlar-core-python-client-58e7)
+
+* [Pypy](https://pypi.org/project/signalrcore/)
+
+* [Wiki - This Doc](https://mandrewcito.github.io/signalrcore/)
+
+# A tiny How To
+
+## Connect to a server without auth
+```python
+hub_connection = HubConnectionBuilder()\
+    .with_url(server_url)\
+    .configure_logging(logging.DEBUG)\
+    .with_automatic_reconnect({
+        "type": "raw",
+        "keep_alive_interval": 10,
+        "reconnect_interval": 5,
+        "max_attempts": 5
+    }).build()
+```
+## Connect to a server with auth
+
+login_function must provide auth token
+
+```python
+hub_connection = HubConnectionBuilder()\
+            .with_url(server_url,
+            options={
+                "access_token_factory": login_function,
+                "headers": {
+                    "mycustomheader": "mycustomheadervalue"
+                }
+            })\
+            .configure_logging(logging.DEBUG)\
+            .with_automatic_reconnect({
+                "type": "raw",
+                "keep_alive_interval": 10,
+                "reconnect_interval": 5,
+                "max_attempts": 5
+            }).build()
+```
+
+## Configuring reconection
+After reaching max_attemps an exeption will be thrown and on_disconnect event will be
+fired.
+```python
+hub_connection = HubConnectionBuilder()\
+    .with_url(server_url)\
+    ...
+    .build()
+```
+## Configuring aditional headers
+```python
+hub_connection = HubConnectionBuilder()\
+            .with_url(server_url,
+            options={
+                "headers": {
+                    "mycustomheader": "mycustomheadervalue"
+                }
+            })
+            ...
+            .build()
+```
+## Configuring aditional querystring parameters
+```python
+server_url ="http.... /?myquerystringparam=134&foo=bar"
+connection = HubConnectionBuilder()\
+            .with_url(server_url,
+            options={
+            })\
+            .build()
+```
+## Configuring ping(keep alive)
+
+keep_alive_interval sets the secconds of ping message
+
+```python
+hub_connection = HubConnectionBuilder()\
+    .with_url(server_url)\
+    .configure_logging(logging.DEBUG)\
+    .with_automatic_reconnect({
+        "type": "raw",
+        "keep_alive_interval": 10,
+        "reconnect_interval": 5,
+        "max_attempts": 5
+    }).build()
+```
+## Configuring logging
+```python
+hub_connection = HubConnectionBuilder()\
+    .with_url(server_url)\
+    .configure_logging(logging.DEBUG)\
+    .with_automatic_reconnect({
+        "type": "raw",
+        "keep_alive_interval": 10,
+        "reconnect_interval": 5,
+        "max_attempts": 5
+    }).build()
+```
+## Events
+
+### On connect / On disconnect
+on_open - fires when connection is openned and ready to send messages
+on_close - fires when connection is closed
+```python
+hub_connection.on_open(lambda: print("connection opened and handshake received ready to send messages"))
+hub_connection.on_close(lambda: print("connection closed"))
+
+```
+### Register an operation 
+ReceiveMessage - signalr method
+print - function that has as parameters args of signalr method
+```python
+hub_connection.on("ReceiveMessage", print)
+```
+## Sending messages
+SendMessage - signalr method
+username, message - parameters of signalrmethod
+```python
+    hub_connection.send("SendMessage", [username, message])
+```
+## Requesting streamming (Server to client)
+```python
+hub_connection.stream(
+            "Counter",
+            [len(self.items), 500]).subscribe({
+                "next": self.on_next,
+                "complete": self.on_complete,
+                "error": self.on_error
+            })
+```
+
+
+# Full Examples
 
 Using package from [aspnet core - SignalRChat](https://codeload.github.com/aspnet/Docs/zip/master) 
 example chat without auth
