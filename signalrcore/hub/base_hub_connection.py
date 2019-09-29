@@ -33,7 +33,7 @@ class StreamHandler(object):
 
 
 class BaseHubConnection(object):
-    def __init__(self, url, protocol, headers={}, keep_alive_interval=15, reconnection_handler=None):
+    def __init__(self, url, protocol, headers={}, keep_alive_interval=15, reconnection_handler=None, verify_ssl=False):
         self.logger = logging.getLogger("SignalRCoreClient")
         ch = logging.StreamHandler()
         ch.setLevel(logging.INFO)
@@ -48,6 +48,7 @@ class BaseHubConnection(object):
         self.stream_handlers = []
         self._thread = None
         self._ws = None
+        self.verify_ssl = verify_ssl
         self.connection_checker = ConnectionStateChecker(
             lambda: self.send(PingMessage()),
             keep_alive_interval
@@ -72,8 +73,8 @@ class BaseHubConnection(object):
             on_open=self.on_open,
             )
         self._thread = threading.Thread(
-            target=lambda:self._ws.run_forever(
-                sslopt={"cert_reqs": ssl.CERT_NONE}
+            target=lambda: self._ws.run_forever(
+                sslopt={"cert_reqs": ssl.CERT_NONE} if not self.verify_ssl else {}
             ))
         self._thread.daemon = True
         self._thread.start()

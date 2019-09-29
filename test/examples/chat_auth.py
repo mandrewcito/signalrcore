@@ -8,18 +8,19 @@ def input_with_default(input_text, default_value):
 
 
 def signalr_core_example_login(url, user, username_password):
-    response = requests.post(url, data={"email": user, "password": username_password})
+    response = requests.post(url, data={"email": user, "password": username_password}, verify=False)
     return response.json()["token"]
 
 
-login_url = input_with_default('Enter your server login url({0}):', "http://localhost:50746/account/token")
-server_url = input_with_default('Enter your server url(default: {0}): ', "ws://localhost:50746/hubs/chat")
+login_url = input_with_default('Enter your server login url({0}):', "https://localhost:50746/account/token")
+server_url = input_with_default('Enter your server url(default: {0}): ', "wss://localhost:50746/hubs/chat")
 username = input_with_default('Enter your username (default: {0}): ', "mandrewcito@mandrewcito.com")
 password = input_with_default('Enter your password (default: {0}): ', "Abc123.--123?")
 
 hub_connection = HubConnectionBuilder()\
     .with_url(server_url, options={
-        "access_token_factory": lambda: signalr_core_example_login(login_url, username, password)
+        "access_token_factory": lambda: signalr_core_example_login(login_url, username, password),
+        "verify_ssl": False
     }).with_automatic_reconnect({
         "type": "interval",
         "keep_alive_interval": 10,

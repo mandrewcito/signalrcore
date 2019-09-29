@@ -36,6 +36,7 @@ class HubConnectionBuilder(object):
         self.protocol = None
         self.reconnection_handler = None
         self.keep_alive_interval = None
+        self.verify_ssl = True
 
     def with_url(
             self,
@@ -95,6 +96,8 @@ class HubConnectionBuilder(object):
             if auth_function is None or not callable(auth_function):
                 raise HubConnectionError(
                     "access_token_factory is not function")
+        if "verify_ssl" in self.options.keys() and type(self.options["verify_ssl"]) is bool:
+            self.verify_ssl = self.options["verify_ssl"]
 
         self.hub = AuthHubConnection(
             self.hub_url,
@@ -102,14 +105,16 @@ class HubConnectionBuilder(object):
             auth_function,
             keep_alive_interval=self.keep_alive_interval,
             reconnection_handler=self.reconnection_handler,
-            headers=self.headers)\
+            headers=self.headers,
+            verify_ssl=self.verify_ssl)\
             if self.has_auth_configured else\
             BaseHubConnection(
                 self.hub_url,
                 self.protocol,
                 keep_alive_interval=self.keep_alive_interval,
                 reconnection_handler=self.reconnection_handler,
-                headers=self.headers)
+                headers=self.headers,
+                verify_ssl=self.verify_ssl)
         return self
 
     def with_automatic_reconnect(self, data):

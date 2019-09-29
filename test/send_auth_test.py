@@ -13,7 +13,7 @@ class TestSendAuthMethod(unittest.TestCase):
     server_url = "ws://localhost:83/hubs/chat?myid=234"
     login_url = "http://localhost:83/account/token"
     email = "MM@GMAIL.COM"
-    passowrd ="DDbc123._"
+    password = "DDbc123._"
     received = False
     connected = False
     message = None
@@ -23,7 +23,7 @@ class TestSendAuthMethod(unittest.TestCase):
             self.login_url,
             data={
                 "email": self.email,
-                "password": self.passowrd
+                "password": self.password
                 })
         return response.json()["token"]
 

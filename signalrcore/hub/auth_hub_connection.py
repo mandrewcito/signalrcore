@@ -6,7 +6,8 @@ from ..helpers import Helpers
 
 
 class AuthHubConnection(BaseHubConnection):
-    def __init__(self, url, protocol, auth_function, keep_alive_interval=15, reconnection_handler=None, headers = {}):
+    def __init__(self, url, protocol, auth_function, keep_alive_interval=15, reconnection_handler=None,
+                 headers={}, verify_ssl=False):
         self.token = None
         self.headers = None
 
@@ -15,14 +16,15 @@ class AuthHubConnection(BaseHubConnection):
         super(AuthHubConnection, self).__init__(
             url,
             protocol,
-            headers=self.headers,
+            headers=headers,
             keep_alive_interval=keep_alive_interval,
-            reconnection_handler=reconnection_handler)
+            reconnection_handler=reconnection_handler,
+            verify_ssl=verify_ssl)
 
     def negotiate(self):
         negotiate_url = Helpers.get_negotiate_url(self.url)
         logging.debug("Negotiate url:" + negotiate_url)
-        response = requests.post(negotiate_url, headers=self.headers)
+        response = requests.post(negotiate_url, headers=self.headers, verify=self.verify_ssl)
         if response.status_code != 200:
             raise HubError(response.status_code) if response.status_code != 401 else UnAuthorizedHubError()
         data = response.json()
