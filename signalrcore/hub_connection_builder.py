@@ -86,6 +86,10 @@ class HubConnectionBuilder(object):
         """
         self.protocol = JsonHubProtocol()
         self.headers = {}
+
+        if "headers" in self.options.keys() and type(self.options["headers"]) is dict:
+            self.headers = self.options["headers"]
+
         if self.has_auth_configured:
             auth_function = self.options["access_token_factory"]
             if auth_function is None or not callable(auth_function):
@@ -97,13 +101,15 @@ class HubConnectionBuilder(object):
             self.protocol,
             auth_function,
             keep_alive_interval=self.keep_alive_interval,
-            reconnection_handler=self.reconnection_handler)\
+            reconnection_handler=self.reconnection_handler,
+            headers=self.headers)\
             if self.has_auth_configured else\
             BaseHubConnection(
                 self.hub_url,
                 self.protocol,
                 keep_alive_interval=self.keep_alive_interval,
-                reconnection_handler=self.reconnection_handler)
+                reconnection_handler=self.reconnection_handler,
+                headers=self.headers)
         return self
 
     def with_automatic_reconnect(self, data):

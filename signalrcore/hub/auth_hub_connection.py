@@ -6,7 +6,7 @@ from ..helpers import Helpers
 
 
 class AuthHubConnection(BaseHubConnection):
-    def __init__(self, url, protocol, auth_function, keep_alive_interval=15, reconnection_handler=None):
+    def __init__(self, url, protocol, auth_function, keep_alive_interval=15, reconnection_handler=None, headers = {}):
         self.token = None
         self.headers = None
 

@@ -3,7 +3,7 @@ import websocket
 import threading
 import uuid
 import time
-
+import ssl
 from signalrcore.messages.message_type import MessageType
 from signalrcore.messages.stream_invocation_message\
     import StreamInvocationMessage
@@ -53,8 +53,8 @@ class BaseHubConnection(object):
             keep_alive_interval
         )
         self.reconnection_handler = reconnection_handler
-        self.on_connect = print
-        self.on_disconnect = print
+        self.on_connect = None
+        self.on_disconnect = None
 
     def start(self):
         self.logger.debug("Connection started")
@@ -71,7 +71,10 @@ class BaseHubConnection(object):
             on_close=self.on_close,
             on_open=self.on_open,
             )
-        self._thread = threading.Thread(target=self._ws.run_forever)
+        self._thread = threading.Thread(
+            target=lambda:self._ws.run_forever(
+                sslopt={"cert_reqs": ssl.CERT_NONE}
+            ))
         self._thread.daemon = True
         self._thread.start()
 

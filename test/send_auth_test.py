@@ -31,7 +31,10 @@ class TestSendAuthMethod(unittest.TestCase):
         self.connection = HubConnectionBuilder()\
             .with_url(self.server_url,
             options={
-                "access_token_factory": self.login
+                "access_token_factory": self.login,
+                "headers": {
+                    "mycustomheader": "mycustomheadervalue"
+                }
             })\
             .configure_logging(logging.DEBUG)\
             .with_automatic_reconnect({
