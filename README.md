@@ -1,5 +1,5 @@
 # SignalR core client
-
+[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg?logo=paypal&style=flat-square)](https://www.paypal.me/mandrewcito/1)
 ![Pypi](https://img.shields.io/pypi/v/signalrcore.svg)
 ![Pypi - downloads month](https://img.shields.io/pypi/dm/signalrcore.svg)
 ![Issues](https://img.shields.io/github/issues/mandrewcito/signalrcore.svg)
