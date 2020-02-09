@@ -7,6 +7,7 @@ from .hub.reconnection import \
 
 from .messages.invocation_message import InvocationMessage
 from .protocol.json_hub_protocol import JsonHubProtocol
+from .subject import Subject
 
 
 class HubConnectionError(ValueError):
@@ -176,10 +177,17 @@ class HubConnectionBuilder(object):
         self.hub.stop()
 
     def send(self, method, arguments):
-        if type(arguments) is not list:
-            raise HubConnectionError("Arguments of a message must be a list")
-        self.hub.send(InvocationMessage(
-            {},
-            str(uuid.uuid4()),
-            method,
-            arguments))
+        if type(arguments) is not list and type(arguments) is not Subject:
+            raise HubConnectionError("Arguments of a message must be a list or subject")
+
+        if type(arguments) is list:
+            self.hub.send(InvocationMessage(
+                {},
+                str(uuid.uuid4()),
+                method,
+                arguments))
+
+        if type(arguments) is Subject:
+            arguments.connection = self
+            arguments.target = method
+            arguments.start()

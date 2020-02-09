@@ -1,4 +1,6 @@
 import json
+import logging
+
 from .base_hub_protocol import BaseHubProtocol
 
 from ..messages.message_type import MessageType
@@ -94,6 +96,9 @@ class MyEncoder(JSONEncoder):
         if "invocation_id" in data:
             data["invocationId"] = data["invocation_id"]
             del data["invocation_id"]
+        if "stream_ids" in data:
+            data["streamIds"] = data["stream_ids"]
+            del data["stream_ids"]
         return data
 
 
@@ -115,4 +120,5 @@ class JsonHubProtocol(BaseHubProtocol):
         return result
 
     def encode(self, message):
+        logging.debug(self.encoder.encode(message) + self.record_separator)
         return self.encoder.encode(message) + self.record_separator

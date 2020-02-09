@@ -7,6 +7,7 @@ import requests
 from subprocess import Popen, PIPE
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 
+
 class TestSendAuthMethod(unittest.TestCase):
     container_id = "netcore_chat_app"
     connection = None

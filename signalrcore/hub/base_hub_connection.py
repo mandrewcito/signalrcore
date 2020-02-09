@@ -4,6 +4,7 @@ import threading
 import uuid
 import time
 import ssl
+import traceback
 from signalrcore.messages.message_type import MessageType
 from signalrcore.messages.stream_invocation_message\
     import StreamInvocationMessage
@@ -117,7 +118,7 @@ class BaseHubConnection(object):
     def on_error(self, error):
         self.logger.debug("-- web socket error --")
         self.logger.error("{0} {1}".format(error, type(error)))
-
+        traceback.print_tb(err.__traceback__)
     def on_message(self, raw_message):
         self.logger.debug("Message received{0}".format(raw_message))
         self.connection_checker.last_message = time.time()
