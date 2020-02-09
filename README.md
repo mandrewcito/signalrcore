@@ -6,7 +6,7 @@
 ![Open issues](https://img.shields.io/github/issues-raw/mandrewcito/signalrcore.svg)
 
 
-![logo alt](https://github.com/mandrewcito/signalrcore/docs/img/logo_temp.128.svg.png )
+![logo alt](https://raw.githubusercontent.com/mandrewcito/signalrcore/master/docs/img/logo_temp.128.svg.png)
 
 
 # Links 
