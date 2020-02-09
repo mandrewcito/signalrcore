@@ -5,6 +5,10 @@
 ![Issues](https://img.shields.io/github/issues/mandrewcito/signalrcore.svg)
 ![Open issues](https://img.shields.io/github/issues-raw/mandrewcito/signalrcore.svg)
 
+
+![logo alt](https://github.com/mandrewcito/signalrcore/docs/img/logo_temp.128.svg.png )
+
+
 # Links 
 
 * [Dev to posts with library examples and implementation](https://dev.to/mandrewcito/singlar-core-python-client-58e7)
