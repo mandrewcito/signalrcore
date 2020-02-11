@@ -2,6 +2,7 @@
 import time
 import sys
 from signalrcore.hub_connection_builder import HubConnectionBuilder
+import logging
 
 
 def input_with_default(input_text, default_value):
@@ -11,19 +12,23 @@ def input_with_default(input_text, default_value):
 
 server_url = input_with_default('Enter your server url(default: {0}): ', "wss://localhost:44376/chatHub")
 
-hub_connection = HubConnectionBuilder().with_url(server_url).build()
+hub_connection = HubConnectionBuilder().with_url(server_url, options={"verify_ssl": False}) \
+    .configure_logging(logging.DEBUG, socket_trace=True) \
+    .build()
 hub_connection.start()
 time.sleep(10)
 
+end = False
+
 
 def bye(error, x):
+    global end
+    end = True
     if error:
         print("error {0}".format(x))
     else:
         print("complete! ")
     global hub_connection
-    hub_connection.stop()
-    sys.exit(0)
 
 
 hub_connection.stream(
@@ -33,3 +38,8 @@ hub_connection.stream(
         "complete": lambda x: bye(False, x),
         "error": lambda x: bye(True, x)
     })
+
+while not end:
+    time.sleep(1)
+
+hub_connection.stop()

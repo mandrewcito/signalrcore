@@ -30,6 +30,8 @@ class JsonHubProtocol(BaseHubProtocol):
         self.encoder = MyEncoder()
 
     def parse_messages(self, raw):
+        Helpers.get_logger().debug("Raw message incomming: ")
+        Helpers.get_logger().debug(raw)
         raw_messages = [
             record.replace(self.record_separator, "")
             for record in raw.split(self.record_separator)

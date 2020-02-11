@@ -34,3 +34,4 @@ class StreamInvocationMessage(BaseHeadersMessage):
         self.invocation_id = invocation_id
         self.target = target
         self.arguments = arguments
+        self.stream_ids = []
