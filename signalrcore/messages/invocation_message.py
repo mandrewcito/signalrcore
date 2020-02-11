@@ -45,10 +45,9 @@ class InvocationMessage(BaseHeadersMessage):
             target,
             arguments):
         super(InvocationMessage, self).__init__(1, headers)
-        self.invocation_id = invocation_id if type(invocation_id) is not list else None
+        self.invocation_id = invocation_id
         self.target = target
         self.arguments = arguments
-        self.stream_ids = invocation_id if type(invocation_id) is list else None
 
     def __repr__(self):
         return "InvocationMessage: invocation_id {0}, target {1}, arguments {2}".format(self.invocation_id, self.target, self.arguments)
