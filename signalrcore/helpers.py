@@ -1,5 +1,6 @@
 import sys
 import urllib
+import logging
 if sys.version_info.major is 2:
     import urlparse as parse
     query_encode = urllib.urlencode
@@ -9,6 +10,18 @@ else:
 
 
 class Helpers:
+    @staticmethod
+    def configure_logger(level=logging.INFO):
+        logger = Helpers.get_logger()
+        ch = logging.StreamHandler()
+        ch.setLevel(level)
+        logger.addHandler(ch)
+        logger.setLevel(level)
+
+    @staticmethod
+    def get_logger():
+        return logging.getLogger("SignalRCoreClient")
+
     @staticmethod
     def has_querystring(url):
         return "?" in url

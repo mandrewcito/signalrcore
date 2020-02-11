@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="signalrcore",
-    version="0.8.1",
+    version="0.8.2",
     author="mandrewcito",
     author_email="anbaalo@gmail.com",
     description="A Python SignalR Core client, with invocation auth and two way streamming. Also automatic reconnect and manually reconnect ",

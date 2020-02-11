@@ -8,18 +8,17 @@ def input_with_default(input_text, default_value):
     return default_value if value is None or value.strip() == "" else value
 
 
-server_url = input_with_default('Enter your server url(default: {0}): ', "ws://localhost:62342/chathub")
+server_url = input_with_default('Enter your server url(default: {0}): ', "wss://localhost:44376/chatHub")
 username = input_with_default('Enter your username (default: {0}): ', "mandrewcito")
 
 hub_connection = HubConnectionBuilder()\
-    .with_url(server_url)\
-    .configure_logging(logging.DEBUG)\
+    .with_url(server_url, options={"verify_ssl": False}) \
+    .configure_logging(logging.DEBUG, socket_trace=True) \
     .with_automatic_reconnect({
-        "type": "raw",
-        "keep_alive_interval": 10,
-        "reconnect_interval": 5,
-        "max_attempts": 5
-    }).build()
+            "type": "interval",
+            "keep_alive_interval": 10,
+            "intervals": [1, 3, 5, 6, 7, 87, 3]
+        }).build()
 
 hub_connection.on_open(lambda: print("connection opened and handshake received ready to send messages"))
 hub_connection.on_close(lambda: print("connection closed"))

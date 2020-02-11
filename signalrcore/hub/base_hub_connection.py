@@ -1,10 +1,8 @@
-import logging
 import websocket
 import threading
 import uuid
 import time
 import ssl
-import traceback
 from signalrcore.messages.message_type import MessageType
 from signalrcore.messages.stream_invocation_message\
     import StreamInvocationMessage
@@ -12,7 +10,7 @@ from .reconnection import ConnectionStateChecker
 from signalrcore.messages.ping_message import PingMessage
 from .connection_state import ConnectionState
 
-
+from signalrcore.helpers import Helpers
 class StreamHandler(object):
     def __init__(self, event, invocation_id):
         self.event = event
@@ -35,10 +33,7 @@ class StreamHandler(object):
 
 class BaseHubConnection(object):
     def __init__(self, url, protocol, headers={}, keep_alive_interval=15, reconnection_handler=None, verify_ssl=False):
-        self.logger = logging.getLogger("SignalRCoreClient")
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.INFO)
-        self.logger.addHandler(ch)
+        self.logger = Helpers.get_logger()
         self.url = url
         self.protocol = protocol
         self.headers = headers
@@ -58,13 +53,17 @@ class BaseHubConnection(object):
         self.on_connect = None
         self.on_disconnect = None
 
+    def enable_trace(self, traceable):
+        if len(self.logger.handlers) > 0:
+            websocket.enableTrace(traceable, self.logger.handlers[0])
+
     def start(self):
         self.logger.debug("Connection started")
         if self.state == ConnectionState.connected:
             self.logger.warning("Already connected unable to start")
             return
         self.state = ConnectionState.connecting
-        logging.debug("start url:" + self.url)
+        self.logger.debug("start url:" + self.url)
         self._ws = websocket.WebSocketApp(
             self.url,
             header=self.headers,
@@ -118,7 +117,7 @@ class BaseHubConnection(object):
     def on_error(self, error):
         self.logger.debug("-- web socket error --")
         self.logger.error("{0} {1}".format(error, type(error)))
-        traceback.print_tb(err.__traceback__)
+
     def on_message(self, raw_message):
         self.logger.debug("Message received{0}".format(raw_message))
         self.connection_checker.last_message = time.time()
@@ -132,7 +131,7 @@ class BaseHubConnection(object):
         messages = self.protocol.parse_messages(raw_message)
         for message in messages:
             if message.type == MessageType.invocation_binding_failure:
-                logging.error(message)
+                self.logger.error(message)
                 continue
             if message.type == MessageType.ping:
                 continue
@@ -143,14 +142,14 @@ class BaseHubConnection(object):
                         lambda h: h[0] == message.target,
                         self.handlers))
                 if len(fired_handlers) == 0:
-                    logging.warn(
+                    self.logger.warning(
                         "event '{0}' hasn't fire any handler".format(
                             message.target))
                 for _, handler in fired_handlers:
                     handler(message.arguments)
 
             if message.type == MessageType.close:
-                logging.info("Close message received from server")
+                self.logger.info("Close message received from server")
                 self.stop()
                 return
 
@@ -174,7 +173,7 @@ class BaseHubConnection(object):
                         lambda h: h.invocation_id == message.invocation_id,
                         self.stream_handlers))
                 if len(fired_handlers) == 0:
-                    logging.warn(
+                    self.logger.warning(
                         "id '{0}' hasn't fire any stream handler".format(
                             message.invocation_id))
                 for handler in fired_handlers:
@@ -189,7 +188,7 @@ class BaseHubConnection(object):
                         lambda h: h.invocation_id == message.invocation_id,
                         self.stream_handlers))
                 if len(fired_handlers) == 0:
-                    logging.warn(
+                    self.logger.warning(
                         "id '{0}' hasn't fire any stream handler".format(
                             message.invocation_id))
 
@@ -230,7 +229,7 @@ class BaseHubConnection(object):
             self.stop()
             self.start()
         except Exception as ex:
-            logging.error(ex)
+            self.logger.error(ex)
             sleep_time = self.reconnection_handler.next()
             threading.Thread(
                 target=self.deferred_reconnect,

@@ -5,86 +5,8 @@ from .base_hub_protocol import BaseHubProtocol
 
 from ..messages.message_type import MessageType
 from json import JSONEncoder
-"""
-Invocation
-{
-    "type": 1,
-    "headers": {
-        "Foo": "Bar"
-    },
-    "invocationId": "123",
-    "target": "Send",
-    "arguments": [
-        42,
-        "Test Message"
-    ]
-}
-{
-    "type": 1,
-    "target": "Send",
-    "arguments": [
-        42,
-        "Test Message"
-    ]
-}
-{
-    "type": 1,
-    "invocationId": "123",
-    "target": "Send",
-    "arguments": [
-        42,
-        "Test Message"
-    ]
-}
-StreamItem
-{
-    "type": 2,
-    "invocationId": "123",
-    "item": 42
-}
-Completion
-{
-    "type": 3,
-    "invocationId": "123"
-}
-{
-    "type": 3,
-    "invocationId": "123",
-    "result": 42
-}
-{
-    "type": 3,
-    "invocationId": "123",
-    "error": "It didn't work!"
-}
-StreamInvocation
-{
-    "type": 4,
-    "invocationId": "123",
-    "target": "Send",
-    "arguments": [
-        42,
-        "Test Message"
-    ]
-}
-CancelInvocation
-{
-    "type": 5,
-    "invocationId": "123"
-}
-Ping
-{
-    "type": 6
-}
-Close
-{
-    "type": 7
-}
-{
-    "type": 7,
-    "error": "Connection closed because of an error!"
-}
-"""
+
+from signalrcore.helpers import Helpers
 
 
 class MyEncoder(JSONEncoder):
@@ -120,5 +42,5 @@ class JsonHubProtocol(BaseHubProtocol):
         return result
 
     def encode(self, message):
-        logging.debug(self.encoder.encode(message) + self.record_separator)
+        Helpers.get_logger().debug(self.encoder.encode(message) + self.record_separator)
         return self.encoder.encode(message) + self.record_separator

@@ -4,10 +4,11 @@ from .hub.base_hub_connection import BaseHubConnection
 from .hub.auth_hub_connection import AuthHubConnection
 from .hub.reconnection import \
     IntervalReconnectionHandler, RawReconnectionHandler, ReconnectionType
-
+from .helpers import Helpers
 from .messages.invocation_message import InvocationMessage
 from .protocol.json_hub_protocol import JsonHubProtocol
 from .subject import Subject
+
 
 
 class HubConnectionError(ValueError):
@@ -38,6 +39,7 @@ class HubConnectionBuilder(object):
         self.reconnection_handler = None
         self.keep_alive_interval = None
         self.verify_ssl = True
+        self.enable_trace = False  # socket trace
 
     def with_url(
             self,
@@ -66,16 +68,16 @@ class HubConnectionBuilder(object):
         self.options = self.options if options is None else options
         return self
 
-    def configure_logging(self, logging_level):
+    def configure_logging(self, logging_level, socket_trace=False):
         """
         Confiures signalr logging
+        :param socket_trace: Enables socket package trace
         :param logging_level: logging.INFO | logging.DEBUG ... from python logging class
         :param log_format: python logging class format by default %(asctime)-15s %(clientip)s %(user)-8s %(message)s
         :return: instance hub with logging configured
         """
-        logging.basicConfig(
-            level=logging_level
-        )
+        Helpers.configure_logger(logging_level)
+        self.enable_trace = socket_trace
         return self
 
     def build(self):
@@ -116,6 +118,8 @@ class HubConnectionBuilder(object):
                 reconnection_handler=self.reconnection_handler,
                 headers=self.headers,
                 verify_ssl=self.verify_ssl)
+        if self.enable_trace:
+            self.hub.enable_trace(True)
         return self
 
     def with_automatic_reconnect(self, data):

@@ -9,7 +9,7 @@ def input_with_default(input_text, default_value):
     return default_value if value is None or value.strip() == "" else value
 
 
-server_url = input_with_default('Enter your server url(default: {0}): ', "ws://localhost:57957/streamHub")
+server_url = input_with_default('Enter your server url(default: {0}): ', "wss://localhost:44376/chatHub")
 
 hub_connection = HubConnectionBuilder().with_url(server_url).build()
 hub_connection.start()

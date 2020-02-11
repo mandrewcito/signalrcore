@@ -52,7 +52,19 @@ hub_connection = HubConnectionBuilder()\
                 "max_attempts": 5
             }).build()
 ```
+## Configure logging
 
+```python
+HubConnectionBuilder()\
+    .with_url(server_url,
+    .configure_logging(logging.DEBUG)
+    ...
+```
+## Configure socket trace
+HubConnectionBuilder()\
+    .with_url(server_url,
+    .configure_logging(logging.DEBUG, socket_trace=True) 
+    ... 
 ## Configuring reconection
 After reaching max_attemps an exeption will be thrown and on_disconnect event will be
 fired.

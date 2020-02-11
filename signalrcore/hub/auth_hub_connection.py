@@ -23,7 +23,7 @@ class AuthHubConnection(BaseHubConnection):
 
     def negotiate(self):
         negotiate_url = Helpers.get_negotiate_url(self.url)
-        logging.debug("Negotiate url:" + negotiate_url)
+        Helpers.get_logger().debug("Negotiate url:" + negotiate_url)
         response = requests.post(negotiate_url, headers=self.headers, verify=self.verify_ssl)
         if response.status_code != 200:
             raise HubError(response.status_code) if response.status_code != 401 else UnAuthorizedHubError()
