@@ -11,6 +11,8 @@ from signalrcore.messages.ping_message import PingMessage
 from .connection_state import ConnectionState
 
 from signalrcore.helpers import Helpers
+
+
 class StreamHandler(object):
     def __init__(self, event, invocation_id):
         self.event = event
@@ -88,7 +90,6 @@ class BaseHubConnection(object):
 
     def register_handler(self, event, callback):
         self.logger.debug("Handler registered started {0}".format(event))
-
         self.handlers.append((event, callback))
 
     def evaluate_handshake(self, message):

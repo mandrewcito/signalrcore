@@ -11,11 +11,12 @@ else:
 
 class Helpers:
     @staticmethod
-    def configure_logger(level=logging.INFO):
+    def configure_logger(level=logging.INFO, handler=None):
         logger = Helpers.get_logger()
-        ch = logging.StreamHandler()
-        ch.setLevel(level)
-        logger.addHandler(ch)
+        if handler is None:
+            handler = logging.StreamHandler()
+            handler.setLevel(level)
+        logger.addHandler(handler)
         logger.setLevel(level)
 
     @staticmethod

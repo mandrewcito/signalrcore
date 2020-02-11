@@ -10,7 +10,6 @@ from .protocol.json_hub_protocol import JsonHubProtocol
 from .subject import Subject
 
 
-
 class HubConnectionError(ValueError):
     pass
 
@@ -68,15 +67,16 @@ class HubConnectionBuilder(object):
         self.options = self.options if options is None else options
         return self
 
-    def configure_logging(self, logging_level, socket_trace=False):
+    def configure_logging(self, logging_level, socket_trace=False, handler=None):
         """
         Confiures signalr logging
+        :param handler: logging handler
         :param socket_trace: Enables socket package trace
         :param logging_level: logging.INFO | logging.DEBUG ... from python logging class
         :param log_format: python logging class format by default %(asctime)-15s %(clientip)s %(user)-8s %(message)s
         :return: instance hub with logging configured
         """
-        Helpers.configure_logger(logging_level)
+        Helpers.configure_logger(logging_level, handler)
         self.enable_trace = socket_trace
         return self
 

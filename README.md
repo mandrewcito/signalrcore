@@ -67,6 +67,16 @@ HubConnectionBuilder()\
     .configure_logging(logging.DEBUG, socket_trace=True) 
     ... 
  ```
+ ## Configure your own handler
+ ```python
+ import logging
+handler = logging.StreamHandler()
+handler.setLevel(logging.DEBUG)
+hub_connection = HubConnectionBuilder()\
+    .with_url(server_url, options={"verify_ssl": False}) \
+    .configure_logging(logging.DEBUG, socket_trace=True, handler=handler)
+    ...
+ ```
 ## Configuring reconection
 After reaching max_attemps an exeption will be thrown and on_disconnect event will be
 fired.

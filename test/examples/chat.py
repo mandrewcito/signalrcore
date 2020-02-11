@@ -10,10 +10,11 @@ def input_with_default(input_text, default_value):
 
 server_url = input_with_default('Enter your server url(default: {0}): ', "wss://localhost:44376/chatHub")
 username = input_with_default('Enter your username (default: {0}): ', "mandrewcito")
-
+handler = logging.StreamHandler()
+handler.setLevel(logging.DEBUG)
 hub_connection = HubConnectionBuilder()\
     .with_url(server_url, options={"verify_ssl": False}) \
-    .configure_logging(logging.DEBUG, socket_trace=True) \
+    .configure_logging(logging.DEBUG, socket_trace=True, handler=handler) \
     .with_automatic_reconnect({
             "type": "interval",
             "keep_alive_interval": 10,
