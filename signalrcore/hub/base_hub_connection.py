@@ -98,9 +98,10 @@ class BaseHubConnection(object):
         if msg.error is None or msg.error == "":
             self.handshake_received = True
             self.state = ConnectionState.connected
-            self.reconnection_handler.reconnecting = False
-            if not self.connection_checker.running:
-                self.connection_checker.start()
+            if self.reconnection_handler is not None:
+                self.reconnection_handler.reconnecting = False
+                if not self.connection_checker.running:
+                    self.connection_checker.start()
         else:
             self.logger.error(msg.error)
             raise ValueError("Handshake error {0}".format(msg.error))
@@ -217,8 +218,8 @@ class BaseHubConnection(object):
             self.state = ConnectionState.disconnected
             if self.reconnection_handler is None:
                 if self.on_disconnect is not None and callable(self.on_disconnect):
-                    self.on_disconnect(ex)
-                raise ex
+                    self.on_disconnect()
+                raise ValueError(str(ex))
             # Connection closed
             self.handle_reconnect()
         except Exception as ex:
