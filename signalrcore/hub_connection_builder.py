@@ -40,6 +40,7 @@ class HubConnectionBuilder(object):
         self.keep_alive_interval = None
         self.verify_ssl = True
         self.enable_trace = False  # socket trace
+        self.skip_negotiation = False # By default do not skip negotiation
 
     def with_url(
             self,
@@ -63,6 +64,9 @@ class HubConnectionBuilder(object):
             self.has_auth_configured = \
                 "access_token_factory" in options.keys()\
                 and callable(options["access_token_factory"])
+
+            self.skip_negotiation = "skip_negotiation" in options.keys() and options["skip_negotiation"]
+
         self.hub_url = hub_url
         self.hub = None
         self.options = self.options if options is None else options
@@ -110,7 +114,8 @@ class HubConnectionBuilder(object):
             keep_alive_interval=self.keep_alive_interval,
             reconnection_handler=self.reconnection_handler,
             headers=self.headers,
-            verify_ssl=self.verify_ssl)\
+            verify_ssl=self.verify_ssl,
+            skip_negotiation=self.skip_negotiation)\
             if self.has_auth_configured else\
             BaseHubConnection(
                 self.hub_url,
@@ -118,9 +123,12 @@ class HubConnectionBuilder(object):
                 keep_alive_interval=self.keep_alive_interval,
                 reconnection_handler=self.reconnection_handler,
                 headers=self.headers,
-                verify_ssl=self.verify_ssl)
+                verify_ssl=self.verify_ssl,
+                skip_negotiation=self.skip_negotiation)
+
         if self.enable_trace:
             self.hub.enable_trace(True)
+
         return self
 
     def with_automatic_reconnect(self, data):

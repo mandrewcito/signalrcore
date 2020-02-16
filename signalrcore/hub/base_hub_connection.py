@@ -1,5 +1,7 @@
 import websocket
 import threading
+import requests
+
 import uuid
 import time
 import ssl
@@ -9,7 +11,7 @@ from signalrcore.messages.stream_invocation_message\
 from .reconnection import ConnectionStateChecker
 from signalrcore.messages.ping_message import PingMessage
 from .connection_state import ConnectionState
-
+from .errors import UnAuthorizedHubError, HubError
 from signalrcore.helpers import Helpers
 
 
@@ -34,12 +36,22 @@ class StreamHandler(object):
 
 
 class BaseHubConnection(object):
-    def __init__(self, url, protocol, headers={}, keep_alive_interval=15, reconnection_handler=None, verify_ssl=False):
+    def __init__(
+            self,
+            url,
+            protocol,
+            headers={},
+            keep_alive_interval=15,
+            reconnection_handler=None,
+            verify_ssl=False,
+            skip_negotiation=False):
+        self.skip_negotiation = skip_negotiation
         self.logger = Helpers.get_logger()
         self.url = url
         self.protocol = protocol
         self.headers = headers
         self.handshake_received = False
+        self.token = None # auth
         self.state = ConnectionState.disconnected
         self.connection_alive = False
         self.handlers = []
@@ -55,11 +67,33 @@ class BaseHubConnection(object):
         self.on_connect = None
         self.on_disconnect = None
 
+    def negotiate(self):
+        negotiate_url = Helpers.get_negotiate_url(self.url)
+        self.logger.debug("Negotiate url:{0}".format(negotiate_url))
+
+        response = requests.post(negotiate_url, headers=self.headers, verify=self.verify_ssl)
+        self.logger.debug("Response status code{0}".format(response.status_code))
+
+        if response.status_code != 200:
+            raise HubError(response.status_code) if response.status_code != 401 else UnAuthorizedHubError()
+        data = response.json()
+        if "connectionId" in data.keys():
+            self.url = Helpers.encode_connection_id(self.url, data["connectionId"])
+
+        # Azure
+        if 'url' in data.keys() and 'accessToken' in data.keys():
+            Helpers.get_logger().debug("Azure url, reformat headers, token and url {0}".format(data))
+            self.url = data["url"] if data["url"].startswith("ws") else Helpers.http_to_websocket(data["url"])
+            self.token = data["accessToken"]
+            self.headers = {"Authorization": "Bearer " + self.token}
+
     def enable_trace(self, traceable):
         if len(self.logger.handlers) > 0:
             websocket.enableTrace(traceable, self.logger.handlers[0])
 
     def start(self):
+        if not self.skip_negotiation:
+            self.negotiate()
         self.logger.debug("Connection started")
         if self.state == ConnectionState.connected:
             self.logger.warning("Already connected unable to start")

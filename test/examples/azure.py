@@ -20,7 +20,7 @@ handler.setFormatter(formatter)
 hub_connection = HubConnectionBuilder() \
         .with_url("ws://"+server_url, options={
             "verify_ssl": False,
-            "access_token_factory": lambda: "",
+            "skip_negotiation": False,
             "headers": {
             }
         }) \
