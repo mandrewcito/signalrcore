@@ -8,7 +8,7 @@ setuptools.setup(
     version="0.8.4",
     author="mandrewcito",
     author_email="anbaalo@gmail.com",
-    description="A Python SignalR Core client, with invocation auth and two way streamming. Also automatic reconnect and manually reconnect ",
+    description="A Python SignalR Core client, with invocation auth and two way streaming. Compatible with azure / serverless functions. Also with automatic reconnect and manually reconnect.",
     keywords="signalr core client 3.0",
     long_description=long_description,
     long_description_content_type="text/markdown",
