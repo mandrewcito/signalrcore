@@ -15,6 +15,7 @@ class Helpers:
         logger = Helpers.get_logger()
         if handler is None:
             handler = logging.StreamHandler()
+            handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
             handler.setLevel(level)
         logger.addHandler(handler)
         logger.setLevel(level)

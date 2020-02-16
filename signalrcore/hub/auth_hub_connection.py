@@ -28,13 +28,13 @@ class AuthHubConnection(BaseHubConnection):
         if response.status_code != 200:
             raise HubError(response.status_code) if response.status_code != 401 else UnAuthorizedHubError()
         data = response.json()
-
-        self.url = Helpers.encode_connection_id(self.url, data["connectionId"])
+        if "connectionId" in data.keys():
+            self.url = Helpers.encode_connection_id(self.url, data["connectionId"])
         
         # Azure
         if 'url' in data.keys() and 'accessToken' in data.keys():
             Helpers.get_logger().debug("Azure url, reformat headers, token and url {0}".format(data))
-            self.url = data["url"]
+            self.url = data["url"] if data["url"].startswith("ws") else Helpers.http_to_websocket(data["url"])
             self.token = data["accessToken"]
             self.headers = {"Authorization": "Bearer " + self.token}
 
