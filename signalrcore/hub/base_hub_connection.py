@@ -120,7 +120,7 @@ class BaseHubConnection(object):
         if self.state == ConnectionState.connected:
             self._ws.close()
             self.connection_checker.stop()
-            self.state == ConnectionState.disconnected
+            self.state = ConnectionState.disconnected
 
     def register_handler(self, event, callback):
         self.logger.debug("Handler registered started {0}".format(event))
