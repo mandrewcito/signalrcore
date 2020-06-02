@@ -1,5 +1,5 @@
 import sys
-if sys.version_info.major is 2:
+if sys.version_info.major == 2:
     from aenum import Enum
 else:
     from enum import Enum

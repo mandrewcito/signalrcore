@@ -10,13 +10,13 @@ from signalrcore.hub_connection_builder import HubConnectionBuilder
 class TestSendMethod(unittest.TestCase):
     container_id = "netcore_chat_app"
     connection = None
-    server_url = "ws://localhost:81/chatHub"
+    server_url = "wss://localhost:5001/chatHub"
     received = False
     connected = False
     message = None
     def setUp(self):
         self.connection = HubConnectionBuilder()\
-            .with_url(self.server_url)\
+            .with_url(self.server_url, options={"verify_ssl":False})\
             .configure_logging(logging.DEBUG)\
             .with_automatic_reconnect({
                 "type": "raw",
