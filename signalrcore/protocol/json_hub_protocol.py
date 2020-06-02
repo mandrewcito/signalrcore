@@ -35,7 +35,7 @@ class JsonHubProtocol(BaseHubProtocol):
         raw_messages = [
             record.replace(self.record_separator, "")
             for record in raw.split(self.record_separator)
-            if record is not None and record is not "" and record is not self.record_separator
+            if record is not None and record != "" and record != self.record_separator
             ]
         result = []
         for raw_message in raw_messages:

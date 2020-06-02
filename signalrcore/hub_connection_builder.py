@@ -46,7 +46,7 @@ class HubConnectionBuilder(object):
             self,
             hub_url,
             options=None):
-        if hub_url is None or hub_url.strip() is "":
+        if hub_url is None or hub_url.strip() == "":
             raise HubConnectionError("hub_url must be a valid url.")
 
         if options is not None and type(options) != dict:

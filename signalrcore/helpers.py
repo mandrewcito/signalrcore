@@ -1,7 +1,7 @@
 import sys
 import urllib
 import logging
-if sys.version_info.major is 2:
+if sys.version_info.major == 2:
     import urlparse as parse
     query_encode = urllib.urlencode
 else:
@@ -87,7 +87,7 @@ class Helpers:
         url_parts = url_parts._replace(path=url_parts.path + negotiate_suffix)
 
         return parse.urlunsplit(url_parts) \
-            if querystring is "" else\
+            if querystring == "" else\
                 parse.urlunsplit(url_parts) + "?" + querystring
 
     @staticmethod
