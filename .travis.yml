@@ -1,9 +1,22 @@
+services:
+  - docker
+  
+
+before_install:
+  - git clone https://github.com/mandrewcito/signalrcore-containertestservers containers
+
+install:
+  - docker-compose up  -f /containers/docker-compose.yml -d
+  - docker ps
+
 language: python
 python:
-  - "3.3"
+  - "2.7"
   - "3.4"
   - "3.5"
-  - "2.7"
+  - "3.6" 
+  - "3.7"
+  - "3.8"
 # command to run tests
 script:
 - python -m unittest discover -s test/ -p "*_test.py"
