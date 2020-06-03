@@ -1,12 +1,12 @@
 services:
   - docker
-  
 
 before_install:
   - git clone https://github.com/mandrewcito/signalrcore-containertestservers containers
 
 install:
-  - docker-compose up  -f /containers/docker-compose.yml -d
+  - cd containers
+  - docker-compose up -d
   - docker ps
 
 language: python
