@@ -3,6 +3,7 @@ services:
 
 before_install:
   - git clone https://github.com/mandrewcito/signalrcore-containertestservers containers
+  - pip install -r requirements.txt
 
 install:
   - cd containers
