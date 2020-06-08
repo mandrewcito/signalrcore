@@ -8,7 +8,7 @@ install:
   - cd containers
   - docker-compose up -d
   - docker ps
-
+  - cd ..
 language: python
 python:
   - "2.7"
