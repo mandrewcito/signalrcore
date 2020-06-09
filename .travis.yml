@@ -4,7 +4,9 @@ services:
 before_install:
   - git clone https://github.com/mandrewcito/signalrcore-containertestservers containers
   - pip install -r requirements.txt
-
+  - pip install coverage
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
 install:
   - cd containers
   - docker-compose up -d
@@ -19,4 +21,4 @@ python:
   - "3.8"
 # command to run tests
 script:
-- python -m unittest discover -s test/ -p "*_test.py"
+- coverage -m unittest discover -s test/ -p "*_test.py"
