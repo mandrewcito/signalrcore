@@ -21,4 +21,4 @@ python:
   - "3.8"
 # command to run tests
 script:
-- coverage -m unittest discover -s test/ -p '*_test.py'
+- coverage run -m unittest discover -s test/ -p "*_test.py"
