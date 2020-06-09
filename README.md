@@ -4,7 +4,7 @@
 ![Pypi - downloads month](https://img.shields.io/pypi/dm/signalrcore.svg)
 ![Issues](https://img.shields.io/github/issues/mandrewcito/signalrcore.svg)
 ![Open issues](https://img.shields.io/github/issues-raw/mandrewcito/signalrcore.svg)
-
+![travis build](https://img.shields.io/travis/mandrewcito/signalrcore.svg)
 
 ![logo alt](https://raw.githubusercontent.com/mandrewcito/signalrcore/master/docs/img/logo_temp.128.svg.png)
 
