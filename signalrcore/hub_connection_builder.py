@@ -189,7 +189,7 @@ class HubConnectionBuilder(object):
     def stop(self):
         self.hub.stop()
 
-    def send(self, method, arguments):
+    def send(self, method, arguments, on_invocation = None):
         if type(arguments) is not list and type(arguments) is not Subject:
             raise HubConnectionError("Arguments of a message must be a list or subject")
 
@@ -198,7 +198,7 @@ class HubConnectionBuilder(object):
                 {},
                 str(uuid.uuid4()),
                 method,
-                arguments))
+                arguments), on_invocation)
 
         if type(arguments) is Subject:
             arguments.connection = self
