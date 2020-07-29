@@ -1,9 +1,9 @@
 
 tests:
-	python -m unittest discover -s test/ -p "*_test.py" -v
+	python3 -m unittest discover -s test/ -p "*_test.py" -v
 
 package:
-	python setup.py sdist bdist_wheel
+	python3 setup.py sdist bdist_wheel
 
 all:
 	tests package
