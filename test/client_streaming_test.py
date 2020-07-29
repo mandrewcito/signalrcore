@@ -17,7 +17,7 @@ class TestClientStreamMethod(BaseTestCase):
         self.complete = True
     
     def on_error(self, x):
-        raise ValueError(f"type: {type(x)} | {x}")
+        raise ValueError(x)
 
     def test_stream(self):
         self.complete = False
