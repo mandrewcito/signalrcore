@@ -1,7 +1,7 @@
 import websocket
 import threading
 import requests
-
+import traceback
 import uuid
 import time
 import ssl
@@ -156,6 +156,8 @@ class BaseHubConnection(object):
 
     def on_error(self, error):
         self.logger.debug("-- web socket error --")
+        self.logger.error(traceback.format_exc(1, True))
+        self.logger.error("{0} {1}".format(self, error))        
         self.logger.error("{0} {1}".format(error, type(error)))
 
     def on_message(self, raw_message):

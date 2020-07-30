@@ -35,7 +35,9 @@ class TestSendAuthMethod(unittest.TestCase):
         self.connected = True
 
     def on_close(self):
-        self.connected = False
+        print(self)
+        if self:
+            self.connected = False
 
     def get_connection(self):
         hub = HubConnectionBuilder()\
