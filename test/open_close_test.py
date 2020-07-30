@@ -2,6 +2,7 @@ import os
 import unittest
 import logging
 import time
+import threading
 import uuid
 
 from subprocess import Popen, PIPE
@@ -11,23 +12,26 @@ from test.base_test_case import BaseTestCase, Urls
 
 class TestClientStreamMethod(BaseTestCase):
     def setUp(self):
-        pass
+        self.send_callback_received = threading.Lock()
 
     def tearDown(self):
         pass
+    def on_close(self):
+        super().on_close()
+        self.send_callback_received.release()
 
     def test_open_close(self):
         self.connection = self.get_connection()
         self.connection.start()
-        t0 = time.time()
+        
         while not self.connected:
             time.sleep(0.1)
-            if time.time() - t0 > 20:
-                raise ValueError("TIMEOUT ")
+        
+        self.connection.stop()        
+        if not self.send_callback_received.acquire(timeout=5):
+            raise ValueError("CALLBACK NOT RECEIVED")
 
-        self.connection.stop()
-        time.sleep(5)
-        self.assertTrue(not self.connected)
+        self.assertTrue(True)
 
 class TestClientNosslStreamMethod(TestClientStreamMethod):
     server_url = Urls.server_url_no_ssl
