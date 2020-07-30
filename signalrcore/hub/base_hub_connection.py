@@ -156,9 +156,10 @@ class BaseHubConnection(object):
 
     def on_error(self, error):
         self.logger.debug("-- web socket error --")
-        self.logger.error(traceback.format_exc(1, True))
+        self.logger.error(traceback.format_exc(5, True))
         self.logger.error("{0} {1}".format(self, error))        
         self.logger.error("{0} {1}".format(error, type(error)))
+        raise HubError(error)
 
     def on_message(self, raw_message):
         self.logger.debug("Message received{0}".format(raw_message))
