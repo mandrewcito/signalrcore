@@ -11,8 +11,7 @@ class Urls:
     login_url_ssl =  "https://localhost:5001/users/authenticate"
     login_url_no_ssl =  "http://localhost:5000/users/authenticate"
 
-
-class InternalTestCase(unittest.TestCase):
+class BaseTestCase(unittest.TestCase):
     connection = None
     connected = False
 
@@ -33,8 +32,6 @@ class InternalTestCase(unittest.TestCase):
 
     def on_close(self):
         self.connected = False
-
-class BaseTestCase(InternalTestCase):
     server_url = Urls.server_url_ssl
 
     def get_connection(self):
