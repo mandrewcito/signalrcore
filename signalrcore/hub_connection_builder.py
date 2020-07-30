@@ -204,7 +204,8 @@ class HubConnectionBuilder(object):
                 {},
                 str(uuid.uuid4()),
                 method,
-                arguments), on_invocation)
+                arguments),
+                on_invocation)
 
         if type(arguments) is Subject:
             arguments.connection = self
