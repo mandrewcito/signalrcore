@@ -7,7 +7,7 @@ import requests
 from subprocess import Popen, PIPE
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 
-from test.base_test_case import Urls
+from base_test_case import Urls
 
 class TestSendAuthMethod(unittest.TestCase):
     server_url = Urls.server_url_ssl_auth

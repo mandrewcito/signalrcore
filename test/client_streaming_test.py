@@ -7,7 +7,7 @@ import uuid
 from subprocess import Popen, PIPE
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from signalrcore.subject import Subject
-from test.base_test_case import Urls
+from base_test_case import Urls
 
 class TestClientStreamMethod(unittest.TestCase):
     received = False
@@ -15,7 +15,7 @@ class TestClientStreamMethod(unittest.TestCase):
     connection = None
     connected = False
     server_url = Urls.server_url_ssl
-    
+
     def setUp(self):
         self.connection = self.get_connection()
         self.connection.start()
