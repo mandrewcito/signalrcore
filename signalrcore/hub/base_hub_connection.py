@@ -154,12 +154,25 @@ class BaseHubConnection(object):
         if self.on_disconnect is not None and callable(self.on_disconnect):
             self.on_disconnect()
 
-    def on_error(self, error):
+    def on_error(self, ws, error):
+        """
+        Throws error related on https://github.com/websocket-client/websocket-client/issues/449
+
+        Args:
+            error ([type]): [description]
+
+        Raises:
+            HubError: [description]
+        """
         self.logger.debug("-- web socket error --")
-        self.logger.error(traceback.format_exc(5, True))
-        self.logger.error("{0} {1}".format(self, error))        
-        self.logger.error("{0} {1}".format(error, type(error)))
-        raise HubError(error)
+        if (type(error) is AttributeError and "'NoneType' object has no attribute 'connected'" in str(error)):
+            self.logger.warn("Websocket closing error: issue https://github.com/websocket-client/websocket-client/issues/449")
+            self.logger.warn("Websocket closing error: issue https://github.com/websocket-client/websocket-client/issues/449")            
+        else:
+            self.logger.error(traceback.format_exc(5, True))
+            self.logger.error("{0} {1}".format(self, error))        
+            self.logger.error("{0} {1}".format(error, type(error)))
+            raise HubError(error)
 
     def on_message(self, raw_message):
         self.logger.debug("Message received{0}".format(raw_message))
