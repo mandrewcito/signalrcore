@@ -192,7 +192,7 @@ class HubConnectionBuilder(object):
         self.hub.stop()
         self.running = False
 
-    def send(self, method, arguments):
+    def send(self, method, arguments, on_invocation = None):
         if not self.running:
             raise HubConnectionError("Hub is not running you cand send messages")
         
@@ -204,7 +204,8 @@ class HubConnectionBuilder(object):
                 {},
                 str(uuid.uuid4()),
                 method,
-                arguments))
+                arguments),
+                on_invocation)
 
         if type(arguments) is Subject:
             arguments.connection = self

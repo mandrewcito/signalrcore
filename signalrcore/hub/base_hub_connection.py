@@ -34,7 +34,11 @@ class StreamHandler(object):
         self.complete_callback = subscribe_callbacks["complete"]
         self.error_callback = subscribe_callbacks["error"]
 
-
+class InvocationHandler(object):
+    def __init__(self, invocation_id, complete_callback):
+        self.invocation_id = invocation_id
+        self.complete_callback = complete_callback
+        
 class BaseHubConnection(object):
     def __init__(
             self,
@@ -237,9 +241,11 @@ class BaseHubConnection(object):
                         lambda h: h.invocation_id != message.invocation_id,
                         self.stream_handlers))
 
-    def send(self, message):
+    def send(self, message, on_invocation = None):
         self.logger.debug("Sending message {0}".format(message))
         try:
+            if on_invocation:
+                self.stream_handlers.append(InvocationHandler(message.invocation_id, on_invocation))
             self._ws.send(self.protocol.encode(message))
             self.connection_checker.last_message = time.time()
             if self.reconnection_handler is not None:
