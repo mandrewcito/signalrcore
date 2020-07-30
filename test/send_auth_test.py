@@ -7,16 +7,14 @@ import requests
 from subprocess import Popen, PIPE
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 
+from test.base_test_case import BaseTestCase, Urls
 
-class TestSendAuthMethod(unittest.TestCase):
-    container_id = "netcore_chat_app"
-    connection = None
-    server_url = "wss://localhost:5001/authHub"
-    login_url = "https://localhost:5001/users/authenticate"
+class TestSendAuthMethod(BaseTestCase):
+    server_url = Urls.server_url_ssl_auth
+    login_url = Urls.login_url_ssl
     email = "test"
     password = "test"
     received = False
-    connected = False
     message = None
 
     def login(self):
@@ -38,7 +36,7 @@ class TestSendAuthMethod(unittest.TestCase):
                     "mycustomheader": "mycustomheadervalue"
                 }
             })\
-            .configure_logging(logging.DEBUG)\
+            .configure_logging(logging.WARNING)\
             .with_automatic_reconnect({
                 "type": "raw",
                 "keep_alive_interval": 10,
@@ -51,15 +49,6 @@ class TestSendAuthMethod(unittest.TestCase):
         self.connection.start()
         while not self.connected:
             time.sleep(0.1)
-
-    def tearDown(self):
-        self.connection.stop()
-
-    def on_open(self):
-        self.connected = True
-
-    def on_close(self):
-        self.connected = False
 
     def receive_message(self, args):
         self.assertEqual(args[0], self.message)
@@ -74,4 +63,6 @@ class TestSendAuthMethod(unittest.TestCase):
         while not self.received:
             time.sleep(0.1)
         
-
+class TestSendNoSslAuthMethod(TestSendAuthMethod):
+    server_url = Urls.server_url_no_ssl_auth
+    login_url = Urls.login_url_no_ssl

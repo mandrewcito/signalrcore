@@ -41,6 +41,7 @@ class HubConnectionBuilder(object):
         self.verify_ssl = True
         self.enable_trace = False  # socket trace
         self.skip_negotiation = False # By default do not skip negotiation
+        self.running = False
 
     def with_url(
             self,
@@ -185,11 +186,16 @@ class HubConnectionBuilder(object):
 
     def start(self):
         self.hub.start()
+        self.running = True
 
     def stop(self):
         self.hub.stop()
+        self.running = False
 
     def send(self, method, arguments, on_invocation = None):
+        if not self.running:
+            raise HubConnectionError("Hub is not running you cand send messages")
+        
         if type(arguments) is not list and type(arguments) is not Subject:
             raise HubConnectionError("Arguments of a message must be a list or subject")
 
