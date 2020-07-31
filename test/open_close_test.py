@@ -16,8 +16,8 @@ class TestClientStreamMethod(BaseTestCase):
 
     def tearDown(self):
         pass
+    
     def on_close(self):
-        super().on_close()
         self.send_callback_received.release()
 
     def test_open_close(self):
@@ -26,12 +26,13 @@ class TestClientStreamMethod(BaseTestCase):
         
         while not self.connected:
             time.sleep(0.1)
-        
-        self.connection.stop()        
-        if not self.send_callback_received.acquire(timeout=5):
-            raise ValueError("CALLBACK NOT RECEIVED")
 
-        self.assertTrue(True)
+        self.assertTrue(self.send_callback_received.acquire())
+        
+        self.connection.stop()
+        
+        self.assertTrue(self.send_callback_received.acquire(timeout=5))
+
 
 class TestClientNosslStreamMethod(TestClientStreamMethod):
     server_url = Urls.server_url_no_ssl

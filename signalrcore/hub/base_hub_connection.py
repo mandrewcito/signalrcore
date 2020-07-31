@@ -154,7 +154,7 @@ class BaseHubConnection(object):
         if self.on_disconnect is not None and callable(self.on_disconnect):
             self.on_disconnect()
 
-    def on_error(self, ws, error):
+    def on_error(self, error):
         """
         Throws error related on https://github.com/websocket-client/websocket-client/issues/449
 
