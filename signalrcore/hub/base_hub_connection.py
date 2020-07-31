@@ -167,8 +167,8 @@ class BaseHubConnection(object):
         """
         self.logger.debug("-- web socket error --")
         if (type(error) is AttributeError and "'NoneType' object has no attribute 'connected'" in str(error)):
-            self.logger.warn("Websocket closing error: issue https://github.com/websocket-client/websocket-client/issues/449")
-            self.logger.warn("Websocket closing error: issue https://github.com/websocket-client/websocket-client/issues/449")
+            self.logger.warning("Websocket closing error: issue https://github.com/websocket-client/websocket-client/issues/449")
+            self.logger.warning("Websocket closing error: issue https://github.com/websocket-client/websocket-client/issues/449")
             self.on_disconnect()                    
         else:
             self.logger.error(traceback.format_exc(5, True))
