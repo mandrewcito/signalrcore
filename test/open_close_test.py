@@ -25,15 +25,19 @@ class TestClientStreamMethod(BaseTestCase):
     def test_open_close(self):
         self.connection = self.get_connection()
 
-        self.connection.start()
-        
-        while not self.connected:
-            time.sleep(0.1)
+        _lock = threading.Lock()
+        self.connection.on_open(lambda: _lock.release())
+        self.connection.on_close(lambda: _lock.release())
 
-        self.assertTrue(self.send_callback_received.acquire())
+        self.assertTrue(_lock.acquire())
+
+        self.connection.start()
+
+        self.assertTrue(_lock.acquire())
         
         self.connection.stop()
         
-        self.assertTrue(self.send_callback_received.acquire(timeout=60))
+        self.assertTrue(_lock.acquire())
 
-        self.send_callback_received.release()
+        _lock.release()
+        del _lock

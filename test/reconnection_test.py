@@ -10,7 +10,7 @@ from signalrcore.hub_connection_builder import HubConnectionBuilder, HubConnecti
 from test.base_test_case import BaseTestCase, Urls
 
 class TestReconnectMethods(BaseTestCase):
-    send_callback_received = threading.Lock()
+    
 
     def test_reconnect_interval_config(self):
         connection = HubConnectionBuilder()\
@@ -21,26 +21,25 @@ class TestReconnectMethods(BaseTestCase):
                 "intervals": [1, 2, 4, 45, 6, 7, 8, 9, 10]
             })\
             .build()
-        connection.on_open(self.on_open)
-        connection.on_close(self.on_close)
+        _lock = threading.Lock()
+        connection.on_open(lambda : _lock.release())
+        connection.on_close(lambda: _lock.release())
+
         connection.start()
         
-        while not self.connected:
-            time.sleep(0.1)
+        _lock.acquire()
 
-        self.assertTrue(self.send_callback_received.acquire())
+        self.assertTrue(_lock.acquire())
         
         connection.stop()
         
-        self.assertTrue(self.send_callback_received.acquire(True, timeout=60))
-        self.send_callback_received.release()
+        self.assertTrue(_lock.acquire(timeout=11))
+        _lock.release()
+        del _lock
 
     def tearDown(self):
         pass
 
     def setUp(self):
         pass
-    
-    def on_close(self):
-        self.send_callback_received.release()
 
