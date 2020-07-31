@@ -57,6 +57,6 @@ class TestConfiguration(BaseTestCase):
         hub.on_open(self.on_open)
         hub.on_close(self.on_close)
         hub.start()
-        self.assertTrue(websocket.isEnabledForTrace())
+        self.assertTrue(websocket.isEnabledForDebug())
         websocket.enableTrace(False)
         hub.stop()

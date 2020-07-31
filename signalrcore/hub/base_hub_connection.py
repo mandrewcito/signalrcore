@@ -122,8 +122,9 @@ class BaseHubConnection(object):
     def stop(self):
         self.logger.debug("Connection stop")
         if self.state == ConnectionState.connected:
-            self._ws.close()
             self.connection_checker.stop()
+            self._ws.close()
+            #self._ws.teardown()           
             self.state = ConnectionState.disconnected
 
     def register_handler(self, event, callback):
