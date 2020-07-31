@@ -21,19 +21,22 @@ class TestReconnectMethods(BaseTestCase):
                 "intervals": [1, 2, 4, 45, 6, 7, 8, 9, 10]
             })\
             .build()
+
         _lock = threading.Lock()
+
         connection.on_open(lambda : _lock.release())
         connection.on_close(lambda: _lock.release())
 
-        connection.start()
-        
-        _lock.acquire()
+        self.assertTrue(_lock.acquire(timeout=30))
 
-        self.assertTrue(_lock.acquire())
+        connection.start()        
+
+        self.assertTrue(_lock.acquire(timeout=30))
         
         connection.stop()
         
-        self.assertTrue(_lock.acquire(timeout=11))
+        self.assertTrue(_lock.acquire(timeout=30))
+
         _lock.release()
         del _lock
 
