@@ -120,3 +120,5 @@ dmypy.json
 .vscode/launch.json
 # Containers code
 ./test/containers/code
+#coverga
+coverage_html
