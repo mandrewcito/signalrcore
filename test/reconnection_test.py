@@ -30,7 +30,8 @@ class TestReconnectMethods(BaseTestCase):
         
         connection.stop()
         
-        self.assertTrue(self.send_callback_received.acquire(timeout=15))
+        self.assertTrue(self.send_callback_received.acquire(True, timeout=15))
+        self.send_callback_received.release()
 
     def tearDown(self):
         pass
