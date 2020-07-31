@@ -10,6 +10,8 @@ from signalrcore.hub_connection_builder import HubConnectionBuilder, HubConnecti
 from test.base_test_case import BaseTestCase, Urls
 
 class TestReconnectMethods(BaseTestCase):
+    send_callback_received = threading.Lock()
+
     def test_reconnect_interval_config(self):
         connection = HubConnectionBuilder()\
             .with_url(self.server_url, options={"verify_ssl":False})\
@@ -37,12 +39,8 @@ class TestReconnectMethods(BaseTestCase):
         pass
 
     def setUp(self):
-        self.send_callback_received = threading.Lock()
-
+        pass
+    
     def on_close(self):
         self.send_callback_received.release()
-
-
-class TestSendNoSslMethod(TestReconnectMethods):
-    server_url = Urls.server_url_no_ssl
 

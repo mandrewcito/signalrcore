@@ -11,8 +11,10 @@ from signalrcore.subject import Subject
 from test.base_test_case import BaseTestCase, Urls
 
 class TestClientStreamMethod(BaseTestCase):
+    send_callback_received = threading.Lock()
+    
     def setUp(self):
-        self.send_callback_received = threading.Lock()
+        pass
 
     def tearDown(self):
         pass
@@ -22,6 +24,7 @@ class TestClientStreamMethod(BaseTestCase):
 
     def test_open_close(self):
         self.connection = self.get_connection()
+
         self.connection.start()
         
         while not self.connected:
@@ -33,6 +36,4 @@ class TestClientStreamMethod(BaseTestCase):
         
         self.assertTrue(self.send_callback_received.acquire(timeout=15))
 
-
-class TestClientNosslStreamMethod(TestClientStreamMethod):
-    server_url = Urls.server_url_no_ssl
+        self.send_callback_received.release()
