@@ -29,6 +29,12 @@ docker-compose up
 cd ../signalrcore
 make tests
 ```
+## known issues
+Issues related with closing socket inherited from websocket-client library. Due this problems i cant update library to versions higher than websocket-client 0.54.0. 
+I'm working for solve it, for now its patched (Error number 1. Raises an exception, and then exception is treated for prevent errors). 
+If i update weboscket library i fall into error number 2, on local machine i cant reproduce it but on travis builds fails (sometimes and randomly :()
+[closing socket error](https://github.com/slackapi/python-slackclient/issues/171)
+[random errors closing socket](https://github.com/websocket-client/websocket-client/issues/449)
 
 # A tiny How To
 
