@@ -31,7 +31,7 @@ class TestClientStreamMethod(BaseTestCase):
         
         self.connection.stop()
         
-        self.assertTrue(self.send_callback_received.acquire(timeout=5))
+        self.assertTrue(self.send_callback_received.acquire(timeout=15))
 
 
 class TestClientNosslStreamMethod(TestClientStreamMethod):
