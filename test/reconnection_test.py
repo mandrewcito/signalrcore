@@ -7,7 +7,7 @@ import threading
 
 from subprocess import Popen, PIPE
 from signalrcore.hub_connection_builder import HubConnectionBuilder, HubConnectionError
-from test.base_test_case import BaseTestCase, Urls
+from test.base_test_case import BaseTestCase, Urls, CustomLock
 
 class TestReconnectMethods(BaseTestCase):
     
@@ -22,7 +22,7 @@ class TestReconnectMethods(BaseTestCase):
             })\
             .build()
 
-        _lock = threading.Lock()
+        _lock = CustomLock()
 
         connection.on_open(lambda : _lock.release())
         connection.on_close(lambda: _lock.release())
