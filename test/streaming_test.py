@@ -15,9 +15,6 @@ class TestSendMethod(BaseTestCase):
 
     def on_complete(self, x):
         self.complete = True
-    
-    def on_error(self, x):
-        raise ValueError(x)
 
     def on_next(self, x):
         item = self.items[0]
@@ -32,10 +29,32 @@ class TestSendMethod(BaseTestCase):
             [len(self.items), 500]).subscribe({
                 "next": self.on_next,
                 "complete": self.on_complete,
-                "error": self.on_error
-            })
+                "error": self.fail # TestcaseFail
+             })
         while not self.complete:
             time.sleep(0.1)
+    
+    def test_stream_error(self):
+        self.complete = False
+        self.items = list(range(0,10))
+
+        my_stream =  self.connection.stream(
+            "Counter",
+            [len(self.items), 500])
+
+        self.assertRaises(TypeError, lambda: my_stream.subscribe(None))
+
+        self.assertRaises(TypeError, lambda:my_stream.subscribe([self.on_next]))        
+
+        self.assertRaises(KeyError, lambda: my_stream.subscribe({
+                "key":self.on_next
+            }))     
+
+        self.assertRaises(ValueError, lambda: my_stream.subscribe({
+                "next": "",
+                "complete": 1,
+                "error": [] # TestcaseFail
+             }))
 
 class TestSendNoSslMethod(TestSendMethod):
     server_url = Urls.server_url_no_ssl

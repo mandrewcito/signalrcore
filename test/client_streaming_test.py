@@ -10,14 +10,6 @@ from signalrcore.subject import Subject
 from test.base_test_case import BaseTestCase, Urls
 
 class TestClientStreamMethod(BaseTestCase):
-    received = False
-    items = list(range(0,10))
-
-    def on_complete(self, x):
-        self.complete = True
-    
-    def on_error(self, x):
-        raise ValueError(x)
 
     def test_stream(self):
         self.complete = False

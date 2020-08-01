@@ -8,7 +8,7 @@ import uuid
 from subprocess import Popen, PIPE
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from signalrcore.subject import Subject
-from test.base_test_case import BaseTestCase, Urls, CustomLock
+from test.base_test_case import BaseTestCase, Urls
 
 class TestClientStreamMethod(BaseTestCase):    
     def setUp(self):
@@ -16,14 +16,11 @@ class TestClientStreamMethod(BaseTestCase):
 
     def tearDown(self):
         pass
-    
-    def on_close(self):
-        self.send_callback_received.release()
 
     def test_open_close(self):
         self.connection = self.get_connection()
 
-        _lock = CustomLock()
+        _lock = threading.Lock()
         self.connection.on_open(lambda: _lock.release())
         self.connection.on_close(lambda: _lock.release())
 

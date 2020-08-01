@@ -71,6 +71,23 @@ hub_connection = HubConnectionBuilder()\
                 "max_attempts": 5
             }).build()
 ```
+### Unauthorized erros
+A login function must provide a error control if authorization fails. When connection starts, if authorization fails exception will be propagued.
+
+```python
+    def login(self):
+        response = requests.post(
+            self.login_url,
+            json={
+                "username": self.email,
+                "password": self.password
+                },verify=False)
+        if response.status_code == 200:
+            return response.json()["token"]
+        raise requests.exceptions.ConnectionError()
+
+    hub_connection.start()   # this code will raise  requests.exceptions.ConnectionError() if auth fails
+```
 ## Configure logging
 
 ```python
