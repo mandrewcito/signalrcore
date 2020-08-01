@@ -30,9 +30,18 @@ cd ../signalrcore
 make tests
 ```
 
+## known issues
+
+Issues related with closing socket inherited from websocket-client library. Due this problems i cant update library to versions higher than websocket-client 0.54.0. 
+I'm working for solve it, for now its patched (Error number 1. Raises an exception, and then exception is treated for prevent errors). 
+If i update weboscket library i fall into error number 2, on local machine i cant reproduce it but on travis builds fails (sometimes and randomly :()
+* [1. Closing socket error](https://github.com/slackapi/python-slackclient/issues/171)
+* [2. Random errors closing socket](https://github.com/websocket-client/websocket-client/issues/449)
+
 # A tiny How To
 
 ## Connect to a server without auth
+
 ```python
 hub_connection = HubConnectionBuilder()\
     .with_url(server_url)\
@@ -64,6 +73,23 @@ hub_connection = HubConnectionBuilder()\
                 "reconnect_interval": 5,
                 "max_attempts": 5
             }).build()
+```
+### Unauthorized erros
+A login function must provide a error control if authorization fails. When connection starts, if authorization fails exception will be propagued.
+
+```python
+    def login(self):
+        response = requests.post(
+            self.login_url,
+            json={
+                "username": self.email,
+                "password": self.password
+                },verify=False)
+        if response.status_code == 200:
+            return response.json()["token"]
+        raise requests.exceptions.ConnectionError()
+
+    hub_connection.start()   # this code will raise  requests.exceptions.ConnectionError() if auth fails
 ```
 ## Configure logging
 
