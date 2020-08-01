@@ -10,7 +10,6 @@ from .protocol.json_hub_protocol import JsonHubProtocol
 from .subject import Subject
 
 
-
 class HubConnectionError(ValueError):
     pass
 
@@ -48,16 +47,16 @@ class HubConnectionBuilder(object):
             hub_url,
             options=None):
         if hub_url is None or hub_url.strip() == "":
-            raise HubConnectionError("hub_url must be a valid url.")
+            raise ValueError("hub_url must be a valid url.")
 
         if options is not None and type(options) != dict:
-            raise HubConnectionError(
+            raise TypeError(
                 "options must be a dict {0}.".format(self.options))
 
         if options is not None \
                 and "access_token_factory" in options.keys()\
                 and not callable(options["access_token_factory"]):
-            raise HubConnectionError(
+            raise TypeError(
                 "access_token_factory must be a function without params")
 
         if options is not None:
@@ -103,7 +102,7 @@ class HubConnectionBuilder(object):
         if self.has_auth_configured:
             auth_function = self.options["access_token_factory"]
             if auth_function is None or not callable(auth_function):
-                raise HubConnectionError(
+                raise TypeError(
                     "access_token_factory is not function")
         if "verify_ssl" in self.options.keys() and type(self.options["verify_ssl"]) is bool:
             self.verify_ssl = self.options["verify_ssl"]
@@ -197,7 +196,7 @@ class HubConnectionBuilder(object):
             raise HubConnectionError("Hub is not running you cand send messages")
         
         if type(arguments) is not list and type(arguments) is not Subject:
-            raise HubConnectionError("Arguments of a message must be a list or subject")
+            raise TypeError("Arguments of a message must be a list or subject")
 
         if type(arguments) is list:
             self.hub.send(InvocationMessage(

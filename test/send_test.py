@@ -23,6 +23,13 @@ class TestSendMethod(BaseTestCase):
         self.assertEqual(args[1], self.message)
         self.received = True
 
+
+    def test_send_bad_args(self):
+        class A():
+            pass
+
+        self.assertRaises(TypeError, lambda : self.connection.send("SendMessage", A()))
+
     def test_send(self):
         self.message = "new message {0}".format(uuid.uuid4())
         self.username = "mandrewcito"

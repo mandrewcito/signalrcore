@@ -122,8 +122,9 @@ class BaseHubConnection(object):
     def stop(self):
         self.logger.debug("Connection stop")
         if self.state == ConnectionState.connected:
-            self._ws.close()
             self.connection_checker.stop()
+            self._ws.close()
+            #self._ws.teardown()           
             self.state = ConnectionState.disconnected
 
     def register_handler(self, event, callback):
@@ -154,7 +155,7 @@ class BaseHubConnection(object):
         if self.on_disconnect is not None and callable(self.on_disconnect):
             self.on_disconnect()
 
-    def on_error(self, ws, error):
+    def on_error(self, error):
         """
         Throws error related on https://github.com/websocket-client/websocket-client/issues/449
 
@@ -166,13 +167,13 @@ class BaseHubConnection(object):
         """
         self.logger.debug("-- web socket error --")
         if (type(error) is AttributeError and "'NoneType' object has no attribute 'connected'" in str(error)):
-            self.logger.warn("Websocket closing error: issue https://github.com/websocket-client/websocket-client/issues/449")
-            self.logger.warn("Websocket closing error: issue https://github.com/websocket-client/websocket-client/issues/449")
+            self.logger.warning("Websocket closing error: issue https://github.com/websocket-client/websocket-client/issues/449")
             self.on_disconnect()                    
         else:
             self.logger.error(traceback.format_exc(5, True))
             self.logger.error("{0} {1}".format(self, error))        
             self.logger.error("{0} {1}".format(error, type(error)))
+            self.on_disconnect()
             raise HubError(error)
 
     def on_message(self, raw_message):
