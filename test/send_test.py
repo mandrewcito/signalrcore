@@ -35,21 +35,19 @@ class TestSendMethod(BaseTestCase):
         self.username = "mandrewcito"
         self.received = False
         self.connection.send("SendMessage", [self.username, self.message])
-        t0 = time.time()
         while not self.received:
             time.sleep(0.1)
-            if time.time() - t0 > 10:
-                raise ValueError("TIMEOUT")
+        self.assertTrue(self.received)
 
     def test_send_with_callback(self):
         self.message = "new message {0}".format(uuid.uuid4())
         self.username = "mandrewcito"
         self.received = False
-        send_callback_received = threading.Lock()
-        send_callback_received.acquire()
-        self.connection.send("SendMessage", [self.username, self.message], lambda m: send_callback_received.release())
-        if not send_callback_received.acquire(timeout=1):
-            raise ValueError("CALLBACK NOT RECEIVED")
+        _lock = threading.Lock()
+        _lock.acquire()
+        self.connection.send("SendMessage", [self.username, self.message], lambda m: _lock.release())
+        self.assertTrue(_lock.acquire(timeout=10))
+        del _lock
 
 
 class TestSendNoSslMethod(TestSendMethod):
@@ -83,8 +81,8 @@ class TestSendErrorMethod(BaseTestCase):
         t0 = time.time()
         while not self.received:
             time.sleep(0.1)
-            if time.time() - t0 > 10:
-                raise ValueError("TIMEOUT")
+        self.assertTrue(self.received)
+
 
 class TestSendErrorNoSslMethod(TestSendErrorMethod):
     server_url = Urls.server_url_no_ssl

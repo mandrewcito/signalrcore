@@ -16,14 +16,12 @@ class TestClientStreamMethod(BaseTestCase):
 
     def tearDown(self):
         pass
-    
-    def on_close(self):
-        self.send_callback_received.release()
 
     def test_open_close(self):
         self.connection = self.get_connection()
+      
+        _lock = threading.Lock()
 
-        _lock = CustomLock()
         self.connection.on_open(lambda: _lock.release())
         self.connection.on_close(lambda: _lock.release())
 

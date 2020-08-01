@@ -24,7 +24,7 @@ class AuthHubConnection(BaseHubConnection):
             self.headers["Authorization"] = "Bearer " + self.token
             super(AuthHubConnection, self).start()
         except Exception as ex:
-            Helpers.get_logger().error(self.__class__.__name__)
-            Helpers.get_logger().error(str(ex))
+            Helpers.get_logger().warning(self.__class__.__name__)
+            Helpers.get_logger().warning(str(ex))
             raise ex
 
