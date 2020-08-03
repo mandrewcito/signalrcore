@@ -40,7 +40,8 @@ class JsonHubProtocol(BaseHubProtocol):
         result = []
         for raw_message in raw_messages:
             dict_message = json.loads(raw_message)
-            result.append(self.get_message(dict_message))
+            if len(dict_message.keys()) > 0:
+                result.append(self.get_message(dict_message))
         return result
 
     def encode(self, message):

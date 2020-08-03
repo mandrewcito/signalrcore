@@ -40,6 +40,40 @@ class TestReconnectMethods(BaseTestCase):
         _lock.release()
         del _lock
 
+    def test_reconnect_interval(self):
+        connection = HubConnectionBuilder()\
+            .with_url(self.server_url, options={"verify_ssl":False})\
+            .configure_logging(logging.ERROR)\
+            .with_automatic_reconnect({
+                "type": "interval",
+                "intervals": [1, 2, 4, 45, 6, 7, 8, 9, 10],
+                "keep_alive_interval": 3
+            })\
+            .build()
+
+        _lock = threading.Lock()
+
+        connection.on_open(lambda : _lock.release())
+        connection.on_close(lambda: _lock.release())
+
+        self.assertTrue(_lock.acquire(timeout=30))
+
+        connection.start()
+
+        self.assertTrue(_lock.acquire(timeout=30))
+        connection.send("DisconnectMe", [])
+
+        time.sleep(25)
+        
+        connection.send("SendMessage", ["user", "reconnected!"])
+
+        connection.stop()
+        
+        self.assertTrue(_lock.acquire(timeout=30))
+
+        _lock.release()
+        del _lock
+
     def tearDown(self):
         pass
 
