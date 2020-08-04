@@ -77,10 +77,13 @@ class RawReconnectionHandler(ReconnectionHandler):
 
 class IntervalReconnectionHandler(ReconnectionHandler):
     def __init__(self, intervals):
+        super(IntervalReconnectionHandler, self).__init__()
         self._intervals = intervals
-
+        
     def next(self):
         self.reconnecting = True
         index = self.attempt_number
         self.attempt_number += 1
+        if index >= len(self._intervals):
+            raise ValueError("Max intervals reached {0}".format(self._intervals))
         return self._intervals[index]
