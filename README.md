@@ -1,7 +1,7 @@
 # SignalR core client
 [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg?logo=paypal&style=flat-square)](https://www.paypal.me/mandrewcito/1)
 ![Pypi](https://img.shields.io/pypi/v/signalrcore.svg)
-[![Downloads](https://pepy.tech/badge/signalrcore/week)](https://pepy.tech/project/signalrcore/moth)
+[![Downloads](https://pepy.tech/badge/signalrcore/month)](https://pepy.tech/project/signalrcore/month)
 [![Downloads](https://pepy.tech/badge/signalrcore)](https://pepy.tech/project/signalrcore)
 ![Issues](https://img.shields.io/github/issues/mandrewcito/signalrcore.svg)
 ![Open issues](https://img.shields.io/github/issues-raw/mandrewcito/signalrcore.svg)
