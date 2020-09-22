@@ -12,6 +12,7 @@ setuptools.setup(
     keywords="signalr core client 3.0",
     long_description=long_description,
     long_description_content_type="text/markdown",
+    license_file="LICENSE",
     url="https://github.com/mandrewcito/signalrcore",
     packages=setuptools.find_packages(),
     classifiers=[
