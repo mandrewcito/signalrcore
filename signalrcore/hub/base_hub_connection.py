@@ -110,10 +110,13 @@ class BaseHubConnection(object):
     def start(self):
         if not self.skip_negotiation:
             self.negotiate()
+        
         self.logger.debug("Connection started")
+
         if self.state == ConnectionState.connected:
             self.logger.warning("Already connected unable to start")
-            return
+            return False
+
         self.state = ConnectionState.connecting
         self.logger.debug("start url:" + self.url)
         self._ws = websocket.WebSocketApp(
@@ -130,6 +133,8 @@ class BaseHubConnection(object):
             ))
         self._thread.daemon = True
         self._thread.start()
+        
+        return True
 
     def stop(self):
         self.logger.debug("Connection stop")
@@ -306,13 +311,13 @@ class BaseHubConnection(object):
             threading.Thread(
                 target=self.deferred_reconnect,
                 args=(sleep_time,)
-            )
+            ).start()
 
     def deferred_reconnect(self, sleep_time):
         time.sleep(sleep_time)
         try:
             if not self.connection_alive:
-                self._send_ping()
+                self.send(PingMessage())
         except Exception as ex:
             self.reconnection_handler.reconnecting = False
             self.connection_alive = False

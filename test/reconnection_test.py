@@ -57,6 +57,33 @@ class TestReconnectMethods(BaseTestCase):
             .build()
         self.reconnect_test(connection)
 
+
+    def test_no_reconnect(self):
+        connection = HubConnectionBuilder()\
+            .with_url(self.server_url, options={"verify_ssl": False})\
+            .configure_logging(logging.ERROR)\
+            .build()
+        _lock = threading.Lock()
+
+        connection.on_open(lambda: _lock.release())
+        connection.on_close(lambda: _lock.release())
+
+        connection.on("ReceiveMessage", lambda _: _lock.release())
+
+        self.assertTrue(_lock.acquire(timeout=30))  # Released on open
+
+        connection.start()
+
+        self.assertTrue(_lock.acquire(timeout=30))  # Released on ReOpen
+
+        connection.send("DisconnectMe", [])
+
+        time.sleep(30)
+        
+        self.assertTrue(_lock.acquire(timeout=30))
+
+        self.assertRaises(ValueError, lambda: connection.send("DisconnectMe", []))
+
     def reconnect_test(self, connection):
         _lock = threading.Lock()
 
@@ -73,7 +100,7 @@ class TestReconnectMethods(BaseTestCase):
 
         connection.send("DisconnectMe", [])
 
-        time.sleep(10)  # wait for auto reconnect
+        time.sleep(30)  # wait for auto reconnect
 
         # released on receiveMessage
         self.assertTrue(_lock.acquire(timeout=30))

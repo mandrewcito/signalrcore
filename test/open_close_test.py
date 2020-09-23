@@ -17,6 +17,31 @@ class TestClientStreamMethod(BaseTestCase):
     def tearDown(self):
         pass
 
+    def test_start(self):
+        connection = HubConnectionBuilder()\
+            .with_url(self.server_url, options={"verify_ssl": False})\
+            .configure_logging(logging.ERROR)\
+            .build()
+        
+        _lock = threading.Lock()
+        self.assertTrue(_lock.acquire(timeout=30))
+        
+
+        connection.on_open(lambda: _lock.release())
+        connection.on_close(lambda: _lock.release())
+        
+        result = connection.start()
+
+        self.assertTrue(result)
+        
+        self.assertTrue(_lock.acquire(timeout=30))  # Released on open
+        
+        result = connection.start()
+
+        self.assertFalse(result)
+
+        connection.stop()
+
     def test_open_close(self):
         self.connection = self.get_connection()
       
