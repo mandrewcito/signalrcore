@@ -7,8 +7,40 @@ import threading
 
 from subprocess import Popen, PIPE
 from signalrcore.hub_connection_builder import HubConnectionBuilder, HubConnectionError
+from signalrcore.hub.errors import HubError
 from test.base_test_case import BaseTestCase, Urls
 
+class TestSendException(BaseTestCase):
+    def receive_message(self, _):
+        raise Exception()
+
+    def setUp(self):
+        self.connection = self.get_connection()
+        self.connection.on("ReceiveMessage", self.receive_message)
+        self.connection.start()
+        while not self.connected:
+            time.sleep(0.1)
+    
+    def test_send_exception(self):
+        _lock = threading.Lock()
+        _lock.acquire()
+        self.connection.send("SendMessage", ["user", "msg"])
+        del _lock
+
+class TestSendWarning(BaseTestCase):
+    def setUp(self):
+        self.connection = self.get_connection()
+        self.connection.start()
+        while not self.connected:
+            time.sleep(0.1)
+    
+    def test_send_warning(self):
+        _lock = threading.Lock()
+        _lock.acquire()
+        self.connection.send("SendMessage", ["user", "msg"], lambda m: _lock.release())
+        self.assertTrue(_lock.acquire(timeout=10))
+        del _lock
+        
 class TestSendMethod(BaseTestCase):
     received = False
     message = None

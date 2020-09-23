@@ -184,8 +184,9 @@ class HubConnectionBuilder(object):
         return self.hub.stream(event, event_params)
 
     def start(self):
-        self.hub.start()
+        result = self.hub.start()
         self.running = True
+        return result
 
     def stop(self):
         self.hub.stop()

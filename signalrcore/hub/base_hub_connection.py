@@ -110,10 +110,13 @@ class BaseHubConnection(object):
     def start(self):
         if not self.skip_negotiation:
             self.negotiate()
+        
         self.logger.debug("Connection started")
+
         if self.state == ConnectionState.connected:
             self.logger.warning("Already connected unable to start")
-            return
+            return False
+
         self.state = ConnectionState.connecting
         self.logger.debug("start url:" + self.url)
         self._ws = websocket.WebSocketApp(
@@ -130,6 +133,8 @@ class BaseHubConnection(object):
             ))
         self._thread.daemon = True
         self._thread.start()
+        
+        return True
 
     def stop(self):
         self.logger.debug("Connection stop")
