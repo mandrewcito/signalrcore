@@ -306,7 +306,7 @@ class BaseHubConnection(object):
             threading.Thread(
                 target=self.deferred_reconnect,
                 args=(sleep_time,)
-            )
+            ).start()
 
     def deferred_reconnect(self, sleep_time):
         time.sleep(sleep_time)
