@@ -312,7 +312,7 @@ class BaseHubConnection(object):
         time.sleep(sleep_time)
         try:
             if not self.connection_alive:
-                self._send_ping()
+                self.send(PingMessage())
         except Exception as ex:
             self.reconnection_handler.reconnecting = False
             self.connection_alive = False
