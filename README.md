@@ -15,7 +15,7 @@
 
 * [Dev to posts with library examples and implementation](https://dev.to/mandrewcito/singlar-core-python-client-58e7)
 
-* [Pypy](https://pypi.org/project/signalrcore/)
+* [Pypi](https://pypi.org/project/signalrcore/)
 
 * [Wiki - This Doc](https://mandrewcito.github.io/signalrcore/)
 
