@@ -137,18 +137,15 @@ class HubConnectionBuilder(object):
         :param data:
         :return:
         """
-        reconnect_type = data["type"] if "type" in data.keys() else "raw"
+        reconnect_type = data.get("type", "raw")
 
-        max_attempts = data["max_attempts"] if "max_attempts" in data.keys() else None # Infinite reconnect
+        max_attempts = data.get("max_attempts", None)  # Infinite reconnect attempts
 
-        reconnect_interval = data["reconnect_interval"]\
-            if "reconnect_interval" in data.keys() else 5 # 5 sec interval
-        
-        keep_alive_interval = data["keep_alive_interval"]\
-            if "keep_alive_interval" in data.keys() else 15
+        reconnect_interval = data.get("reconnect_interval", 5)  # 5 sec interval
 
-        intervals = data["intervals"]\
-            if "intervals" in data.keys() else []  # Reconnection intervals
+        keep_alive_interval = data.get("keep_alive_interval", 15)
+
+        intervals = data.get("intervals", [])  # Reconnection intervals
 
         self.keep_alive_interval = keep_alive_interval
 
@@ -195,7 +192,7 @@ class HubConnectionBuilder(object):
     def send(self, method, arguments, on_invocation = None):
         if not self.running:
             raise HubConnectionError("Hub is not running you cand send messages")
-        
+
         if type(arguments) is not list and type(arguments) is not Subject:
             raise TypeError("Arguments of a message must be a list or subject")
 
