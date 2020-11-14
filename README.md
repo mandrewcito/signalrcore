@@ -197,6 +197,10 @@ hub_connection.on_open(lambda: print("connection opened and handshake received r
 hub_connection.on_close(lambda: print("connection closed"))
 
 ```
+### On hub error (Hub Exceptions ...)
+```
+hub_connection.on_error(lambda data: print(f"An exception was thrown closed{data.error}"))
+```
 ### Register an operation 
 ReceiveMessage - signalr method
 print - function that has as parameters args of signalr method

@@ -1,7 +1,8 @@
 # SignalR core client
 [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg?logo=paypal&style=flat-square)](https://www.paypal.me/mandrewcito/1)
 ![Pypi](https://img.shields.io/pypi/v/signalrcore.svg)
-![Pypi - downloads month](https://img.shields.io/pypi/dm/signalrcore.svg)
+[![Downloads](https://pepy.tech/badge/signalrcore/month)](https://pepy.tech/project/signalrcore/month)
+[![Downloads](https://pepy.tech/badge/signalrcore)](https://pepy.tech/project/signalrcore)
 ![Issues](https://img.shields.io/github/issues/mandrewcito/signalrcore.svg)
 ![Open issues](https://img.shields.io/github/issues-raw/mandrewcito/signalrcore.svg)
 ![travis build](https://img.shields.io/travis/mandrewcito/signalrcore.svg)
@@ -14,7 +15,7 @@
 
 * [Dev to posts with library examples and implementation](https://dev.to/mandrewcito/singlar-core-python-client-58e7)
 
-* [Pypy](https://pypi.org/project/signalrcore/)
+* [Pypi](https://pypi.org/project/signalrcore/)
 
 * [Wiki - This Doc](https://mandrewcito.github.io/signalrcore/)
 
@@ -195,6 +196,10 @@ on_close - fires when connection is closed
 hub_connection.on_open(lambda: print("connection opened and handshake received ready to send messages"))
 hub_connection.on_close(lambda: print("connection closed"))
 
+```
+### On hub error (Hub Exceptions ...)
+```
+hub_connection.on_error(lambda data: print(f"An exception was thrown closed{data.error}"))
 ```
 ### Register an operation 
 ReceiveMessage - signalr method
