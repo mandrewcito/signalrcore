@@ -82,7 +82,7 @@ class BaseHubConnection(object):
         self.reconnection_handler = reconnection_handler
         self.on_connect = lambda : self.logger.info("on_connect not defined")
         self.on_disconnect = lambda : self.logger.info("on_disconnect not defined")
-        self.on_error = lambda error: self.logger.info(f"on_error not defined {error}")
+        self.on_error = lambda error: self.logger.info("on_error not defined {0}".format(error))
 
     def negotiate(self):
         negotiate_url = Helpers.get_negotiate_url(self.url)

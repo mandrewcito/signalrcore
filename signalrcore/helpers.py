@@ -1,12 +1,6 @@
 import sys
-import urllib
 import logging
-if sys.version_info.major == 2:
-    import urlparse as parse
-    query_encode = urllib.urlencode
-else:
-    import urllib.parse as parse
-    query_encode = urllib.parse.urlencode
+import urllib.parse as parse
 
 
 class Helpers:
@@ -97,7 +91,7 @@ class Helpers:
         query_string_parts["id"] = id
 
         url_parts = url_parts._replace(
-            query=query_encode(
+            query=parse.urlencode(
                 query_string_parts,
                 doseq=True))
 
