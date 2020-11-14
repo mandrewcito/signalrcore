@@ -16,7 +16,6 @@ class TestSendException(BaseTestCase):
 
     def setUp(self):
         self.connection = self.get_connection()
-        self.connection.on("ReceiveMessage", self.receive_message)
         self.connection.start()
         while not self.connected:
             time.sleep(0.1)
@@ -26,6 +25,20 @@ class TestSendException(BaseTestCase):
         _lock.acquire()
         self.connection.send("SendMessage", ["user", "msg"])
         del _lock
+
+    def test_hub_error(self):
+        _lock = threading.Lock()
+
+        self.assertTrue(_lock.acquire(timeout=30))     
+        self.connection.on_error(lambda _: _lock.release())
+
+        def on_message(_):
+            _lock.release()
+            self.assertTrue(_lock.acquire(timeout=30)) 
+
+        self.connection.on("ThrowExceptionCall", on_message)
+        self.connection.send("ThrowException", ["msg"])
+        self.assertTrue(_lock.acquire(timeout=30)) 
 
 class TestSendWarning(BaseTestCase):
     def setUp(self):

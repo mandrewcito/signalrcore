@@ -168,6 +168,9 @@ class HubConnectionBuilder(object):
     def on_open(self, callback):
         self.hub.on_connect = callback
 
+    def on_error(self, callback):
+        self.hub.on_error = callback
+
     def on(self, event, callback_function):
         """
         Register a callback on the specified event

@@ -82,6 +82,7 @@ class BaseHubConnection(object):
         self.reconnection_handler = reconnection_handler
         self.on_connect = lambda : self.logger.info("on_connect not defined")
         self.on_disconnect = lambda : self.logger.info("on_disconnect not defined")
+        self.on_error = lambda error: self.logger.info(f"on_error not defined {error}")
 
     def negotiate(self):
         negotiate_url = Helpers.get_negotiate_url(self.url)
@@ -123,7 +124,7 @@ class BaseHubConnection(object):
             self.url,
             header=self.headers,
             on_message=self.on_message,
-            on_error=self.on_error,
+            on_error=self.on_socket_error,
             on_close=self.on_close,
             on_open=self.on_open,
             )
@@ -172,7 +173,7 @@ class BaseHubConnection(object):
         if self.on_disconnect is not None and callable(self.on_disconnect):
             self.on_disconnect()
 
-    def on_error(self, error):
+    def on_socket_error(self, error):
         """
         Throws error related on https://github.com/websocket-client/websocket-client/issues/449
 
@@ -229,10 +230,16 @@ class BaseHubConnection(object):
                 return
 
             if message.type == MessageType.completion:
+                if message.error is not None and len(message.error) > 0:
+                    self.on_error(message)
+
+                # Send callbacks
                 fired_handlers = list(
                     filter(
                         lambda h: h.invocation_id == message.invocation_id,
                         self.stream_handlers))
+
+                # Stream callbacks
                 for handler in fired_handlers:
                     handler.complete_callback(message)
 
