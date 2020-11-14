@@ -3,18 +3,10 @@ from ..helpers import Helpers
 
 
 class AuthHubConnection(BaseHubConnection):
-    def __init__(self, url, protocol, auth_function, keep_alive_interval=15, reconnection_handler=None,
-                 headers={}, verify_ssl=False, skip_negotiation=False):
+    def __init__(self, auth_function, headers={}, **kwargs):
         self.headers = headers
         self.auth_function = auth_function
-        super(AuthHubConnection, self).__init__(
-            url,
-            protocol,
-            headers=headers,
-            keep_alive_interval=keep_alive_interval,
-            reconnection_handler=reconnection_handler,
-            verify_ssl=verify_ssl,
-            skip_negotiation=skip_negotiation)
+        super(AuthHubConnection, self).__init__(**kwargs)
 
     def start(self):
         try:

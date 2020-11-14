@@ -60,7 +60,7 @@ class BaseHubConnection(object):
             keep_alive_interval=15,
             reconnection_handler=None,
             verify_ssl=False,
-            skip_negotiation=False):
+            skip_negotiation=False, **kwargs):
         self.skip_negotiation = skip_negotiation
         self.logger = Helpers.get_logger()
         self.url = url
@@ -80,8 +80,8 @@ class BaseHubConnection(object):
             keep_alive_interval
         )
         self.reconnection_handler = reconnection_handler
-        self.on_connect = None
-        self.on_disconnect = None
+        self.on_connect = lambda : self.logger.info("on_connect not defined")
+        self.on_disconnect = lambda : self.logger.info("on_disconnect not defined")
 
     def negotiate(self):
         negotiate_url = Helpers.get_negotiate_url(self.url)
@@ -319,6 +319,7 @@ class BaseHubConnection(object):
             if not self.connection_alive:
                 self.send(PingMessage())
         except Exception as ex:
+            self.logger.error(ex)
             self.reconnection_handler.reconnecting = False
             self.connection_alive = False
 
@@ -330,5 +331,5 @@ class BaseHubConnection(object):
             StreamInvocationMessage(
                 invocation_id,
                 event,
-                event_params, **{"headers":{}}))
+                event_params, **{"headers": self.headers}))
         return stream_obj
