@@ -328,8 +328,7 @@ class BaseHubConnection(object):
         self.stream_handlers.append(stream_obj)
         self.send(
             StreamInvocationMessage(
-                {},
                 invocation_id,
                 event,
-                event_params))
+                event_params, **{"headers":{}}))
         return stream_obj

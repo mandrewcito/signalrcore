@@ -198,10 +198,10 @@ class HubConnectionBuilder(object):
 
         if type(arguments) is list:
             self.hub.send(InvocationMessage(
-                {},
                 str(uuid.uuid4()),
                 method,
-                arguments),
+                arguments,
+                **{"headers":{}}),
                 on_invocation)
 
         if type(arguments) is Subject:

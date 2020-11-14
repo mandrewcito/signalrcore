@@ -17,7 +17,7 @@ Example
 class CancelInvocationMessage(BaseHeadersMessage):
     def __init__(
             self,
-            headers,
-            invocation_id):
-        super(CancelInvocationMessage, self).__init__(5, headers)
+            invocation_id, 
+            **kwargs):
+        super(CancelInvocationMessage, self).__init__(5, **kwargs)
         self.invocation_id = invocation_id

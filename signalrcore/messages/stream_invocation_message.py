@@ -26,11 +26,11 @@ Example:
 class StreamInvocationMessage(BaseHeadersMessage):
     def __init__(
             self,
-            headers,
             invocation_id,
             target,
-            arguments):
-        super(StreamInvocationMessage, self).__init__(4, headers)
+            arguments,
+            **kwargs):
+        super(StreamInvocationMessage, self).__init__(4, **kwargs)
         self.invocation_id = invocation_id
         self.target = target
         self.arguments = arguments
