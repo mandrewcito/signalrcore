@@ -86,13 +86,6 @@ class HubConnectionBuilder(object):
         return self
 
     def build(self):
-        """"
-        self.token = token
-        self.headers = headers
-        self.negotiate_headers = negotiate_headers
-        self.has_auth_configured = token is not None
-
-        """
         self.protocol = JsonHubProtocol()
         self.headers = {}
 
