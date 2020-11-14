@@ -11,22 +11,6 @@ class Urls:
     login_url_ssl =  "https://localhost:5001/users/authenticate"
     login_url_no_ssl =  "http://localhost:5000/users/authenticate"
 
-class CustomLock(object):
-    def __init__(self):
-        super().__init__()
-        self._locked = False
-
-    def acquire(self, timeout=None):
-        t0 = time.time()
-        while self._locked:
-            if timeout is not  None and t0 - time.time() > timeout:
-                return False
-        self._locked = True
-        return True
-
-    def release(self):
-        self._locked = False
-
 class InternalTestCase(unittest.TestCase):
     connection = None
     connected = False
