@@ -11,46 +11,12 @@ from signalrcore.messages.stream_invocation_message\
     import StreamInvocationMessage
 from .reconnection import ConnectionStateChecker
 from signalrcore.messages.ping_message import PingMessage
-from .connection_state import ConnectionState
+from .connection import ConnectionState
 from .errors import UnAuthorizedHubError, HubError
 from signalrcore.helpers import Helpers
+from .handlers import StreamHandler, InvocationHandler
 
 
-class StreamHandler(object):
-    def __init__(self, event, invocation_id):
-        self.event = event
-        self.invocation_id = invocation_id
-        self.next_callback = lambda _: logging.warning("next stream handler fired, no callback configured")
-        self.complete_callback = lambda _: logging.warning("next complete handler fired, no callback configured")
-        self.error_callback = lambda _: logging.warning("next error handler fired, no callback configured")
-    
-    def subscribe(self, subscribe_callbacks):
-        error = " subscribe object must be a dict like {0}".format({
-                "next": None,
-                "complete": None,
-                "error": None
-                })
-
-        if subscribe_callbacks is None or type(subscribe_callbacks) is not dict:
-            raise TypeError(error)
-
-        if "next" not in subscribe_callbacks or "complete" not in subscribe_callbacks \
-                or "error" not in subscribe_callbacks:
-            raise KeyError(error)
-
-        if not callable(subscribe_callbacks["next"]) or not callable(subscribe_callbacks["next"]) \
-                or not callable(subscribe_callbacks["next"]): 
-            raise ValueError("Suscribe callbacks must be functions")
-
-        self.next_callback = subscribe_callbacks["next"]
-        self.complete_callback = subscribe_callbacks["complete"]
-        self.error_callback = subscribe_callbacks["error"]
-
-class InvocationHandler(object):
-    def __init__(self, invocation_id, complete_callback):
-        self.invocation_id = invocation_id
-        self.complete_callback = complete_callback
-        
 class BaseHubConnection(object):
     def __init__(
             self,
@@ -338,5 +304,6 @@ class BaseHubConnection(object):
             StreamInvocationMessage(
                 invocation_id,
                 event,
-                event_params, **{"headers": self.headers}))
+                event_params,
+                headers=self.headers))
         return stream_obj

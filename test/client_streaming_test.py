@@ -21,5 +21,6 @@ class TestClientStreamMethod(BaseTestCase):
         subject.complete()
         self.assertTrue(len(self.items) == 0)
 
+
 class TestClientNosslStreamMethod(TestClientStreamMethod):
     server_url = Urls.server_url_no_ssl
