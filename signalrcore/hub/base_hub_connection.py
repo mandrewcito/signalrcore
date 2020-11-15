@@ -15,6 +15,7 @@ from .connection import ConnectionState
 from .errors import UnAuthorizedHubError, HubError
 from signalrcore.helpers import Helpers
 from .handlers import StreamHandler, InvocationHandler
+from ..protocol.messagepack_protocol import MessagePackHubProtocol
 
 
 class BaseHubConnection(object):
@@ -254,7 +255,7 @@ class BaseHubConnection(object):
         try:
             if on_invocation:
                 self.stream_handlers.append(InvocationHandler(message.invocation_id, on_invocation))
-            self._ws.send(self.protocol.encode(message))
+            self._ws.send(self.protocol.encode(message), opcode=0x2 if type(self.protocol) == MessagePackHubProtocol else 0x1)
             self.connection_checker.last_message = time.time()
             if self.reconnection_handler is not None:
                 self.reconnection_handler.reset()

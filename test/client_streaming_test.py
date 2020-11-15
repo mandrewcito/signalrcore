@@ -21,6 +21,12 @@ class TestClientStreamMethod(BaseTestCase):
         subject.complete()
         self.assertTrue(len(self.items) == 0)
 
+class TestClientStreamMethodMsgPack(TestClientStreamMethod):
+    def get_connection(self):
+        return super().get_connection(msgpack=True)    
+
+class TestClientNosslStreamMethodMsgPack(TestClientStreamMethodMsgPack):
+    server_url = Urls.server_url_no_ssl
 
 class TestClientNosslStreamMethod(TestClientStreamMethod):
     server_url = Urls.server_url_no_ssl

@@ -2,7 +2,7 @@ import unittest
 import logging
 import time
 from signalrcore.hub_connection_builder import HubConnectionBuilder
-
+from signalrcore.protocol.messagepack_protocol import MessagePackHubProtocol
 class Urls:
     server_url_no_ssl = "ws://localhost:5000/chatHub"
     server_url_ssl = "wss://localhost:5001/chatHub"
@@ -14,6 +14,8 @@ class Urls:
 class InternalTestCase(unittest.TestCase):
     connection = None
     connected = False
+    def get_connection(self):
+        raise NotImplementedError()
 
     def setUp(self):
         self.connection = self.get_connection()
@@ -36,17 +38,21 @@ class InternalTestCase(unittest.TestCase):
 class BaseTestCase(InternalTestCase):
     server_url = Urls.server_url_ssl
 
-    def get_connection(self):
-        hub = HubConnectionBuilder()\
+    def get_connection(self, msgpack=False):
+        builder = HubConnectionBuilder()\
             .with_url(self.server_url, options={"verify_ssl":False})\
-            .configure_logging(logging.ERROR)\
+            .configure_logging(logging.WARNING)\
             .with_automatic_reconnect({
                 "type": "raw",
                 "keep_alive_interval": 10,
                 "reconnect_interval": 5,
                 "max_attempts": 5
-            })\
-            .build()
+            })
+
+        if msgpack:
+            builder.with_hub_protocol(MessagePackHubProtocol())
+
+        hub = builder.build()
         hub.on_open(self.on_open)
         hub.on_close(self.on_close)
         return hub

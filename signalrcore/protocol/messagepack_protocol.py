@@ -1,31 +1,155 @@
+from datetime import date, datetime, timezone
+from enum import Enum
+import json
+import msgpack
+from msgpack.ext import Timestamp
+
+from ..messages import *
 from .base_hub_protocol import BaseHubProtocol
+from ..messages.handshake.request import HandshakeRequestMessage
+from ..messages.handshake.response import HandshakeResponseMessage
+from ..messages.invocation_message import InvocationMessage, InvocationClientStreamMessage  # 1
+from ..messages.stream_item_message import StreamItemMessage  # 2
+from ..messages.completion_message import CompletionMessage  # 3
+from ..messages.stream_invocation_message import StreamInvocationMessage  # 4
+from ..messages.cancel_invocation_message import CancelInvocationMessage  # 5
+from ..messages.ping_message import PingMessage  # 6
+from ..messages.close_message import CloseMessage  # 7
 from ..messages.message_type import MessageType
-from json import JSONEncoder  # TODO , JSONDecoder
+from ..helpers import Helpers
 
-# [1, Headers, InvocationId, NonBlocking, Target, [Arguments]]
-# [2, Headers, InvocationId, Item]
-# [3, Headers, InvocationId, ResultKind, Result?]
-# [4, Headers, InvocationId, Target, [Arguments]]
-# [5, Headers, InvocationId]
-# [6]
-# [7, Error]
+class MessagePackHubProtocol(BaseHubProtocol):
 
+    _priority = [
+        "type",
+        "headers",
+        "invocation_id",
+        "target",
+        "arguments",
+        "item",
+        "result_kind",
+        "result",
+        "stream_ids"
+    ]
 
-class MyEncoder(JSONEncoder):
-    #  https://github.com/PyCQA/pylint/issues/414
-    def default(self, o):
-        if type(o) is MessageType:
-            return o.value
-        return o.__dict__
-
-
-class MessagepackProtocol(BaseHubProtocol):
     def __init__(self):
-        super(MessagepackProtocol, self).__init__(
+        super(MessagePackHubProtocol, self).__init__(
             "messagepack", 1, "Text", chr(0x1E))
+        self.logger = Helpers.get_logger()
 
     def parse_messages(self, raw):
-        raise ValueError(" NOt implemented yet")
+        messages = []
+        offset = 0
+        while offset < len(raw):
+            length = msgpack.unpackb(raw[offset: offset + 1])
+            values = msgpack.unpackb(raw[offset + 1: offset + length + 1])
+            offset = offset + length + 1
+            message = self._decode_message(values)
+            messages.append(message)
+
+        return messages
+
+    def decode_handshake(self, raw_message):
+        messages = raw_message.decode("utf-8").split(self.record_separator)
+        data = json.loads(messages[0])
+        return HandshakeResponseMessage(data.get("error", None))
 
     def encode(self, message):
-        raise ValueError(" NOt implemented yet")
+        if type(message) is HandshakeRequestMessage:
+            content =  json.dumps(message.__dict__) 
+            return content + self.record_separator
+            
+        msg = self._encode_message(message)
+        encoded_message = msgpack.packb(msg)
+        varint_length = self._to_varint(len(encoded_message))
+        return varint_length + encoded_message
+
+    def _encode_message(self, message):
+        result = []
+        
+        # sort attributes
+        for attribute in self._priority:
+            if hasattr(message, attribute):
+                if (attribute == "type"):
+                    result.append(getattr(message, attribute).value)    
+                else:
+                    result.append(getattr(message, attribute))
+        return result
+
+    def _decode_message(self, raw):
+
+        # [1, Headers, InvocationId, Target, [Arguments], [StreamIds]]
+        # [2, Headers, InvocationId, Item]
+        # [3, Headers, InvocationId, ResultKind, Result]
+        # [4, Headers, InvocationId, Target, [Arguments], [StreamIds]]
+        # [5, Headers, InvocationId]
+        # [6]
+        # [7, Error, AllowReconnect?]
+
+        if raw[0] == 1: # InvocationMessage
+            if len(raw[5]) > 0:
+                return InvocationClientStreamMessage(
+                    headers=raw[1],
+                    stream_ids=raw[5],
+                    target=raw[3],
+                    arguments=raw[4])
+            else:
+                return InvocationMessage(
+                    headers=raw[1],
+                    invocation_id=raw[2],
+                    target=raw[3],
+                    arguments=raw[4])
+
+        elif raw[0] == 2: # StreamItemMessage
+            return StreamItemMessage(
+                headers=raw[1],
+                invocation_id=raw[2],
+                item=raw[3])
+
+        elif raw[0] == 3: # CompletionMessage
+            result_kind = raw[3]
+            if result_kind == 1:
+                return CompletionMessage(
+                    headers=raw[1],
+                    invocation_id=raw[2],
+                    result=None,
+                    error=raw[4])
+
+            elif result_kind == 2:
+                return CompletionMessage(headers=raw[1], invocation_id=raw[2], result=None, error=None)
+
+            elif result_kind == 3:
+                return CompletionMessage(headers=raw[1], invocation_id=raw[2], result=raw[4], error=None)
+
+            else: 
+                raise Exception("Unknown result kind.")
+
+        elif raw[0] == 4: # StreamInvocationMessage
+            return StreamInvocationMessage(headers=raw[1], invocation_id=raw[2], target=raw[3], arguments=raw[4]) # stream_id missing?
+
+        elif raw[0] == 5: # CancelInvocationMessage
+            return CancelInvocationMessage(headers=raw[1], invocation_id=raw[2])
+
+        elif raw[0] == 6: # PingMessageEncoding
+            return PingMessage()
+
+        elif raw[0] == 7: # CloseMessageEncoding
+            return CloseMessage(error=raw[1]) # AllowReconnect is missing
+
+        raise Exception("Unknown message type.")
+
+    def _to_varint(self, value):
+        buffer = b''
+
+        while True:
+
+            byte = value & 0x7f
+            value >>= 7
+
+            if value:
+                buffer += bytes((byte | 0x80, ))
+            else:
+                buffer += bytes((byte, ))
+                break
+
+        return buffer

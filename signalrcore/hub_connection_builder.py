@@ -126,6 +126,10 @@ class HubConnectionBuilder(object):
         Helpers.configure_logger(logging_level, handler)
         self.enable_trace = socket_trace
         return self
+    
+    def with_hub_protocol(self, protocol):
+        self.protocol = protocol
+        return self
 
     def build(self):
         """Configures the connection hub
@@ -136,7 +140,8 @@ class HubConnectionBuilder(object):
         Returns:
             [HubConnectionBuilder]: [self object for fluent interface purposes]
         """
-        self.protocol = JsonHubProtocol()
+        if self.protocol is None:
+            self.protocol = JsonHubProtocol()
         self.headers = {}
 
         if "headers" in self.options.keys() and type(self.options["headers"]) is dict:
