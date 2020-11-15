@@ -41,7 +41,7 @@ class BaseTestCase(InternalTestCase):
     def get_connection(self, msgpack=False):
         builder = HubConnectionBuilder()\
             .with_url(self.server_url, options={"verify_ssl":False})\
-            .configure_logging(logging.WARNING)\
+            .configure_logging(logging.ERROR)\
             .with_automatic_reconnect({
                 "type": "raw",
                 "keep_alive_interval": 10,

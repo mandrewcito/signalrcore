@@ -187,6 +187,19 @@ hub_connection = HubConnectionBuilder()\
         "max_attempts": 5
     }).build()
 ```
+
+## Configure messagepack
+
+```python
+from signalrcore.protocol.messagepack_protocol import MessagePackHubProtocol
+
+HubConnectionBuilder()\
+            .with_url(self.server_url, options={"verify_ssl":False})\
+                ... 
+            .with_hub_protocol(MessagePackHubProtocol())\
+                ...
+            .build()
+```
 ## Events
 
 ### On connect / On disconnect
