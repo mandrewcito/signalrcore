@@ -58,3 +58,11 @@ class TestSendMethod(BaseTestCase):
 
 class TestSendNoSslMethod(TestSendMethod):
     server_url = Urls.server_url_no_ssl
+
+class TestSendMethodMsgPack(TestSendMethod):
+    def get_connection(self):
+        return super().get_connection(msgpack=True)
+
+class TestSendMethodNoSslMsgPack(TestSendNoSslMethod):
+    def get_connection(self):
+        return super().get_connection(msgpack=True)

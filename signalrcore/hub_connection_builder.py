@@ -11,6 +11,8 @@ from .subject import Subject
 
 
 class HubConnectionError(ValueError):
+    """Hub connection error
+    """
     pass
 
 
@@ -44,8 +46,47 @@ class HubConnectionBuilder(object):
 
     def with_url(
             self,
-            hub_url,
-            options=None):
+            hub_url:str,
+            options:dict=None):
+        """Configure the hub url and options like negotiation and auth function
+
+        def login(self):
+            response = requests.post(
+                self.login_url,
+                json={
+                    "username": self.email,
+                    "password": self.password
+                    },verify=False)
+            return response.json()["token"]
+
+        self.connection = HubConnectionBuilder()\
+            .with_url(self.server_url,
+            options={
+                "verify_ssl": False,
+                "access_token_factory": self.login,
+                "headers": {
+                    "mycustomheader": "mycustomheadervalue"
+                }
+            })\
+            .configure_logging(logging.ERROR)\
+            .with_automatic_reconnect({
+                "type": "raw",
+                "keep_alive_interval": 10,
+                "reconnect_interval": 5,
+                "max_attempts": 5
+            }).build()
+
+        Args:
+            hub_url (string): Hub URL
+            options ([dict], optional): [description]. Defaults to None.
+
+        Raises:
+            ValueError: If url is invalid
+            TypeError: If options are not a dict or auth function is not callable
+
+        Returns:
+            [HubConnectionBuilder]: configured connection
+        """
         if hub_url is None or hub_url.strip() == "":
             raise ValueError("hub_url must be a valid url.")
 
@@ -60,7 +101,6 @@ class HubConnectionBuilder(object):
                 "access_token_factory must be a function without params")
 
         if options is not None:
-
             self.has_auth_configured = \
                 "access_token_factory" in options.keys()\
                 and callable(options["access_token_factory"])
@@ -73,27 +113,35 @@ class HubConnectionBuilder(object):
         return self
 
     def configure_logging(self, logging_level, socket_trace=False, handler=None):
-        """
-        Confiures signalr logging
-        :param handler:  custom logging handler
-        :param socket_trace: Enables socket package trace
-        :param logging_level: logging.INFO | logging.DEBUG ... from python logging class
-        :param log_format: python logging class format by default %(asctime)-15s %(clientip)s %(user)-8s %(message)s
-        :return: instance hub with logging configured
+        """Configures signalr logging
+
+        Args:
+            logging_level ([type]): logging.INFO | logging.DEBUG ... from python logging class
+            socket_trace (bool, optional): Enables socket package trace. Defaults to False.
+            handler ([type], optional):  Custom logging handler. Defaults to None.
+
+        Returns:
+            [HubConnectionBuilder]: Instance hub with logging configured
         """
         Helpers.configure_logger(logging_level, handler)
         self.enable_trace = socket_trace
         return self
+    
+    def with_hub_protocol(self, protocol):
+        self.protocol = protocol
+        return self
 
     def build(self):
-        """"
-        self.token = token
-        self.headers = headers
-        self.negotiate_headers = negotiate_headers
-        self.has_auth_configured = token is not None
+        """Configures the connection hub
 
+        Raises:
+            TypeError: Checks parameters an raises TypeError if one of them is wrong
+
+        Returns:
+            [HubConnectionBuilder]: [self object for fluent interface purposes]
         """
-        self.protocol = JsonHubProtocol()
+        if self.protocol is None:
+            self.protocol = JsonHubProtocol()
         self.headers = {}
 
         if "headers" in self.options.keys() and type(self.options["headers"]) is dict:
@@ -106,20 +154,20 @@ class HubConnectionBuilder(object):
                     "access_token_factory is not function")
         if "verify_ssl" in self.options.keys() and type(self.options["verify_ssl"]) is bool:
             self.verify_ssl = self.options["verify_ssl"]
-
+        
         self.hub = AuthHubConnection(
-            self.hub_url,
-            self.protocol,
-            auth_function,
-            keep_alive_interval=self.keep_alive_interval,
-            reconnection_handler=self.reconnection_handler,
-            headers=self.headers,
-            verify_ssl=self.verify_ssl,
-            skip_negotiation=self.skip_negotiation)\
+                headers=self.headers,            
+                auth_function=auth_function,
+                url=self.hub_url,
+                protocol=self.protocol,
+                keep_alive_interval=self.keep_alive_interval,
+                reconnection_handler=self.reconnection_handler,
+                verify_ssl=self.verify_ssl,
+                skip_negotiation=self.skip_negotiation)\
             if self.has_auth_configured else\
             BaseHubConnection(
-                self.hub_url,
-                self.protocol,
+                url=self.hub_url,
+                protocol=self.protocol,
                 keep_alive_interval=self.keep_alive_interval,
                 reconnection_handler=self.reconnection_handler,
                 headers=self.headers,
@@ -131,11 +179,26 @@ class HubConnectionBuilder(object):
 
         return self
 
-    def with_automatic_reconnect(self, data):
-        """
-        https://devblogs.microsoft.com/aspnet/asp-net-core-updates-in-net-core-3-0-preview-4/
-        :param data:
-        :return:
+    def with_automatic_reconnect(self, data:dict):
+        """Configures automatic reconnection
+            https://devblogs.microsoft.com/aspnet/asp-net-core-updates-in-net-core-3-0-preview-4/
+
+            hub = HubConnectionBuilder()\
+            .with_url(self.server_url, options={"verify_ssl":False})\
+            .configure_logging(logging.ERROR)\
+            .with_automatic_reconnect({
+                "type": "raw",
+                "keep_alive_interval": 10,
+                "reconnect_interval": 5,
+                "max_attempts": 5
+            })\
+            .build()
+
+        Args:
+            data (dict): [dict with autmatic reconnection parameters]
+
+        Returns:
+            [HubConnectionBuilder]: [self object for fluent interface purposes]
         """
         reconnect_type = data.get("type", "raw")
 
@@ -163,10 +226,28 @@ class HubConnectionBuilder(object):
         return self
 
     def on_close(self, callback):
+        """Configures on_close connection callback. It will be raised on connection closed event
+        connection.on_close(lambda: print("connection closed"))
+        Args:
+            callback (function): function without params
+        """
         self.hub.on_disconnect = callback
 
     def on_open(self, callback):
+        """Configures on_open connection callback. It will be raised on connection open event
+        connection.on_open(lambda: print("connection opened and handshake received ready to send messages"))
+        Args:
+            callback (function): funciton without params
+        """
         self.hub.on_connect = callback
+
+    def on_error(self, callback):
+        """Configures on_error connection callback. It will be raised if any hub method throws an exception.
+        connection.on_error(lambda data: print(f"An exception was thrown closed{data.error}"))
+        Args:
+            callback (function): function with one parameter. A CompletionMessage object.
+        """
+        self.hub.on_error = callback
 
     def on(self, event, callback_function):
         """
@@ -181,15 +262,30 @@ class HubConnectionBuilder(object):
         return self.hub.stream(event, event_params)
 
     def start(self):
+        """Starts the connection
+        """
         result = self.hub.start()
         self.running = True
         return result
 
     def stop(self):
+        """Stops the connection
+        """
         self.hub.stop()
         self.running = False
 
     def send(self, method, arguments, on_invocation = None):
+        """Sends a message 
+
+        Args:
+            method (string): Method name
+            arguments (list|Subject): Method parameters
+            on_invocation (function, optional): On invocation send callback will be raised on send server function ends. Defaults to None.
+
+        Raises:
+            HubConnectionError: If hub is not ready to send
+            TypeError: If arguments are invalid list or Subject
+        """
         if not self.running:
             raise HubConnectionError("Hub is not running you cand send messages")
 
@@ -198,10 +294,10 @@ class HubConnectionBuilder(object):
 
         if type(arguments) is list:
             self.hub.send(InvocationMessage(
-                {},
                 str(uuid.uuid4()),
                 method,
-                arguments),
+                arguments,
+                headers=self.headers),
                 on_invocation)
 
         if type(arguments) is Subject:

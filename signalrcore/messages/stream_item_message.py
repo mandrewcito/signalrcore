@@ -21,9 +21,9 @@ Example
 class StreamItemMessage(BaseHeadersMessage):
     def __init__(
             self,
-            headers,
             invocation_id,
-            item):
-        super(StreamItemMessage, self).__init__(2, headers)
+            item,
+            **kwargs):
+        super(StreamItemMessage, self).__init__(2, **kwargs)
         self.invocation_id = invocation_id
         self.item = item

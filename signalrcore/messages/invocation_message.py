@@ -40,11 +40,10 @@ Example (Non-Blocking):
 class InvocationMessage(BaseHeadersMessage):
     def __init__(
             self,
-            headers,
             invocation_id,
             target,
-            arguments):
-        super(InvocationMessage, self).__init__(1, headers)
+            arguments, **kwargs):
+        super(InvocationMessage, self).__init__(1, **kwargs)
         self.invocation_id = invocation_id
         self.target = target
         self.arguments = arguments
@@ -56,11 +55,11 @@ class InvocationMessage(BaseHeadersMessage):
 class InvocationClientStreamMessage(BaseHeadersMessage):
     def __init__(
             self,
-            headers,
             stream_ids,
             target,
-            arguments):
-        super(InvocationClientStreamMessage, self).__init__(1, headers)
+            arguments,
+            **kwargs):
+        super(InvocationClientStreamMessage, self).__init__(1, **kwargs)
         self.target = target
         self.arguments = arguments
         self.stream_ids = stream_ids

@@ -2,7 +2,7 @@ import unittest
 import logging
 import time
 from signalrcore.hub_connection_builder import HubConnectionBuilder
-
+from signalrcore.protocol.messagepack_protocol import MessagePackHubProtocol
 class Urls:
     server_url_no_ssl = "ws://localhost:5000/chatHub"
     server_url_ssl = "wss://localhost:5001/chatHub"
@@ -11,25 +11,11 @@ class Urls:
     login_url_ssl =  "https://localhost:5001/users/authenticate"
     login_url_no_ssl =  "http://localhost:5000/users/authenticate"
 
-class CustomLock(object):
-    def __init__(self):
-        super().__init__()
-        self._locked = False
-
-    def acquire(self, timeout=None):
-        t0 = time.time()
-        while self._locked:
-            if timeout is not  None and t0 - time.time() > timeout:
-                return False
-        self._locked = True
-        return True
-
-    def release(self):
-        self._locked = False
-
 class InternalTestCase(unittest.TestCase):
     connection = None
     connected = False
+    def get_connection(self):
+        raise NotImplementedError()
 
     def setUp(self):
         self.connection = self.get_connection()
@@ -52,8 +38,8 @@ class InternalTestCase(unittest.TestCase):
 class BaseTestCase(InternalTestCase):
     server_url = Urls.server_url_ssl
 
-    def get_connection(self):
-        hub = HubConnectionBuilder()\
+    def get_connection(self, msgpack=False):
+        builder = HubConnectionBuilder()\
             .with_url(self.server_url, options={"verify_ssl":False})\
             .configure_logging(logging.ERROR)\
             .with_automatic_reconnect({
@@ -61,8 +47,12 @@ class BaseTestCase(InternalTestCase):
                 "keep_alive_interval": 10,
                 "reconnect_interval": 5,
                 "max_attempts": 5
-            })\
-            .build()
+            })
+
+        if msgpack:
+            builder.with_hub_protocol(MessagePackHubProtocol())
+
+        hub = builder.build()
         hub.on_open(self.on_open)
         hub.on_close(self.on_close)
         return hub

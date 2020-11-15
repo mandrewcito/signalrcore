@@ -25,7 +25,7 @@ Example - A `Close` message with an error
 class CloseMessage(BaseHeadersMessage):
     def __init__(
             self,
-            headers,
-            error):
-        super(CloseMessage, self).__init__(7, headers)
+            error,
+            **kwargs):
+        super(CloseMessage, self).__init__(7, **kwargs)
         self.error = error

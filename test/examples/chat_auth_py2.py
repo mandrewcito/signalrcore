@@ -1,4 +1,6 @@
 import requests
+import sys
+sys.path.append("./")
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 
 

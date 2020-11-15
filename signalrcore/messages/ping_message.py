@@ -15,5 +15,5 @@ Example
 
 class PingMessage(BaseMessage):
     def __init__(
-            self):
-        super(PingMessage, self).__init__(6)
+            self, **kwargs):
+        super(PingMessage, self).__init__(6, **kwargs)

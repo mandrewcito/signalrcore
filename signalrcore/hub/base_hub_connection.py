@@ -11,46 +11,13 @@ from signalrcore.messages.stream_invocation_message\
     import StreamInvocationMessage
 from .reconnection import ConnectionStateChecker
 from signalrcore.messages.ping_message import PingMessage
-from .connection_state import ConnectionState
+from .connection import ConnectionState
 from .errors import UnAuthorizedHubError, HubError
 from signalrcore.helpers import Helpers
+from .handlers import StreamHandler, InvocationHandler
+from ..protocol.messagepack_protocol import MessagePackHubProtocol
 
 
-class StreamHandler(object):
-    def __init__(self, event, invocation_id):
-        self.event = event
-        self.invocation_id = invocation_id
-        self.next_callback = lambda _: logging.warning("next stream handler fired, no callback configured")
-        self.complete_callback = lambda _: logging.warning("next complete handler fired, no callback configured")
-        self.error_callback = lambda _: logging.warning("next error handler fired, no callback configured")
-    
-    def subscribe(self, subscribe_callbacks):
-        error = " subscribe object must be a dict like {0}".format({
-                "next": None,
-                "complete": None,
-                "error": None
-                })
-
-        if subscribe_callbacks is None or type(subscribe_callbacks) is not dict:
-            raise TypeError(error)
-
-        if "next" not in subscribe_callbacks or "complete" not in subscribe_callbacks \
-                or "error" not in subscribe_callbacks:
-            raise KeyError(error)
-
-        if not callable(subscribe_callbacks["next"]) or not callable(subscribe_callbacks["next"]) \
-                or not callable(subscribe_callbacks["next"]): 
-            raise ValueError("Suscribe callbacks must be functions")
-
-        self.next_callback = subscribe_callbacks["next"]
-        self.complete_callback = subscribe_callbacks["complete"]
-        self.error_callback = subscribe_callbacks["error"]
-
-class InvocationHandler(object):
-    def __init__(self, invocation_id, complete_callback):
-        self.invocation_id = invocation_id
-        self.complete_callback = complete_callback
-        
 class BaseHubConnection(object):
     def __init__(
             self,
@@ -60,7 +27,7 @@ class BaseHubConnection(object):
             keep_alive_interval=15,
             reconnection_handler=None,
             verify_ssl=False,
-            skip_negotiation=False):
+            skip_negotiation=False, **kwargs):
         self.skip_negotiation = skip_negotiation
         self.logger = Helpers.get_logger()
         self.url = url
@@ -80,8 +47,9 @@ class BaseHubConnection(object):
             keep_alive_interval
         )
         self.reconnection_handler = reconnection_handler
-        self.on_connect = None
-        self.on_disconnect = None
+        self.on_connect = lambda : self.logger.info("on_connect not defined")
+        self.on_disconnect = lambda : self.logger.info("on_disconnect not defined")
+        self.on_error = lambda error: self.logger.info("on_error not defined {0}".format(error))
 
     def negotiate(self):
         negotiate_url = Helpers.get_negotiate_url(self.url)
@@ -123,7 +91,7 @@ class BaseHubConnection(object):
             self.url,
             header=self.headers,
             on_message=self.on_message,
-            on_error=self.on_error,
+            on_error=self.on_socket_error,
             on_close=self.on_close,
             on_open=self.on_open,
             )
@@ -172,7 +140,7 @@ class BaseHubConnection(object):
         if self.on_disconnect is not None and callable(self.on_disconnect):
             self.on_disconnect()
 
-    def on_error(self, error):
+    def on_socket_error(self, error):
         """
         Throws error related on https://github.com/websocket-client/websocket-client/issues/449
 
@@ -229,10 +197,16 @@ class BaseHubConnection(object):
                 return
 
             if message.type == MessageType.completion:
+                if message.error is not None and len(message.error) > 0:
+                    self.on_error(message)
+
+                # Send callbacks
                 fired_handlers = list(
                     filter(
                         lambda h: h.invocation_id == message.invocation_id,
                         self.stream_handlers))
+
+                # Stream callbacks
                 for handler in fired_handlers:
                     handler.complete_callback(message)
 
@@ -281,7 +255,7 @@ class BaseHubConnection(object):
         try:
             if on_invocation:
                 self.stream_handlers.append(InvocationHandler(message.invocation_id, on_invocation))
-            self._ws.send(self.protocol.encode(message))
+            self._ws.send(self.protocol.encode(message), opcode=0x2 if type(self.protocol) == MessagePackHubProtocol else 0x1)
             self.connection_checker.last_message = time.time()
             if self.reconnection_handler is not None:
                 self.reconnection_handler.reset()
@@ -319,6 +293,7 @@ class BaseHubConnection(object):
             if not self.connection_alive:
                 self.send(PingMessage())
         except Exception as ex:
+            self.logger.error(ex)
             self.reconnection_handler.reconnecting = False
             self.connection_alive = False
 
@@ -328,8 +303,8 @@ class BaseHubConnection(object):
         self.stream_handlers.append(stream_obj)
         self.send(
             StreamInvocationMessage(
-                {},
                 invocation_id,
                 event,
-                event_params))
+                event_params,
+                headers=self.headers))
         return stream_obj

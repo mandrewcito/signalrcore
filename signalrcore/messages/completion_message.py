@@ -53,21 +53,19 @@ Example - The following `Completion` message is a protocol error because it has 
 
 class CompletionClientStreamMessage(BaseHeadersMessage):
     def __init__(
-            self,
-            headers,
-            invocation_id):
-        super(CompletionClientStreamMessage, self).__init__(3, headers)
+            self, invocation_id, **kwargs):
+        super(CompletionClientStreamMessage, self).__init__(3, **kwargs)
         self.invocation_id = invocation_id
 
 
 class CompletionMessage(BaseHeadersMessage):
     def __init__(
             self,
-            headers,
             invocation_id,
             result,
-            error):
-        super(CompletionMessage, self).__init__(3, headers)
+            error,
+            **kwargs):
+        super(CompletionMessage, self).__init__(3, **kwargs)
         self.invocation_id = invocation_id
         self.result = result
         self.error = error

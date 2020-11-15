@@ -1,8 +1,4 @@
-import sys
-if sys.version_info.major == 2:
-    from aenum import Enum
-else:
-    from enum import Enum
+from enum import Enum
 
 
 class MessageType(Enum):

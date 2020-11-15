@@ -15,7 +15,7 @@
 
 * [Dev to posts with library examples and implementation](https://dev.to/mandrewcito/singlar-core-python-client-58e7)
 
-* [Pypy](https://pypi.org/project/signalrcore/)
+* [Pypi](https://pypi.org/project/signalrcore/)
 
 * [Wiki - This Doc](https://mandrewcito.github.io/signalrcore/)
 
@@ -187,6 +187,19 @@ hub_connection = HubConnectionBuilder()\
         "max_attempts": 5
     }).build()
 ```
+
+## Configure messagepack
+
+```python
+from signalrcore.protocol.messagepack_protocol import MessagePackHubProtocol
+
+HubConnectionBuilder()\
+            .with_url(self.server_url, options={"verify_ssl":False})\
+                ... 
+            .with_hub_protocol(MessagePackHubProtocol())\
+                ...
+            .build()
+```
 ## Events
 
 ### On connect / On disconnect
@@ -196,6 +209,10 @@ on_close - fires when connection is closed
 hub_connection.on_open(lambda: print("connection opened and handshake received ready to send messages"))
 hub_connection.on_close(lambda: print("connection closed"))
 
+```
+### On hub error (Hub Exceptions ...)
+```
+hub_connection.on_error(lambda data: print(f"An exception was thrown closed{data.error}"))
 ```
 ### Register an operation 
 ReceiveMessage - signalr method

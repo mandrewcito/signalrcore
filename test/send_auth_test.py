@@ -6,7 +6,7 @@ import uuid
 import requests
 from subprocess import Popen, PIPE
 from signalrcore.hub_connection_builder import HubConnectionBuilder
-
+from signalrcore.protocol.messagepack_protocol import MessagePackHubProtocol
 from test.base_test_case import BaseTestCase, Urls
 
 class TestSendAuthMethod(BaseTestCase):
@@ -26,8 +26,8 @@ class TestSendAuthMethod(BaseTestCase):
                 },verify=False)
         return response.json()["token"]
 
-    def setUp(self):
-        self.connection = HubConnectionBuilder()\
+    def _setUp(self, msgpack= False):
+        builder = HubConnectionBuilder()\
             .with_url(self.server_url,
             options={
                 "verify_ssl": False,
@@ -35,20 +35,28 @@ class TestSendAuthMethod(BaseTestCase):
                 "headers": {
                     "mycustomheader": "mycustomheadervalue"
                 }
-            })\
-            .configure_logging(logging.ERROR)\
+            })
+
+        if msgpack:
+            builder.with_hub_protocol(MessagePackHubProtocol())
+
+        builder.configure_logging(logging.ERROR)\
             .with_automatic_reconnect({
                 "type": "raw",
                 "keep_alive_interval": 10,
                 "reconnect_interval": 5,
                 "max_attempts": 5
-            }).build()
+            })
+        self.connection = builder.build()
         self.connection.on("ReceiveMessage", self.receive_message)
         self.connection.on_open(self.on_open)
         self.connection.on_close(self.on_close)
         self.connection.start()
         while not self.connected:
             time.sleep(0.1)
+    
+    def setUp(self):
+        self._setUp()
 
     def receive_message(self, args):
         self.assertEqual(args[0], self.message)
@@ -64,5 +72,13 @@ class TestSendAuthMethod(BaseTestCase):
             time.sleep(0.1)
         
 class TestSendNoSslAuthMethod(TestSendAuthMethod):
+    server_url = Urls.server_url_no_ssl_auth
+    login_url = Urls.login_url_no_ssl
+
+class TestSendAuthMethodMsgPack(TestSendAuthMethod):
+    def setUp(self):
+        self._setUp(msgpack=True)
+
+class TestSendNoSslAuthMethodMsgPack(TestSendAuthMethod):
     server_url = Urls.server_url_no_ssl_auth
     login_url = Urls.login_url_no_ssl
