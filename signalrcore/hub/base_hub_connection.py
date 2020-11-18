@@ -3,7 +3,6 @@ import threading
 import requests
 import traceback
 import uuid
-import logging
 import time
 import ssl
 from signalrcore.messages.message_type import MessageType
@@ -34,7 +33,7 @@ class BaseHubConnection(object):
         self.protocol = protocol
         self.headers = headers
         self.handshake_received = False
-        self.token = None # auth
+        self.token = None  # auth
         self.state = ConnectionState.disconnected
         self.connection_alive = False
         self.handlers = []
@@ -47,27 +46,36 @@ class BaseHubConnection(object):
             keep_alive_interval
         )
         self.reconnection_handler = reconnection_handler
-        self.on_connect = lambda : self.logger.info("on_connect not defined")
-        self.on_disconnect = lambda : self.logger.info("on_disconnect not defined")
-        self.on_error = lambda error: self.logger.info("on_error not defined {0}".format(error))
+        self.on_connect = lambda: self.logger.info("on_connect not defined")
+        self.on_disconnect = lambda: self.logger.info(
+            "on_disconnect not defined")
+        self.on_error = lambda error: self.logger.info(
+            "on_error not defined {0}".format(error))
 
     def negotiate(self):
         negotiate_url = Helpers.get_negotiate_url(self.url)
         self.logger.debug("Negotiate url:{0}".format(negotiate_url))
 
-        response = requests.post(negotiate_url, headers=self.headers, verify=self.verify_ssl)
-        self.logger.debug("Response status code{0}".format(response.status_code))
+        response = requests.post(
+            negotiate_url, headers=self.headers, verify=self.verify_ssl)
+        self.logger.debug(
+            "Response status code{0}".format(response.status_code))
 
         if response.status_code != 200:
-            raise HubError(response.status_code) if response.status_code != 401 else UnAuthorizedHubError()
+            raise HubError(response.status_code)\
+                if response.status_code != 401 else UnAuthorizedHubError()
         data = response.json()
         if "connectionId" in data.keys():
-            self.url = Helpers.encode_connection_id(self.url, data["connectionId"])
+            self.url = Helpers.encode_connection_id(
+                self.url, data["connectionId"])
 
         # Azure
         if 'url' in data.keys() and 'accessToken' in data.keys():
-            Helpers.get_logger().debug("Azure url, reformat headers, token and url {0}".format(data))
-            self.url = data["url"] if data["url"].startswith("ws") else Helpers.http_to_websocket(data["url"])
+            Helpers.get_logger().debug(
+                "Azure url, reformat headers, token and url {0}".format(data))
+            self.url = data["url"]\
+                if data["url"].startswith("ws") else\
+                Helpers.http_to_websocket(data["url"])
             self.token = data["accessToken"]
             self.headers = {"Authorization": "Bearer " + self.token}
 
@@ -78,7 +86,7 @@ class BaseHubConnection(object):
     def start(self):
         if not self.skip_negotiation:
             self.negotiate()
-        
+
         self.logger.debug("Connection started")
 
         if self.state == ConnectionState.connected:
@@ -97,11 +105,12 @@ class BaseHubConnection(object):
             )
         self._thread = threading.Thread(
             target=lambda: self._ws.run_forever(
-                sslopt={"cert_reqs": ssl.CERT_NONE} if not self.verify_ssl else {}
+                sslopt={"cert_reqs": ssl.CERT_NONE}
+                if not self.verify_ssl else {}
             ))
         self._thread.daemon = True
         self._thread.start()
-        
+
         return True
 
     def stop(self):
@@ -109,7 +118,7 @@ class BaseHubConnection(object):
         if self.state == ConnectionState.connected:
             self.connection_checker.stop()
             self._ws.close()
-            #self._ws.teardown()           
+            # self._ws.teardown()
             self.state = ConnectionState.disconnected
 
     def register_handler(self, event, callback):
@@ -142,7 +151,8 @@ class BaseHubConnection(object):
 
     def on_socket_error(self, error):
         """
-        Throws error related on https://github.com/websocket-client/websocket-client/issues/449
+        Throws error related on
+        https://github.com/websocket-client/websocket-client/issues/449
 
         Args:
             error ([type]): [description]
@@ -151,12 +161,18 @@ class BaseHubConnection(object):
             HubError: [description]
         """
         self.logger.debug("-- web socket error --")
-        if (type(error) is AttributeError and "'NoneType' object has no attribute 'connected'" in str(error)):
-            self.logger.warning("Websocket closing error: issue https://github.com/websocket-client/websocket-client/issues/449")
-            self.on_disconnect()                    
+        if (type(error) is AttributeError and
+                "'NoneType' object has no attribute 'connected'"
+                in str(error)):
+            url = "https://github.com/websocket-client" +\
+                "/websocket-client/issues/449"
+            self.logger.warning(
+                "Websocket closing error: issue" +
+                url)
+            self.on_disconnect()
         else:
             self.logger.error(traceback.format_exc(5, True))
-            self.logger.error("{0} {1}".format(self, error))        
+            self.logger.error("{0} {1}".format(self, error))
             self.logger.error("{0} {1}".format(error, type(error)))
             self.on_disconnect()
             raise HubError(error)
@@ -250,12 +266,17 @@ class BaseHubConnection(object):
                         lambda h: h.invocation_id != message.invocation_id,
                         self.stream_handlers))
 
-    def send(self, message, on_invocation = None):
+    def send(self, message, on_invocation=None):
         self.logger.debug("Sending message {0}".format(message))
         try:
             if on_invocation:
-                self.stream_handlers.append(InvocationHandler(message.invocation_id, on_invocation))
-            self._ws.send(self.protocol.encode(message), opcode=0x2 if type(self.protocol) == MessagePackHubProtocol else 0x1)
+                self.stream_handlers.append(
+                    InvocationHandler(message.invocation_id, on_invocation))
+            self._ws.send(
+                self.protocol.encode(message),
+                opcode=0x2
+                if type(self.protocol) == MessagePackHubProtocol else
+                0x1)
             self.connection_checker.last_message = time.time()
             if self.reconnection_handler is not None:
                 self.reconnection_handler.reset()
@@ -266,7 +287,8 @@ class BaseHubConnection(object):
             self.logger.error("Connection closed {0}".format(ex))
             self.state = ConnectionState.disconnected
             if self.reconnection_handler is None:
-                if self.on_disconnect is not None and callable(self.on_disconnect):
+                if self.on_disconnect is not None and\
+                        callable(self.on_disconnect):
                     self.on_disconnect()
                 raise ValueError(str(ex))
             # Connection closed

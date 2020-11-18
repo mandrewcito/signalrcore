@@ -5,6 +5,7 @@ class BaseMessage(object):
     def __init__(self, message_type, **kwargs):
         self.type = MessageType(message_type)
 
+
 class BaseHeadersMessage(BaseMessage):
     """
         All messages expct ping can carry aditional headers

@@ -5,11 +5,10 @@ from .messages.invocation_message import InvocationClientStreamMessage
 from .messages.stream_item_message import StreamItemMessage
 from .messages.completion_message import CompletionClientStreamMessage
 
+
 class Subject(object):
-    """
-    Client to server streaming 
+    """Client to server streaming
     https://docs.microsoft.com/en-gb/aspnet/core/signalr/streaming?view=aspnetcore-5.0#client-to-server-streaming
-    
     items = list(range(0,10))
     subject = Subject()
     connection.send("UploadStream", subject)
@@ -29,11 +28,14 @@ class Subject(object):
         Raises:
             ValueError: if object is not valid, exception will be raised
         """
-        if self.connection is None or self.target is None or self.invocation_id is None:
+        if self.connection is None\
+                or self.target is None\
+                or self.invocation_id is None:
             raise ValueError(
-                "subject must be passed as an agument to a send function. hub_connection.send([method],[subject]")
+                "subject must be passed as an agument to a send function. "
+                + "hub_connection.send([method],[subject]")
 
-    def next(self, item:Any):
+    def next(self, item: Any):
         """Send next item to the server
 
         Args:

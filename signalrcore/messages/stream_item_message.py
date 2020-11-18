@@ -2,9 +2,11 @@ from .base_message import BaseHeadersMessage
 """
 A `StreamItem` message is a JSON object with the following properties:
 
-* `type` - A `Number` with the literal value 2, indicating that this message is a `StreamItem`.
+* `type` - A `Number` with the literal value 2, indicating
+    that this message is a `StreamItem`.
 * `invocationId` - A `String` encoding the `Invocation ID` for a message.
-* `item` - A `Token` encoding the stream item (see "JSON Payload Encoding" for details).
+* `item` - A `Token` encoding the stream item
+    (see "JSON Payload Encoding" for details).
 
 Example
 

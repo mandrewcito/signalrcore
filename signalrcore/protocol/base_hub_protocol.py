@@ -25,7 +25,7 @@ class BaseHubProtocol(object):
         dict_message["invocation_id"] = dict_message.get("invocationId", None)
         dict_message["headers"] = dict_message.get("headers", {})
         dict_message["error"] = dict_message.get("error", None)
-        dict_message["result"] = dict_message.get("result", None)                
+        dict_message["result"] = dict_message.get("result", None)
         if message_type is MessageType.invocation:
             return InvocationMessage(**dict_message)
         if message_type is MessageType.stream_item:
@@ -41,15 +41,15 @@ class BaseHubProtocol(object):
         if message_type is MessageType.close:
             return CloseMessage(**dict_message)
 
-    def decode_handshake(self, raw_message):
+    def decode_handshake(self, raw_message: str) -> HandshakeResponseMessage:
         messages = raw_message.split(self.record_separator)
         data = json.loads(messages[0])
         return HandshakeResponseMessage(data.get("error", None))
 
-    def handshake_message(self):
+    def handshake_message(self) -> HandshakeRequestMessage:
         return HandshakeRequestMessage(self.protocol, self.version)
 
-    def parse_messages(self, raw_message):
+    def parse_messages(self, raw_message: str):
         raise ValueError("Protocol must implement this method")
 
     def write_message(self, hub_message):

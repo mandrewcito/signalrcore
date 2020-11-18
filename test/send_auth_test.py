@@ -1,10 +1,10 @@
 import os
 import unittest
+import threading
 import logging
 import time
 import uuid
 import requests
-from subprocess import Popen, PIPE
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from signalrcore.protocol.messagepack_protocol import MessagePackHubProtocol
 from test.base_test_case import BaseTestCase, Urls
@@ -16,6 +16,7 @@ class TestSendAuthMethod(BaseTestCase):
     password = "test"
     received = False
     message = None
+    _lock = None
 
     def login(self):
         response = requests.post(
@@ -40,7 +41,7 @@ class TestSendAuthMethod(BaseTestCase):
         if msgpack:
             builder.with_hub_protocol(MessagePackHubProtocol())
 
-        builder.configure_logging(logging.ERROR)\
+        builder.configure_logging(logging.DEBUG)\
             .with_automatic_reconnect({
                 "type": "raw",
                 "keep_alive_interval": 10,
@@ -51,25 +52,27 @@ class TestSendAuthMethod(BaseTestCase):
         self.connection.on("ReceiveMessage", self.receive_message)
         self.connection.on_open(self.on_open)
         self.connection.on_close(self.on_close)
+        self._lock = threading.Lock()
+        self.assertTrue(self._lock.acquire(timeout=30))
         self.connection.start()
-        while not self.connected:
-            time.sleep(0.1)
     
+    def on_open(self):
+        self._lock.release()
+
     def setUp(self):
         self._setUp()
 
     def receive_message(self, args):
+        self._lock.release()
         self.assertEqual(args[0], self.message)
-        self.received = True
-
+        
     def test_send(self):
         self.message = "new message {0}".format(uuid.uuid4())
         self.username = "mandrewcito"
-        time.sleep(1)
-        self.received = False
+        self.assertTrue(self._lock.acquire(timeout=30))
         self.connection.send("SendMessage", [self.message])
-        while not self.received:
-            time.sleep(0.1)
+        self.assertTrue(self._lock.acquire(timeout=30))
+        del self._lock    
         
 class TestSendNoSslAuthMethod(TestSendAuthMethod):
     server_url = Urls.server_url_no_ssl_auth

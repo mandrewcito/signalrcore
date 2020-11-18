@@ -2,12 +2,17 @@ from .base_message import BaseHeadersMessage
 """
 A `Completion` message is a JSON object with the following properties
 
-* `type` - A `Number` with the literal value `3`, indicating that this message is a `Completion`.
+* `type` - A `Number` with the literal value `3`,
+    indicating that this message is a `Completion`.
 * `invocationId` - A `String` encoding the `Invocation ID` for a message.
-* `result` - A `Token` encoding the result value (see "JSON Payload Encoding" for details). This field is **ignored** if `error` is present.
+* `result` - A `Token` encoding the result value
+    (see "JSON Payload Encoding" for details).
+    This field is **ignored** if `error` is present.
 * `error` - A `String` encoding the error message.
 
-It is a protocol error to include both a `result` and an `error` property in the `Completion` message. A conforming endpoint may immediately terminate the connection upon receiving such a message.
+It is a protocol error to include both a `result` and an `error` property
+    in the `Completion` message. A conforming endpoint may immediately
+    terminate the connection upon receiving such a message.
 
 Example - A `Completion` message with no result or error
 
@@ -38,7 +43,8 @@ Example - A `Completion` message with an error
 }
 ```
 
-Example - The following `Completion` message is a protocol error because it has both of `result` and `error`
+Example - The following `Completion` message is a protocol error
+    because it has both of `result` and `error`
 
 ```json
 {

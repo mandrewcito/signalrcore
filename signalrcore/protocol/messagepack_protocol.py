@@ -1,22 +1,18 @@
-from datetime import date, datetime, timezone
-from enum import Enum
 import json
 import msgpack
-from msgpack.ext import Timestamp
-
-from ..messages import *
 from .base_hub_protocol import BaseHubProtocol
 from ..messages.handshake.request import HandshakeRequestMessage
 from ..messages.handshake.response import HandshakeResponseMessage
-from ..messages.invocation_message import InvocationMessage, InvocationClientStreamMessage  # 1
+from ..messages.invocation_message\
+    import InvocationMessage, InvocationClientStreamMessage  # 1
 from ..messages.stream_item_message import StreamItemMessage  # 2
 from ..messages.completion_message import CompletionMessage  # 3
 from ..messages.stream_invocation_message import StreamInvocationMessage  # 4
 from ..messages.cancel_invocation_message import CancelInvocationMessage  # 5
 from ..messages.ping_message import PingMessage  # 6
 from ..messages.close_message import CloseMessage  # 7
-from ..messages.message_type import MessageType
 from ..helpers import Helpers
+
 
 class MessagePackHubProtocol(BaseHubProtocol):
 
@@ -56,9 +52,9 @@ class MessagePackHubProtocol(BaseHubProtocol):
 
     def encode(self, message):
         if type(message) is HandshakeRequestMessage:
-            content =  json.dumps(message.__dict__) 
+            content = json.dumps(message.__dict__)
             return content + self.record_separator
-            
+
         msg = self._encode_message(message)
         encoded_message = msgpack.packb(msg)
         varint_length = self._to_varint(len(encoded_message))
@@ -66,12 +62,12 @@ class MessagePackHubProtocol(BaseHubProtocol):
 
     def _encode_message(self, message):
         result = []
-        
+
         # sort attributes
         for attribute in self._priority:
             if hasattr(message, attribute):
                 if (attribute == "type"):
-                    result.append(getattr(message, attribute).value)    
+                    result.append(getattr(message, attribute).value)
                 else:
                     result.append(getattr(message, attribute))
         return result
@@ -86,7 +82,7 @@ class MessagePackHubProtocol(BaseHubProtocol):
         # [6]
         # [7, Error, AllowReconnect?]
 
-        if raw[0] == 1: # InvocationMessage
+        if raw[0] == 1:  # InvocationMessage
             if len(raw[5]) > 0:
                 return InvocationClientStreamMessage(
                     headers=raw[1],
@@ -100,13 +96,13 @@ class MessagePackHubProtocol(BaseHubProtocol):
                     target=raw[3],
                     arguments=raw[4])
 
-        elif raw[0] == 2: # StreamItemMessage
+        elif raw[0] == 2:  # StreamItemMessage
             return StreamItemMessage(
                 headers=raw[1],
                 invocation_id=raw[2],
                 item=raw[3])
 
-        elif raw[0] == 3: # CompletionMessage
+        elif raw[0] == 3:  # CompletionMessage
             result_kind = raw[3]
             if result_kind == 1:
                 return CompletionMessage(
@@ -116,25 +112,31 @@ class MessagePackHubProtocol(BaseHubProtocol):
                     error=raw[4])
 
             elif result_kind == 2:
-                return CompletionMessage(headers=raw[1], invocation_id=raw[2], result=None, error=None)
+                return CompletionMessage(
+                    headers=raw[1], invocation_id=raw[2],
+                    result=None, error=None)
 
             elif result_kind == 3:
-                return CompletionMessage(headers=raw[1], invocation_id=raw[2], result=raw[4], error=None)
-
-            else: 
+                return CompletionMessage(
+                    headers=raw[1], invocation_id=raw[2],
+                    result=raw[4], error=None)
+            else:
                 raise Exception("Unknown result kind.")
 
-        elif raw[0] == 4: # StreamInvocationMessage
-            return StreamInvocationMessage(headers=raw[1], invocation_id=raw[2], target=raw[3], arguments=raw[4]) # stream_id missing?
+        elif raw[0] == 4:  # StreamInvocationMessage
+            return StreamInvocationMessage(
+                headers=raw[1], invocation_id=raw[2],
+                target=raw[3], arguments=raw[4])  # stream_id missing?
 
-        elif raw[0] == 5: # CancelInvocationMessage
-            return CancelInvocationMessage(headers=raw[1], invocation_id=raw[2])
+        elif raw[0] == 5:  # CancelInvocationMessage
+            return CancelInvocationMessage(
+                headers=raw[1], invocation_id=raw[2])
 
-        elif raw[0] == 6: # PingMessageEncoding
+        elif raw[0] == 6:  # PingMessageEncoding
             return PingMessage()
 
-        elif raw[0] == 7: # CloseMessageEncoding
-            return CloseMessage(error=raw[1]) # AllowReconnect is missing
+        elif raw[0] == 7:  # CloseMessageEncoding
+            return CloseMessage(error=raw[1])  # AllowReconnect is missing
 
         raise Exception("Unknown message type.")
 

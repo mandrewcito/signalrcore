@@ -2,6 +2,7 @@ import threading
 import time
 from enum import Enum
 
+
 class ConnectionStateChecker(object):
     def __init__(
             self,
@@ -64,7 +65,9 @@ class RawReconnectionHandler(ReconnectionHandler):
                 self.attempt_number += 1
                 return self.sleep_time
             else:
-                raise ValueError("Max attemps reached {0}".format(self.max_reconnection_attempts))
+                raise ValueError(
+                    "Max attemps reached {0}"
+                    .format(self.max_reconnection_attempts))
         else:  # Infinite reconnect
             return self.sleep_time
 
@@ -73,11 +76,12 @@ class IntervalReconnectionHandler(ReconnectionHandler):
     def __init__(self, intervals):
         super(IntervalReconnectionHandler, self).__init__()
         self._intervals = intervals
-        
+
     def next(self):
         self.reconnecting = True
         index = self.attempt_number
         self.attempt_number += 1
         if index >= len(self._intervals):
-            raise ValueError("Max intervals reached {0}".format(self._intervals))
+            raise ValueError(
+                "Max intervals reached {0}".format(self._intervals))
         return self._intervals[index]
