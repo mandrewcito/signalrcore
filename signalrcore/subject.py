@@ -16,6 +16,7 @@ class Subject(object):
         subject.next(str(self.items.pop()))
     subject.complete()
     """
+
     def __init__(self):
         self.connection = None
         self.target = None

@@ -102,7 +102,7 @@ class BaseHubConnection(object):
             on_error=self.on_socket_error,
             on_close=self.on_close,
             on_open=self.on_open,
-            )
+        )
         self._thread = threading.Thread(
             target=lambda: self._ws.run_forever(
                 sslopt={"cert_reqs": ssl.CERT_NONE}

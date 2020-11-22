@@ -25,12 +25,13 @@ class HubConnectionBuilder(object):
     Raises:
         HubConnectionError: Raises an Exception if url is empty or None
     """
+
     def __init__(self):
         self.hub_url = None
         self.hub = None
         self.options = {
-                "access_token_factory": None
-            }
+            "access_token_factory": None
+        }
         self.token = None
         self.headers = None
         self.negotiate_headers = None
