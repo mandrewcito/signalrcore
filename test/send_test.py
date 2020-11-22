@@ -5,7 +5,6 @@ import time
 import uuid
 import threading
 
-from subprocess import Popen, PIPE
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from signalrcore.hub.errors import HubError, HubConnectionError
 from test.base_test_case import BaseTestCase, Urls
@@ -29,16 +28,15 @@ class TestSendException(BaseTestCase):
     def test_hub_error(self):
         _lock = threading.Lock()
 
-        self.assertTrue(_lock.acquire(timeout=30))     
+        self.assertTrue(_lock.acquire(timeout=10))     
         self.connection.on_error(lambda _: _lock.release())
 
         def on_message(_):
             _lock.release()
-            self.assertTrue(_lock.acquire(timeout=30)) 
+            self.assertTrue(_lock.acquire(timeout=10)) 
 
         self.connection.on("ThrowExceptionCall", on_message)
         self.connection.send("ThrowException", ["msg"])
-        self.assertTrue(_lock.acquire(timeout=30))
 
 class TestSendExceptionMsgPack(TestSendException):
     def setUp(self):

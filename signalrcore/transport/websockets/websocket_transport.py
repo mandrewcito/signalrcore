@@ -55,6 +55,7 @@ class WebsocketTransport(BaseTransport):
             self.connection_checker.stop()
             self._ws.close()
             self.state = ConnectionState.disconnected
+            self.handshake_received = False
 
     def start(self):
         if not self.skip_negotiation:
@@ -136,6 +137,7 @@ class WebsocketTransport(BaseTransport):
 
     def on_close(self):
         self.logger.debug("-- web socket close --")
+        self.state = ConnectionState.disconnected
         if self._on_close is not None and callable(self._on_close):
             self._on_close()
 
