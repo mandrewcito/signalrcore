@@ -6,8 +6,8 @@ import uuid
 import threading
 
 from subprocess import Popen, PIPE
-from signalrcore.hub_connection_builder import HubConnectionBuilder, HubConnectionError
-from signalrcore.hub.errors import HubError
+from signalrcore.hub_connection_builder import HubConnectionBuilder
+from signalrcore.hub.errors import HubError, HubConnectionError
 from test.base_test_case import BaseTestCase, Urls
 
 class TestSendException(BaseTestCase):

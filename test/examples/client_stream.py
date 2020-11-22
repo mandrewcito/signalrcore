@@ -1,6 +1,7 @@
 
 import time
 import sys
+sys.path.append("./")
 import logging
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from signalrcore.subject import Subject
@@ -11,7 +12,7 @@ def input_with_default(input_text, default_value):
     return default_value if value is None or value.strip() == "" else value
 
 
-server_url = input_with_default('Enter your server url(default: {0}): ', "wss://localhost:44376/chatHub")
+server_url = input_with_default('Enter your server url(default: {0}): ', "wss://localhost:5001/chatHub")
 
 hub_connection = HubConnectionBuilder()\
     .with_url(server_url, options={"verify_ssl": False}) \

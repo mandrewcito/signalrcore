@@ -1,18 +1,12 @@
 import uuid
 from .hub.base_hub_connection import BaseHubConnection
 from .hub.auth_hub_connection import AuthHubConnection
-from .hub.reconnection import \
+from .transport.websockets.reconnection import \
     IntervalReconnectionHandler, RawReconnectionHandler, ReconnectionType
 from .helpers import Helpers
 from .messages.invocation_message import InvocationMessage
 from .protocol.json_hub_protocol import JsonHubProtocol
 from .subject import Subject
-
-
-class HubConnectionError(ValueError):
-    """Hub connection error
-    """
-    pass
 
 
 class HubConnectionBuilder(object):
@@ -180,7 +174,7 @@ class HubConnectionBuilder(object):
                 and type(self.options["verify_ssl"]) is bool:
             self.verify_ssl = self.options["verify_ssl"]
 
-        self.hub = AuthHubConnection(
+        return AuthHubConnection(
                 headers=self.headers,
                 auth_function=auth_function,
                 url=self.hub_url,
@@ -188,7 +182,8 @@ class HubConnectionBuilder(object):
                 keep_alive_interval=self.keep_alive_interval,
                 reconnection_handler=self.reconnection_handler,
                 verify_ssl=self.verify_ssl,
-                skip_negotiation=self.skip_negotiation)\
+                skip_negotiation=self.skip_negotiation,
+                enable_trace=self.enable_trace)\
             if self.has_auth_configured else\
             BaseHubConnection(
                 url=self.hub_url,
@@ -197,13 +192,9 @@ class HubConnectionBuilder(object):
                 reconnection_handler=self.reconnection_handler,
                 headers=self.headers,
                 verify_ssl=self.verify_ssl,
-                skip_negotiation=self.skip_negotiation)
-
-        if self.enable_trace:
-            self.hub.enable_trace(True)
-
-        return self
-
+                skip_negotiation=self.skip_negotiation,
+                enable_trace=self.enable_trace)
+            
     def with_automatic_reconnect(self, data: dict):
         """Configures automatic reconnection
             https://devblogs.microsoft.com/aspnet/asp-net-core-updates-in-net-core-3-0-preview-4/
@@ -251,107 +242,3 @@ class HubConnectionBuilder(object):
                 intervals
             )
         return self
-
-    def on_close(self, callback):
-        """Configures on_close connection callback.
-            It will be raised on connection closed event
-        connection.on_close(lambda: print("connection closed"))
-        Args:
-            callback (function): function without params
-        """
-        self.hub.on_disconnect = callback
-
-    def on_open(self, callback):
-        """Configures on_open connection callback.
-            It will be raised on connection open event
-        connection.on_open(lambda: print(
-            "connection opened "))
-        Args:
-            callback (function): funciton without params
-        """
-        self.hub.on_connect = callback
-
-    def on_error(self, callback):
-        """Configures on_error connection callback. It will be raised
-            if any hub method throws an exception.
-        connection.on_error(lambda data:
-            print(f"An exception was thrown closed{data.error}"))
-        Args:
-            callback (function): function with one parameter.
-                A CompletionMessage object.
-        """
-        self.hub.on_error = callback
-
-    def on(self, event, callback_function):
-        """Register a callback on the specified event
-        Args:
-            event (string):  Event name
-            callback_function (Function): callback function,
-                arguments will be binded
-        """
-        self.hub.register_handler(event, callback_function)
-
-    def stream(self, event, event_params):
-        """Starts server streaming
-            connection.stream(
-            "Counter",
-            [len(self.items), 500])\
-            .subscribe({
-                "next": self.on_next,
-                "complete": self.on_complete,
-                "error": self.on_error
-            })
-        Args:
-            event (string): Method Name
-            event_params (list): Method parameters
-
-        Returns:
-            [StreamHandler]: stream handler
-        """
-        return self.hub.stream(event, event_params)
-
-    def start(self):
-        """Starts the connection
-        """
-        result = self.hub.start()
-        self.running = True
-        return result
-
-    def stop(self):
-        """Stops the connection
-        """
-        self.hub.stop()
-        self.running = False
-
-    def send(self, method, arguments, on_invocation=None):
-        """Sends a message
-
-        Args:
-            method (string): Method name
-            arguments (list|Subject): Method parameters
-            on_invocation (function, optional): On invocation send callback
-                will be raised on send server function ends. Defaults to None.
-
-        Raises:
-            HubConnectionError: If hub is not ready to send
-            TypeError: If arguments are invalid list or Subject
-        """
-        if not self.running:
-            raise HubConnectionError(
-                "Hub is not running you cand send messages")
-
-        if type(arguments) is not list and type(arguments) is not Subject:
-            raise TypeError("Arguments of a message must be a list or subject")
-
-        if type(arguments) is list:
-            self.hub.send(InvocationMessage(
-                str(uuid.uuid4()),
-                method,
-                arguments,
-                headers=self.headers),
-                on_invocation)
-
-        if type(arguments) is Subject:
-            arguments.connection = self
-            arguments.target = method
-            arguments.start()

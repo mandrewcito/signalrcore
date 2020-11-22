@@ -15,7 +15,7 @@ class AuthHubConnection(BaseHubConnection):
             Helpers.get_logger()\
                 .debug("auth function result {0}".format(self.token))
             self.headers["Authorization"] = "Bearer " + self.token
-            super(AuthHubConnection, self).start()
+            return super(AuthHubConnection, self).start()
         except Exception as ex:
             Helpers.get_logger().warning(self.__class__.__name__)
             Helpers.get_logger().warning(str(ex))
