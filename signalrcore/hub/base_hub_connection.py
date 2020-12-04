@@ -16,6 +16,7 @@ from .errors import UnAuthorizedHubError, HubError
 from signalrcore.helpers import Helpers
 from .handlers import StreamHandler, InvocationHandler
 from ..protocol.messagepack_protocol import MessagePackHubProtocol
+from collections import defaultdict
 
 
 class BaseHubConnection(object):
@@ -37,8 +38,8 @@ class BaseHubConnection(object):
         self.token = None # auth
         self.state = ConnectionState.disconnected
         self.connection_alive = False
-        self.handlers = []
-        self.stream_handlers = []
+        self.handlers = defaultdict(list)
+        self.stream_handlers = defaultdict(list)
         self._thread = None
         self._ws = None
         self.verify_ssl = verify_ssl
@@ -114,7 +115,7 @@ class BaseHubConnection(object):
 
     def register_handler(self, event, callback):
         self.logger.debug("Handler registered started {0}".format(event))
-        self.handlers.append((event, callback))
+        self.handlers[event].append(callback)
 
     def evaluate_handshake(self, message):
         self.logger.debug("Evaluating handshake {0}".format(message))
@@ -180,15 +181,12 @@ class BaseHubConnection(object):
                 continue
 
             if message.type == MessageType.invocation:
-                fired_handlers = list(
-                    filter(
-                        lambda h: h[0] == message.target,
-                        self.handlers))
+                fired_handlers = self.handlers[message.target]
                 if len(fired_handlers) == 0:
                     self.logger.warning(
                         "event '{0}' hasn't fire any handler".format(
                             message.target))
-                for _, handler in fired_handlers:
+                for handler in fired_handlers:
                     handler(message.arguments)
 
             if message.type == MessageType.close:
@@ -201,26 +199,17 @@ class BaseHubConnection(object):
                     self.on_error(message)
 
                 # Send callbacks
-                fired_handlers = list(
-                    filter(
-                        lambda h: h.invocation_id == message.invocation_id,
-                        self.stream_handlers))
+                fired_handlers = self.stream_handlers[message.invocation_id]
 
                 # Stream callbacks
                 for handler in fired_handlers:
                     handler.complete_callback(message)
 
                 # unregister handler
-                self.stream_handlers = list(
-                    filter(
-                        lambda h: h.invocation_id != message.invocation_id,
-                        self.stream_handlers))
+                self.stream_handlers.pop(message.invocation_id)
 
             if message.type == MessageType.stream_item:
-                fired_handlers = list(
-                    filter(
-                        lambda h: h.invocation_id == message.invocation_id,
-                        self.stream_handlers))
+                fired_handlers = self.stream_handlers[message.invocation_id]
                 if len(fired_handlers) == 0:
                     self.logger.warning(
                         "id '{0}' hasn't fire any stream handler".format(
@@ -232,10 +221,7 @@ class BaseHubConnection(object):
                 pass
 
             if message.type == MessageType.cancel_invocation:
-                fired_handlers = list(
-                    filter(
-                        lambda h: h.invocation_id == message.invocation_id,
-                        self.stream_handlers))
+                fired_handlers = self.stream_handlers[message.invocation_id]
                 if len(fired_handlers) == 0:
                     self.logger.warning(
                         "id '{0}' hasn't fire any stream handler".format(
@@ -245,16 +231,13 @@ class BaseHubConnection(object):
                     handler.error_callback(message)
 
                 # unregister handler
-                self.stream_handlers = list(
-                    filter(
-                        lambda h: h.invocation_id != message.invocation_id,
-                        self.stream_handlers))
+                self.stream_handlers.pop(message.invocation_id)
 
     def send(self, message, on_invocation = None):
         self.logger.debug("Sending message {0}".format(message))
         try:
             if on_invocation:
-                self.stream_handlers.append(InvocationHandler(message.invocation_id, on_invocation))
+                self.stream_handlers[message.invocation_id].append(InvocationHandler(message.invocation_id, on_invocation))
             self._ws.send(self.protocol.encode(message), opcode=0x2 if type(self.protocol) == MessagePackHubProtocol else 0x1)
             self.connection_checker.last_message = time.time()
             if self.reconnection_handler is not None:
@@ -300,7 +283,7 @@ class BaseHubConnection(object):
     def stream(self, event, event_params):
         invocation_id = str(uuid.uuid4())
         stream_obj = StreamHandler(event, invocation_id)
-        self.stream_handlers.append(stream_obj)
+        self.stream_handlers[invocation_id].append(stream_obj)
         self.send(
             StreamInvocationMessage(
                 invocation_id,
