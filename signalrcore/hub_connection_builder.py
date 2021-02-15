@@ -287,7 +287,7 @@ class HubConnectionBuilder(object):
             TypeError: If arguments are invalid list or Subject
         """
         if not self.running:
-            raise HubConnectionError("Hub is not running you cand send messages")
+            raise HubConnectionError("Hub is not running, you can't send messages")
 
         if type(arguments) is not list and type(arguments) is not Subject:
             raise TypeError("Arguments of a message must be a list or subject")
