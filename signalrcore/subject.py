@@ -44,7 +44,7 @@ class Subject(object):
         """
         self.check()
         with self.lock:
-            self.connection.hub.send(StreamItemMessage(
+            self.connection.transport.send(StreamItemMessage(
                 self.invocation_id,
                 item))
 
@@ -53,15 +53,16 @@ class Subject(object):
         """
         self.check()
         with self.lock:
-            self.connection.hub.send(InvocationClientStreamMessage(
-                [self.invocation_id],
-                self.target,
-                []))
+            self.connection.transport.send(
+                InvocationClientStreamMessage(
+                    [self.invocation_id],
+                    self.target,
+                    []))
 
     def complete(self):
         """Finish streaming
         """
         self.check()
         with self.lock:
-            self.connection.hub.send(CompletionClientStreamMessage(
+            self.connection.transport.send(CompletionClientStreamMessage(
                 self.invocation_id))

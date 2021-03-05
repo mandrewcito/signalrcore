@@ -41,7 +41,7 @@ class TestSendAuthMethod(BaseTestCase):
         if msgpack:
             builder.with_hub_protocol(MessagePackHubProtocol())
 
-        builder.configure_logging(logging.DEBUG)\
+        builder.configure_logging(logging.WARNING)\
             .with_automatic_reconnect({
                 "type": "raw",
                 "keep_alive_interval": 10,

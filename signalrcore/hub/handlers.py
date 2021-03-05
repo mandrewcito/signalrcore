@@ -1,21 +1,23 @@
 import logging
 
-
+from typing import Callable
+from ..helpers import Helpers
 class StreamHandler(object):
-    def __init__(self, event, invocation_id):
+    def __init__(self, event: str, invocation_id: str):
         self.event = event
         self.invocation_id = invocation_id
+        self.logger = Helpers.get_logger()
         self.next_callback =\
-            lambda _: logging.warning(
+            lambda _: self.logger.warning(
                 "next stream handler fired, no callback configured")
         self.complete_callback =\
-            lambda _: logging.warning(
+            lambda _: self.logger.warning(
                 "next complete handler fired, no callback configured")
         self.error_callback =\
-            lambda _: logging.warning(
+            lambda _: self.logger.warning(
                 "next error handler fired, no callback configured")
 
-    def subscribe(self, subscribe_callbacks):
+    def subscribe(self, subscribe_callbacks: dict):
         error =\
             " subscribe object must be a dict like {0}"\
             .format({
@@ -44,6 +46,6 @@ class StreamHandler(object):
 
 
 class InvocationHandler(object):
-    def __init__(self, invocation_id, complete_callback):
+    def __init__(self, invocation_id: str, complete_callback: Callable):
         self.invocation_id = invocation_id
         self.complete_callback = complete_callback
