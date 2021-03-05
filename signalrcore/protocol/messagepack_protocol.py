@@ -34,22 +34,32 @@ class MessagePackHubProtocol(BaseHubProtocol):
         self.logger = Helpers.get_logger()
 
     def parse_messages(self, raw):
-        messages = []
-        offset = 0
-        while offset < len(raw):
-            length = msgpack.unpackb(raw[offset: offset + 1])
-            values = msgpack.unpackb(raw[offset + 1: offset + length + 1])
-            offset = offset + length + 1
-            message = self._decode_message(values)
-            messages.append(message)
-
+        try:
+            if raw == b'{}\x1e':
+                return []
+            messages = []
+            offset = 0
+            while offset < len(raw):
+                length = msgpack.unpackb(raw[offset: offset + 1])
+                values = msgpack.unpackb(raw[offset + 1: offset + length + 1])
+                offset = offset + length + 1
+                message = self._decode_message(values)
+                messages.append(message)
+        except Exception as ex:
+            Helpers.get_logger().error("Parse messages Error {0}".format(ex))
+            Helpers.get_logger().error("raw msg '{0}'".format(raw))
         return messages
 
     def decode_handshake(self, raw_message):
-        messages = raw_message.decode("utf-8").split(self.record_separator)
-        messages = list(filter(lambda x: x != "", messages))
-        data = json.loads(messages[0])
-        return HandshakeResponseMessage(data.get("error", None))
+        try:
+            messages = raw_message.decode("utf-8").split(self.record_separator)
+            messages = list(filter(lambda x: x != "", messages))
+            data = json.loads(messages[0])
+            return HandshakeResponseMessage(data.get("error", None))
+        except Exception as ex:
+            Helpers.get_logger().error(raw_message)
+            Helpers.get_logger().error(ex)
+            raise ex
 
     def encode(self, message):
         if type(message) is HandshakeRequestMessage:
