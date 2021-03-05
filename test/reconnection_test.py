@@ -88,16 +88,27 @@ class TestReconnectMethods(BaseTestCase):
             ValueError, lambda: connection.send("DisconnectMe", []))
 
     def reconnect_test(self, connection):
+        """
+            -                  lock acquire
+            - start connection 
+            - on_open          lock release
+            -                  lock acquire
+            - disconnect call
+            - on_close         lock release
+            -                  lock acquire
+            - send_message     lock release
+            -                  lock acquire
+        """
         _lock = threading.Lock()
 
         connection.on_open(lambda: _lock.release())
-        #connection.on_close(lambda: _lock.release())
+        connection.on_close(lambda: _lock.release())
 
         connection.on("ReceiveMessage", lambda _: _lock.release())
 
         self.assertTrue(_lock.acquire(timeout=30))  # Released on open
 
-        connection.start()
+        connection.start() 
 
         self.assertTrue(_lock.acquire(timeout=30))  # Released on ReOpen
 
@@ -114,7 +125,7 @@ class TestReconnectMethods(BaseTestCase):
 
         connection.stop()
 
-        _lock.release()
+        # _lock.release()
         del _lock
 
     def test_raw_reconnection(self):

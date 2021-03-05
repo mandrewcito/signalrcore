@@ -47,6 +47,7 @@ class MessagePackHubProtocol(BaseHubProtocol):
 
     def decode_handshake(self, raw_message):
         messages = raw_message.decode("utf-8").split(self.record_separator)
+        messages = list(filter(lambda x: x != "", messages))
         data = json.loads(messages[0])
         return HandshakeResponseMessage(data.get("error", None))
 
