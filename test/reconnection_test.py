@@ -88,13 +88,10 @@ class TestReconnectMethods(BaseTestCase):
 
     def reconnect_test(self, connection):
         self._lock = threading.Lock()
-        
-        def lock_release(msg=""):
-            self._lock.release()
 
-        connection.on_open(lock_release)
+        connection.on_open(lambda: self._lock.release())
 
-        connection.on("ReceiveMessage", lock_release)
+        connection.on("ReceiveMessage", lambda _: self._lock.release())
         
         connection.start()
 

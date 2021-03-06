@@ -43,11 +43,19 @@ class BaseHubProtocol(object):
         if message_type is MessageType.close:
             return CloseMessage(**dict_message)
 
+        """
+                    has_various_messages = 0x1E in raw_message
+            handshake_data = raw_message[0: raw_message.index(0x1E)] if has_various_messages else raw_message
+            messages = self.parse_messages(raw_message[raw_message.index(0x1E) + 1:]) if has_various_messages else []
+            data = json.loads(handshake_data)
+            return HandshakeResponseMessage(data.get("error", None))
+        """
+
     def decode_handshake(self, raw_message: str) -> HandshakeResponseMessage:
         messages = raw_message.split(self.record_separator)
         messages = list(filter(lambda x: x != "", messages))        
         data = json.loads(messages[0])
-        return HandshakeResponseMessage(data.get("error", None))
+        return HandshakeResponseMessage(data.get("error", None)), self.parse_messages(messages[1:]) if len(messages) > 1 else []
 
     def handshake_message(self) -> HandshakeRequestMessage:
         return HandshakeRequestMessage(self.protocol, self.version)

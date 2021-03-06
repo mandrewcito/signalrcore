@@ -35,8 +35,6 @@ class MessagePackHubProtocol(BaseHubProtocol):
 
     def parse_messages(self, raw):
         try:
-            if raw == b'{}\x1e':
-                return []
             messages = []
             offset = 0
             while offset < len(raw):
@@ -52,10 +50,11 @@ class MessagePackHubProtocol(BaseHubProtocol):
 
     def decode_handshake(self, raw_message):
         try:
-            messages = raw_message.decode("utf-8").split(self.record_separator)
-            messages = list(filter(lambda x: x != "", messages))
-            data = json.loads(messages[0])
-            return HandshakeResponseMessage(data.get("error", None))
+            has_various_messages = 0x1E in raw_message
+            handshake_data = raw_message[0: raw_message.index(0x1E)] if has_various_messages else raw_message
+            messages = self.parse_messages(raw_message[raw_message.index(0x1E) + 1:]) if has_various_messages else []
+            data = json.loads(handshake_data)
+            return HandshakeResponseMessage(data.get("error", None)), messages
         except Exception as ex:
             Helpers.get_logger().error(raw_message)
             Helpers.get_logger().error(ex)
@@ -84,7 +83,7 @@ class MessagePackHubProtocol(BaseHubProtocol):
         return result
 
     def _decode_message(self, raw):
-
+        # {} {"error"}
         # [1, Headers, InvocationId, Target, [Arguments], [StreamIds]]
         # [2, Headers, InvocationId, Item]
         # [3, Headers, InvocationId, ResultKind, Result]
@@ -148,7 +147,9 @@ class MessagePackHubProtocol(BaseHubProtocol):
 
         elif raw[0] == 7:  # CloseMessageEncoding
             return CloseMessage(error=raw[1])  # AllowReconnect is missing
-
+        print(".......................................")
+        print(raw)
+        print("---------------------------------------")
         raise Exception("Unknown message type.")
 
     def _to_varint(self, value):

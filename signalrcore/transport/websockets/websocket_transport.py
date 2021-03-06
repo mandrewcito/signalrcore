@@ -118,7 +118,7 @@ class WebsocketTransport(BaseTransport):
 
     def evaluate_handshake(self, message):
         self.logger.debug("Evaluating handshake {0}".format(message))
-        msg = self.protocol.decode_handshake(message)
+        msg, messages = self.protocol.decode_handshake(message)
         if msg.error is None or msg.error == "":
             self.handshake_received = True
             self.state = ConnectionState.connected
@@ -128,7 +128,10 @@ class WebsocketTransport(BaseTransport):
                     self.connection_checker.start()
         else:
             self.logger.error(msg.error)
+            self.on_socket_error(msg.error)
+            self.stop()
             raise ValueError("Handshake error {0}".format(msg.error))
+        return messages
 
     def on_open(self):
         self.logger.debug("-- web socket open --")
@@ -173,10 +176,14 @@ class WebsocketTransport(BaseTransport):
         self.logger.debug("Message received{0}".format(raw_message))
         self.connection_checker.last_message = time.time()
         if not self.handshake_received:
-            self.evaluate_handshake(raw_message)
+            messages = self.evaluate_handshake(raw_message)
             if self._on_open is not None and callable(self._on_open):
                 self.state = ConnectionState.connected
                 self._on_open()
+
+            if len(messages) > 0:
+                return self._on_message(messages)
+
             return []
         
         return self._on_message(
