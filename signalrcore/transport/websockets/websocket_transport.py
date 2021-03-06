@@ -197,7 +197,7 @@ class WebsocketTransport(BaseTransport):
                 websocket._exceptions.WebSocketConnectionClosedException,
                 OSError) as ex:
             self.handshake_received = False
-            self.logger.error("Connection closed {0}".format(ex))
+            self.logger.warning("Connection closed {0}".format(ex))
             self.state = ConnectionState.disconnected
             if self.reconnection_handler is None:
                 if self._on_close is not None and\

@@ -87,10 +87,10 @@ class TestReconnectMethods(BaseTestCase):
         del _lock
 
     def reconnect_test(self, connection):
-        _lock = threading.Lock()
+        self._lock = threading.Lock()
         
         def lock_release(msg=""):
-            _lock.release()
+            self._lock.release()
 
         connection.on_open(lock_release)
 
@@ -98,22 +98,20 @@ class TestReconnectMethods(BaseTestCase):
         
         connection.start()
 
-        self.assertTrue(_lock.acquire(timeout=10)) # Release on Open
+        self.assertTrue(self._lock.acquire(timeout=10)) # Release on Open
 
         connection.send("DisconnectMe", [])
 
-        self.assertTrue(_lock.acquire(timeout=20)) # released on open
+        self.assertTrue(self._lock.acquire(timeout=20)) # released on open
         
         connection.send("SendMessage", ["user", "reconnected!"])
 
-        self.assertTrue(_lock.acquire(timeout=10))  # released at receive message
+        self.assertTrue(self._lock.acquire(timeout=10))  # released at receive message
 
         #connection.on_close(lambda: _lock.release())
         connection.stop()
 
         #self.assertTrue(_lock.acquire(timeout=10))  # released at close
-
-        del _lock
 
     def test_raw_reconnection(self):
         connection = HubConnectionBuilder()\
