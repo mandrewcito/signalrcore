@@ -2,10 +2,15 @@ from .base_message import BaseHeadersMessage
 """
 A `StreamInvocation` message is a JSON object with the following properties:
 
-* `type` - A `Number` with the literal value 4, indicating that this message is a StreamInvocation.
+* `type` - A `Number` with the literal value 4, indicating that
+    this message is a StreamInvocation.
 * `invocationId` - A `String` encoding the `Invocation ID` for a message.
-* `target` - A `String` encoding the `Target` name, as expected by the Callee's Binder.
-* `arguments` - An `Array` containing arguments to apply to the method referred to in Target. This is a sequence of JSON `Token`s, encoded as indicated below in the "JSON Payload Encoding" section.
+* `target` - A `String` encoding the `Target` name, as expected
+    by the Callee's Binder.
+* `arguments` - An `Array` containing arguments to apply to
+    the method referred to in Target. This is a sequence of JSON
+    `Token`s, encoded as indicated below in the
+    "JSON Payload Encoding" section.
 
 Example:
 

@@ -6,9 +6,10 @@ import uuid
 import threading
 
 from subprocess import Popen, PIPE
-from signalrcore.hub_connection_builder import HubConnectionBuilder, HubConnectionError
+from signalrcore.hub_connection_builder import HubConnectionBuilder
+from signalrcore.hub.errors import HubConnectionError
 from test.base_test_case import BaseTestCase, Urls
-from signalrcore.hub.reconnection import RawReconnectionHandler, IntervalReconnectionHandler
+from signalrcore.transport.websockets.reconnection import RawReconnectionHandler, IntervalReconnectionHandler
 
 
 class TestReconnectMethods(BaseTestCase):
@@ -26,23 +27,20 @@ class TestReconnectMethods(BaseTestCase):
                 "intervals": [1, 2, 4, 45, 6, 7, 8, 9, 10]
             })\
             .build()
-
         _lock = threading.Lock()
-
         connection.on_open(lambda: _lock.release())
         connection.on_close(lambda: _lock.release())
 
-        self.assertTrue(_lock.acquire(timeout=30))
+        self.assertTrue(_lock.acquire(timeout=10))
 
         connection.start()
 
-        self.assertTrue(_lock.acquire(timeout=30))
+        self.assertTrue(_lock.acquire(timeout=10))
 
         connection.stop()
 
-        self.assertTrue(_lock.acquire(timeout=30))
+        self.assertTrue(_lock.acquire(timeout=10))
 
-        _lock.release()
         del _lock
 
     def test_reconnect_interval(self):
@@ -57,62 +55,60 @@ class TestReconnectMethods(BaseTestCase):
             .build()
         self.reconnect_test(connection)
 
-
     def test_no_reconnect(self):
         connection = HubConnectionBuilder()\
             .with_url(self.server_url, options={"verify_ssl": False})\
             .configure_logging(logging.ERROR)\
             .build()
+
         _lock = threading.Lock()
 
+        _lock.acquire(timeout=10)
+
         connection.on_open(lambda: _lock.release())
-        connection.on_close(lambda: _lock.release())
 
         connection.on("ReceiveMessage", lambda _: _lock.release())
 
-        self.assertTrue(_lock.acquire(timeout=30))  # Released on open
-
         connection.start()
 
-        self.assertTrue(_lock.acquire(timeout=30))  # Released on ReOpen
-
-        connection.send("DisconnectMe", [])
-
-        time.sleep(30)
+        self.assertTrue(_lock.acquire(timeout=10))  # Released on ReOpen
         
-        self.assertTrue(_lock.acquire(timeout=30))
-
-        self.assertRaises(ValueError, lambda: connection.send("DisconnectMe", []))
-
-    def reconnect_test(self, connection):
-        _lock = threading.Lock()
-
-        connection.on_open(lambda: _lock.release())
-        #connection.on_close(lambda: _lock.release())
-
-        connection.on("ReceiveMessage", lambda _: _lock.release())
-
-        self.assertTrue(_lock.acquire(timeout=30))  # Released on open
-
-        connection.start()
-
-        self.assertTrue(_lock.acquire(timeout=30))  # Released on ReOpen
-
         connection.send("DisconnectMe", [])
 
-        time.sleep(30)  # wait for auto reconnect
+        self.assertTrue(_lock.acquire(timeout=10))
 
-        # released on receiveMessage
-        self.assertTrue(_lock.acquire(timeout=30))
+        time.sleep(10)
 
-        connection.send("SendMessage", ["user", "reconnected!"])
-
-        self.assertTrue(_lock.acquire(timeout=30))  # released at end
+        self.assertRaises(
+            HubConnectionError,
+            lambda: connection.send("DisconnectMe", []))
 
         connection.stop()
-
-        _lock.release()
         del _lock
+
+    def reconnect_test(self, connection):
+        self._lock = threading.Lock()
+
+        connection.on_open(lambda: self._lock.release())
+
+        connection.on("ReceiveMessage", lambda _: self._lock.release())
+        
+        connection.start()
+
+        self.assertTrue(self._lock.acquire(timeout=10)) # Release on Open
+
+        connection.send("DisconnectMe", [])
+
+        self.assertTrue(self._lock.acquire(timeout=20)) # released on open
+        
+        connection.send("SendMessage", ["user", "reconnected!"])
+
+        self.assertTrue(self._lock.acquire(timeout=10))  # released at receive message
+
+        #connection.on_close(lambda: _lock.release())
+        connection.stop()
+
+        #self.assertTrue(_lock.acquire(timeout=10))  # released at close
 
     def test_raw_reconnection(self):
         connection = HubConnectionBuilder()\
@@ -124,22 +120,22 @@ class TestReconnectMethods(BaseTestCase):
                 "max_attempts": 4
             })\
             .build()
+
         self.reconnect_test(connection)
 
     def test_raw_handler(self):
         handler = RawReconnectionHandler(5, 10)
         attemp = 0
-        
+
         while attemp <= 10:
             self.assertEqual(handler.next(), 5)
             attemp = attemp + 1
-        
+
         self.assertRaises(ValueError, handler.next)
 
     def test_interval_handler(self):
         intervals = [1, 2, 4, 5, 6]
         handler = IntervalReconnectionHandler(intervals)
-        attemp = 0
         for interval in intervals:
             self.assertEqual(handler.next(), interval)
         self.assertRaises(ValueError, handler.next)

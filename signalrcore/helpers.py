@@ -1,4 +1,3 @@
-import sys
 import logging
 import urllib.parse as parse
 
@@ -9,7 +8,9 @@ class Helpers:
         logger = Helpers.get_logger()
         if handler is None:
             handler = logging.StreamHandler()
-            handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+            handler.setFormatter(
+                logging.Formatter(
+                    '%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
             handler.setLevel(level)
         logger.addHandler(handler)
         logger.setLevel(level)
@@ -37,7 +38,7 @@ class Helpers:
             secure_destination):
         url_parts = parse.urlsplit(url)
 
-        if root_scheme not in url_parts.scheme:            
+        if root_scheme not in url_parts.scheme:
             if url_parts.scheme == secure_source:
                 url_parts = url_parts._replace(scheme=secure_destination)
             if url_parts.scheme == source:
@@ -71,7 +72,7 @@ class Helpers:
         querystring = ""
         if Helpers.has_querystring(url):
             url, querystring = Helpers.split_querystring(url)
-            
+
         url_parts = parse.urlsplit(Helpers.websocket_to_http(url))
 
         negotiate_suffix = "negotiate"\
@@ -82,7 +83,7 @@ class Helpers:
 
         return parse.urlunsplit(url_parts) \
             if querystring == "" else\
-                parse.urlunsplit(url_parts) + "?" + querystring
+            parse.urlunsplit(url_parts) + "?" + querystring
 
     @staticmethod
     def encode_connection_id(url, id):

@@ -1,5 +1,4 @@
 import json
-import logging
 
 from .base_hub_protocol import BaseHubProtocol
 
@@ -35,7 +34,8 @@ class JsonHubProtocol(BaseHubProtocol):
         raw_messages = [
             record.replace(self.record_separator, "")
             for record in raw.split(self.record_separator)
-            if record is not None and record != "" and record != self.record_separator
+            if record is not None and record != ""
+            and record != self.record_separator
             ]
         result = []
         for raw_message in raw_messages:
@@ -45,5 +45,6 @@ class JsonHubProtocol(BaseHubProtocol):
         return result
 
     def encode(self, message):
-        Helpers.get_logger().debug(self.encoder.encode(message) + self.record_separator)
+        Helpers.get_logger()\
+            .debug(self.encoder.encode(message) + self.record_separator)
         return self.encoder.encode(message) + self.record_separator
