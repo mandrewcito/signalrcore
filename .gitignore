@@ -122,3 +122,5 @@ dmypy.json
 ./test/containers/code
 #coverga
 coverage_html
+#venvwin
+venvwin
