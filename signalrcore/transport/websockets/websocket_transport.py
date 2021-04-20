@@ -174,7 +174,6 @@ class WebsocketTransport(BaseTransport):
 
     def on_message(self, raw_message):
         self.logger.debug("Message received{0}".format(raw_message))
-        self.connection_checker.last_message = time.time()
         if not self.handshake_received:
             messages = self.evaluate_handshake(raw_message)
             if self._on_open is not None and callable(self._on_open):
