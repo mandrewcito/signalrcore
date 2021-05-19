@@ -128,9 +128,9 @@ class WebsocketTransport(BaseTransport):
                     self.connection_checker.start()
         else:
             self.logger.error(msg.error)
-            self.on_socket_error(None, msg.error)
+            self.on_socket_error(self._ws, msg.error)
             self.stop()
-            raise ValueError("Handshake error {0}".format(msg.error))
+            self.state = ConnectionState.disconnected
         return messages
 
     def on_open(self, _):
@@ -148,7 +148,7 @@ class WebsocketTransport(BaseTransport):
         if callback is not None and callable(callback):
             callback()
 
-    def on_socket_error(self, _, error):
+    def on_socket_error(self, app, error):
         """
         Args:
             _: Required to support websocket-client version equal or greater than 0.58.0
@@ -158,11 +158,12 @@ class WebsocketTransport(BaseTransport):
             HubError: [description]
         """
         self.logger.debug("-- web socket error --")
-        self.logger.error(traceback.format_exc(5, True))
+        self.logger.error(traceback.format_exc(10, True))
         self.logger.error("{0} {1}".format(self, error))
         self.logger.error("{0} {1}".format(error, type(error)))
         self._on_close()
-        raise HubError(error)
+        self.state = ConnectionState.disconnected
+        #raise HubError(error)
 
     def on_message(self, app, raw_message):
         self.logger.debug("Message received{0}".format(raw_message))
