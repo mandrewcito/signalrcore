@@ -91,24 +91,15 @@ class TestReconnectMethods(BaseTestCase):
 
         connection.on_open(lambda: self._lock.release())
 
-        connection.on("ReceiveMessage", lambda _: self._lock.release())
-        
         connection.start()
 
         self.assertTrue(self._lock.acquire(timeout=10)) # Release on Open
 
         connection.send("DisconnectMe", [])
 
-        self.assertTrue(self._lock.acquire(timeout=20)) # released on open
-        
-        connection.send("SendMessage", ["user", "reconnected!"])
+        self.assertTrue(self._lock.acquire(timeout=10)) # released on open
 
-        self.assertTrue(self._lock.acquire(timeout=10))  # released at receive message
-
-        #connection.on_close(lambda: _lock.release())
         connection.stop()
-
-        #self.assertTrue(_lock.acquire(timeout=10))  # released at close
 
     def test_raw_reconnection(self):
         connection = HubConnectionBuilder()\
