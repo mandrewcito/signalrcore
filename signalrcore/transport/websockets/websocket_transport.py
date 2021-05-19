@@ -128,7 +128,7 @@ class WebsocketTransport(BaseTransport):
                     self.connection_checker.start()
         else:
             self.logger.error(msg.error)
-            self.on_socket_error(msg.error)
+            self.on_socket_error(None, msg.error)
             self.stop()
             raise ValueError("Handshake error {0}".format(msg.error))
         return messages
@@ -138,11 +138,15 @@ class WebsocketTransport(BaseTransport):
         msg = self.protocol.handshake_message()
         self.send(msg)
 
-    def on_close(self, _):
+    def on_close(self, callback, close_status_code, close_reason):
         self.logger.debug("-- web socket close --")
+        self.logger.debug(close_status_code)
+        self.logger.debug(close_reason)
         self.state = ConnectionState.disconnected
         if self._on_close is not None and callable(self._on_close):
             self._on_close()
+        if callback is not None and callable(callback):
+            callback()
 
     def on_socket_error(self, _, error):
         """
@@ -160,7 +164,7 @@ class WebsocketTransport(BaseTransport):
         self._on_close()
         raise HubError(error)
 
-    def on_message(self, _, raw_message):
+    def on_message(self, app, raw_message):
         self.logger.debug("Message received{0}".format(raw_message))
         self.connection_checker.last_message = time.time()
         if not self.handshake_received:
