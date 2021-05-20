@@ -6,7 +6,7 @@ before_install:
   - pip install -r requirements.txt
   - pip install coverage
 after_success:
-  - bash <(curl -s https://codecov.io/bash)
+  - bash <(cat codecov.yml | curl --data-binary @- https://codecov.io/validate)
 install:
   - cd containers
   - docker-compose up -d
