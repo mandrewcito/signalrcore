@@ -15,10 +15,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - run: git clone https://github.com/mandrewcito/signalrcore-containertestservers containers
-    - run: docker-compose -f containers/docker-compose.yml up -d
     - uses: actions/checkout@v2
-    - name: Set up Python 3.9
+    - name: Set up Python 3.6
       uses: actions/setup-python@v2
       with:
         python-version: 3.6
