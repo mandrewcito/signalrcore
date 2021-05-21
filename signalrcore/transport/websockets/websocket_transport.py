@@ -58,8 +58,6 @@ class WebsocketTransport(BaseTransport):
                 self._ws.close()
             except AttributeError as ex:
                 self.logger.warning(ex)
-                if self._on_close is not None and callable(self._on_close):
-                    self._on_close()
             finally:
                 self.state = ConnectionState.disconnected
                 self.handshake_received = False
