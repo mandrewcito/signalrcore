@@ -50,14 +50,8 @@ class TestSendAuthMethod(BaseTestCase):
             })
         self.connection = builder.build()
         self.connection.on("ReceiveMessage", self.receive_message)
-        self.connection.on_open(self.on_open)
-        self.connection.on_close(self.on_close)
         self._lock = threading.Lock()
-        self.assertTrue(self._lock.acquire(timeout=30))
-        self.connection.start()
-    
-    def on_open(self):
-        self._lock.release()
+        self.start()
 
     def setUp(self):
         self._setUp()

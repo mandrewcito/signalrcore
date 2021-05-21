@@ -50,8 +50,6 @@ class TestSendAuthErrorMethod(BaseTestCase):
         
         builder.configure_logging(logging.ERROR)
         self.connection = builder.build()
-        self.connection.on_open(self.on_open)
-        self.connection.on_close(self.on_close)
         self.assertRaises(requests.exceptions.ConnectionError, lambda :self.connection.start())
 
         

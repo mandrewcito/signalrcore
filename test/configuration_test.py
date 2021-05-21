@@ -1,5 +1,6 @@
 import websocket
 import logging
+import threading
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 
 from test.base_test_case import BaseTestCase, Urls
@@ -54,9 +55,18 @@ class TestConfiguration(BaseTestCase):
                 "max_attempts": 5
             })\
             .build()
-        hub.on_open(self.on_open)
-        hub.on_close(self.on_close)
+
+        _lock = threading.Lock()
+        hub.on_open(lambda: _lock.release())
+        _lock.acquire(timeout=self.timeout)
         hub.start()
+        _lock.acquire(timeout=self.timeout)
+        del _lock
+
         self.assertTrue(websocket.isEnabledForDebug())
         websocket.enableTrace(False)
+        _lock = threading.Lock()
+        hub.on_close(lambda: _lock.release())
+        _lock.acquire(timeout=self.timeout)
         hub.stop()
+        _lock.acquire(timeout=self.timeout)

@@ -1,3 +1,4 @@
+import logging
 import websocket
 import threading
 import requests
@@ -50,12 +51,18 @@ class WebsocketTransport(BaseTransport):
     def is_running(self):
         return self.state != ConnectionState.disconnected
 
-    def stop(self):
-        if self.state == ConnectionState.connected:
+    def stop(self, force=False):
+        if force and self.state == ConnectionState.connected:
             self.connection_checker.stop()
-            self._ws.close()
-            self.state = ConnectionState.disconnected
-            self.handshake_received = False
+            try: 
+                self._ws.close()
+            except AttributeError as ex:
+                self.logger.warning(ex)
+                if self._on_close is not None and callable(self._on_close):
+                    self._on_close()
+            finally:
+                self.state = ConnectionState.disconnected
+                self.handshake_received = False
 
     def start(self):
         if not self.skip_negotiation:
@@ -142,6 +149,7 @@ class WebsocketTransport(BaseTransport):
         self.logger.debug("-- web socket close --")
         self.logger.debug(close_status_code)
         self.logger.debug(close_reason)
+        self.handshake_received = False
         self.state = ConnectionState.disconnected
         if self._on_close is not None and callable(self._on_close):
             self._on_close()
@@ -162,6 +170,7 @@ class WebsocketTransport(BaseTransport):
         self.logger.error("{0} {1}".format(self, error))
         self.logger.error("{0} {1}".format(error, type(error)))
         self._on_close()
+        self.handshake_received = False
         self.state = ConnectionState.disconnected
         #raise HubError(error)
 

@@ -13,12 +13,6 @@ class TestSendException(BaseTestCase):
     def receive_message(self, _):
         raise Exception()
 
-    def setUp(self):
-        self.connection = self.get_connection()
-        self.connection.start()
-        while not self.connected:
-            time.sleep(0.1)
-    
     def test_send_exception(self):
         _lock = threading.Lock()
         _lock.acquire()
@@ -41,16 +35,12 @@ class TestSendException(BaseTestCase):
 class TestSendExceptionMsgPack(TestSendException):
     def setUp(self):
         self.connection = self.get_connection(msgpack=True)
-        self.connection.start()
-        while not self.connected:
-            time.sleep(0.1)
+        self.start()
         
 class TestSendWarning(BaseTestCase):
     def setUp(self):
         self.connection = self.get_connection()
-        self.connection.start()
-        while not self.connected:
-            time.sleep(0.1)
+        self.start()
     
     def test_send_warning(self):
         _lock = threading.Lock()
@@ -62,9 +52,7 @@ class TestSendWarning(BaseTestCase):
 class TestSendWarningMsgPack(TestSendWarning):
     def setUp(self):
         self.connection = super().get_connection(msgpack=True)
-        self.connection.start()
-        while not self.connected:
-            time.sleep(0.1)
+        self.start()
         
 
 class TestSendMethod(BaseTestCase):
@@ -73,9 +61,7 @@ class TestSendMethod(BaseTestCase):
     def setUp(self):
         self.connection = self.get_connection()
         self.connection.on("ReceiveMessage", self.receive_message)
-        self.connection.start()
-        while not self.connected:
-            time.sleep(0.1)
+        self.start()
 
     def receive_message(self, args):
         self.assertEqual(args[1], self.message)
@@ -117,9 +103,7 @@ class TestSendMethodMsgPack(TestSendMethod):
     def setUp(self):
         self.connection = super().get_connection(msgpack=True)
         self.connection.on("ReceiveMessage", super().receive_message)
-        self.connection.start()
-        while not self.connected:
-            time.sleep(0.1)
+        self.start()
 
 class TestSendNoSslMethodMsgPack(TestSendMethodMsgPack):
     server_url = Urls.server_url_no_ssl    
@@ -141,11 +125,7 @@ class TestSendErrorMethod(BaseTestCase):
         self.username = "mandrewcito"
 
         self.assertRaises(HubConnectionError,lambda : self.connection.send("SendMessage", [self.username, self.message]))
-        
-        self.connection.start()
-        while not self.connected:
-            time.sleep(0.1)
-
+        self.start()
         self.received = False
         self.connection.send("SendMessage", [self.username, self.message])        
         t0 = time.time()

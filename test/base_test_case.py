@@ -1,8 +1,11 @@
 import unittest
 import logging
+import threading
 import time
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from signalrcore.protocol.messagepack_protocol import MessagePackHubProtocol
+from signalrcore.transport.websockets.connection import ConnectionState
+
 class Urls:
     server_url_no_ssl = "ws://localhost:5000/chatHub"
     server_url_ssl = "wss://localhost:5001/chatHub"
@@ -13,28 +16,34 @@ class Urls:
 
 class InternalTestCase(unittest.TestCase):
     connection = None
-    connected = False
+    timeout = 10
+
     def get_connection(self):
         raise NotImplementedError()
 
+    def start(self):
+        _lock = threading.Lock()
+        self.connection.on_open(lambda: _lock.release())
+        _lock.acquire(timeout=self.timeout)
+        self.connection.start()
+        _lock.acquire(timeout=self.timeout)
+        del _lock
+
     def setUp(self):
         self.connection = self.get_connection()
-        self.connection.start()
-        t0 = time.time()
-        while not self.connected:
-            time.sleep(0.1)
-            if time.time() - t0 > 20:
-                raise ValueError("TIMEOUT ")
+        self.start()
 
     def tearDown(self):
+        if self.connection.transport.state == ConnectionState.connected:
+            self.stop()
+    
+    def stop(self):
+        _lock = threading.Lock()
+        self.connection.on_close(lambda: _lock.release())
+        _lock.acquire(timeout=self.timeout)
         self.connection.stop()
-
-    def on_open(self):
-        self.connected = True
-
-    def on_close(self):
-        self.connected = False
-
+        _lock.acquire(timeout=self.timeout)
+        
 class BaseTestCase(InternalTestCase):
     server_url = Urls.server_url_ssl
 
@@ -53,6 +62,4 @@ class BaseTestCase(InternalTestCase):
             builder.with_hub_protocol(MessagePackHubProtocol())
 
         hub = builder.build()
-        hub.on_open(self.on_open)
-        hub.on_close(self.on_close)
         return hub

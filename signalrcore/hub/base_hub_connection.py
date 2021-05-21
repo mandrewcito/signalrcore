@@ -45,7 +45,7 @@ class BaseHubConnection(object):
 
     def stop(self):
         self.logger.debug("Connection stop")
-        return self.transport.stop()
+        return self.transport.stop(force=True)
 
     def on_close(self, callback):
         """Configures on_close connection callback.
@@ -102,7 +102,7 @@ class BaseHubConnection(object):
         """
         if not self.transport.is_running():
             raise HubConnectionError(
-                "Hub is not running you cand send messages")
+                "Hub is not running you cant send messages")
 
         if type(arguments) is not list and type(arguments) is not Subject:
             raise TypeError("Arguments of a message must be a list or subject")
@@ -152,7 +152,7 @@ class BaseHubConnection(object):
 
             if message.type == MessageType.close:
                 self.logger.info("Close message received from server")
-                self.stop()
+                self.transport.stop()
                 return
 
             if message.type == MessageType.completion:
