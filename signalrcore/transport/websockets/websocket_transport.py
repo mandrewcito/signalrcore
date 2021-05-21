@@ -52,12 +52,14 @@ class WebsocketTransport(BaseTransport):
         return self.state != ConnectionState.disconnected
 
     def stop(self, force=False):
-        if force and self.state == ConnectionState.connected:
+        if force:
             self.connection_checker.stop()
             try: 
                 self._ws.close()
             except AttributeError as ex:
                 self.logger.warning(ex)
+                if self._on_close is not None and callable(self._on_close):
+                    self._on_close()                
             finally:
                 self.state = ConnectionState.disconnected
                 self.handshake_received = False
