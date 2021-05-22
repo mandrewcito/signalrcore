@@ -19,7 +19,7 @@ class TestIntervalConfigReconnectMethods(BaseTestCase, TestMixin):
             .configure_logging(logging.ERROR)\
             .with_automatic_reconnect({
                 "type": "interval",
-                "intervals": [1, 2, 4, 45, 6, 7, 8, 9, 10]
+                "intervals": [5, 5, 10, 45, 6, 7, 8, 9, 10]
             })\
             .build()
         _lock = threading.Lock()
@@ -28,7 +28,7 @@ class TestIntervalConfigReconnectMethods(BaseTestCase, TestMixin):
 
         connection.start()
 
-        self.assertTrue(_lock.acquire(timeout=10))
+        self.assertTrue(_lock.acquire(timeout=20))
         del _lock
 
         _lock = threading.Lock()
@@ -37,6 +37,7 @@ class TestIntervalConfigReconnectMethods(BaseTestCase, TestMixin):
         connection.stop()
         _lock.acquire(timeout=self.timeout)
         del _lock
+        del connection
     
     def tearDown(self):
         pass

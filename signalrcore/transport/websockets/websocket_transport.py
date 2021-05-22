@@ -56,7 +56,7 @@ class WebsocketTransport(BaseTransport):
             self.connection_checker.stop()
             try: 
                 self._ws.close(timeout=5)
-            except AttributeError as ex:
+            except (AttributeError, ValueError) as ex:
                 self.logger.warning(ex)
                 if self._on_close is not None and callable(self._on_close):
                     self._on_close()                

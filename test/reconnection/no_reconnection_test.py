@@ -53,3 +53,4 @@ class TestNoReconnect(BaseTestCase):
         connection.stop()
         _lock.acquire(timeout=self.timeout)
         del _lock
+        del connection
