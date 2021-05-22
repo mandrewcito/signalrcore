@@ -226,6 +226,7 @@ class WebsocketTransport(BaseTransport):
             self.start()
         except Exception as ex:
             self.logger.error(ex)
+            self.logger.error(traceback.format_exc())
             sleep_time = self.reconnection_handler.next()
             threading.Thread(
                 target=self.deferred_reconnect,
@@ -241,3 +242,4 @@ class WebsocketTransport(BaseTransport):
             self.logger.error(ex)
             self.reconnection_handler.reconnecting = False
             self.connection_alive = False
+            self.logger.error(traceback.format_exc())

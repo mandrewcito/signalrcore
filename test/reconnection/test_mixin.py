@@ -16,10 +16,12 @@ class TestMixin(unittest.TestCase):
 
         self.assertTrue(_lock.acquire(timeout=20)) # released on open
         
+        connection.send("SendMessage", ["self.username", "self.message"])
+
         _clock = threading.Lock()
         self.assertTrue(_clock.acquire(timeout=self.timeout))
         connection.on_close(lambda: _clock.release())
         connection.stop()
-        self.assertTrue(_clock.acquire(timeout=self.timeout))
+        self.assertTrue(_clock.acquire(timeout=self.timeout * 2))
         del _clock
         del connection

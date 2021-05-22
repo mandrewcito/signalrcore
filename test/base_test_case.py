@@ -36,7 +36,8 @@ class InternalTestCase(unittest.TestCase):
     def tearDown(self):
         if self.connection.transport.state == ConnectionState.connected:
             self.stop()
-    
+        del self.connection
+        
     def stop(self):
         _lock = threading.Lock()
         self.connection.on_close(lambda: _lock.release())

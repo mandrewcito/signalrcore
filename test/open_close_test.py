@@ -1,3 +1,4 @@
+from multiprocessing import connection
 import os
 import unittest
 import logging
@@ -10,7 +11,7 @@ from signalrcore.hub_connection_builder import HubConnectionBuilder
 from signalrcore.subject import Subject
 from test.base_test_case import BaseTestCase, Urls
 
-class TestClientStreamMethod(BaseTestCase):    
+class TestOpenCloseMethod(BaseTestCase):    
     def setUp(self):
         pass
 
@@ -39,26 +40,28 @@ class TestClientStreamMethod(BaseTestCase):
         result = connection.start()
 
         self.assertFalse(result)
-
+        _lock.acquire(timeout=30)
         connection.stop()
+        _lock.acquire(timeout=30)
+        del connection
 
     def test_open_close(self):
-        self.connection = self.get_connection()
+        connection = self.get_connection()
       
         _lock = threading.Lock()
 
-        self.connection.on_open(lambda: _lock.release())
-        self.connection.on_close(lambda: _lock.release())
+        connection.on_open(lambda: _lock.release())
+        connection.on_close(lambda: _lock.release())
 
         self.assertTrue(_lock.acquire())
 
-        self.connection.start()
+        connection.start()
 
         self.assertTrue(_lock.acquire())
         
-        self.connection.stop()
+        connection.stop()
         
         self.assertTrue(_lock.acquire())
 
-        _lock.release()
+        del connection
         del _lock

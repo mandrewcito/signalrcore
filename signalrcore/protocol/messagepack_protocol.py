@@ -1,5 +1,6 @@
 import json
 import msgpack
+import chardet
 from .base_hub_protocol import BaseHubProtocol
 from ..messages.handshake.request import HandshakeRequestMessage
 from ..messages.handshake.response import HandshakeResponseMessage
@@ -48,8 +49,17 @@ class MessagePackHubProtocol(BaseHubProtocol):
             Helpers.get_logger().error("raw msg '{0}'".format(raw))
         return messages
 
+    def transform(self, msg):
+        dt = chardet.detect(msg)
+        return msg.decode(dt["encoding"]).encode("utf8")
+
     def decode_handshake(self, raw_message):
         try:
+            raw_message = self.transform(raw_message) # somtimes messages come with windows encoding
+            
+            if raw_message.decode("utf8").replace(chr(0x1E),"") == "{}":
+                return HandshakeResponseMessage(""), []
+
             has_various_messages = 0x1E in raw_message
             handshake_data = raw_message[0: raw_message.index(0x1E)] if has_various_messages else raw_message
             messages = self.parse_messages(raw_message[raw_message.index(0x1E) + 1:]) if has_various_messages else []
