@@ -1,3 +1,4 @@
+from multiprocessing import connection
 import os
 import unittest
 import logging
@@ -25,10 +26,16 @@ class TestSendAuthErrorMethod(BaseTestCase):
                 "password": self.password
                 },verify=False)
         if response.status_code == 200:
-            return response.json()["token"]
+            data = response.json()
+            del response
+            return data["token"]
+        del response
         raise requests.exceptions.ConnectionError()
 
     def setUp(self):
+        pass
+    
+    def tearDown(self):
         pass
 
     def test_send_json(self):
@@ -51,6 +58,7 @@ class TestSendAuthErrorMethod(BaseTestCase):
         builder.configure_logging(logging.ERROR)
         self.connection = builder.build()
         self.assertRaises(requests.exceptions.ConnectionError, lambda :self.connection.start())
+        del self.connection
 
         
 class TestSendNoSslAuthMethod(TestSendAuthErrorMethod):

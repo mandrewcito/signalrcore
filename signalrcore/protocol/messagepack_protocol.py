@@ -63,8 +63,11 @@ class MessagePackHubProtocol(BaseHubProtocol):
             has_various_messages = 0x1E in raw_message
             handshake_data = raw_message[0: raw_message.index(0x1E)] if has_various_messages else raw_message
             messages = self.parse_messages(raw_message[raw_message.index(0x1E) + 1:]) if has_various_messages else []
-            data = json.loads(handshake_data)
-            return HandshakeResponseMessage(data.get("error", None)), messages
+            try:
+                data = json.loads(handshake_data)
+                return HandshakeResponseMessage(data.get("error", None)), messages
+            except:
+                return HandshakeResponseMessage(""), self.parse_messages(handshake_data) + messages
         except Exception as ex:
             if type(raw_message) is str:
                 data = json.loads(raw_message[0: raw_message.index("}") + 1])

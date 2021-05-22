@@ -60,13 +60,16 @@ class TestSendAuthMethod(BaseTestCase):
         self._lock.release()
         self.assertEqual(args[0], self.message)
         
+    def tearDown(self):
+        return super().tearDown()
+        
     def test_send(self):
         self.message = "new message {0}".format(uuid.uuid4())
         self.username = "mandrewcito"
         self.assertTrue(self._lock.acquire(timeout=30))
         self.connection.send("SendMessage", [self.message])
         self.assertTrue(self._lock.acquire(timeout=30))
-        del self._lock    
+        del self._lock 
         
 class TestSendNoSslAuthMethod(TestSendAuthMethod):
     server_url = Urls.server_url_no_ssl_auth

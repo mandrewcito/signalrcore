@@ -1,3 +1,4 @@
+from multiprocessing import connection
 import unittest
 import logging
 import threading
@@ -23,8 +24,8 @@ class InternalTestCase(unittest.TestCase):
 
     def start(self):
         _lock = threading.Lock()
-        self.connection.on_open(lambda: _lock.release())
         _lock.acquire(timeout=self.timeout)
+        self.connection.on_open(lambda: _lock.release())
         self.connection.start()
         _lock.acquire(timeout=self.timeout)
         del _lock
@@ -34,7 +35,8 @@ class InternalTestCase(unittest.TestCase):
         self.start()
 
     def tearDown(self):
-        if self.connection.transport.state == ConnectionState.connected:
+        if self.connection.transport.state == ConnectionState.connected\
+                or self.connection.transport.state == ConnectionState.connecting:
             self.stop()
         del self.connection
         
