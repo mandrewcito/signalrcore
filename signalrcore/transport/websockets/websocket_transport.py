@@ -55,7 +55,7 @@ class WebsocketTransport(BaseTransport):
         if force:
             self.connection_checker.stop()
             try: 
-                self._ws.close()
+                self._ws.close(timeout=5)
             except AttributeError as ex:
                 self.logger.warning(ex)
                 if self._on_close is not None and callable(self._on_close):
@@ -148,6 +148,7 @@ class WebsocketTransport(BaseTransport):
         self.send(msg)
 
     def on_close(self, callback, close_status_code, close_reason):
+        print("closinnnnnng")
         self.logger.debug("-- web socket close --")
         self.logger.debug(close_status_code)
         self.logger.debug(close_reason)
@@ -171,9 +172,9 @@ class WebsocketTransport(BaseTransport):
         self.logger.error(traceback.format_exc(10, True))
         self.logger.error("{0} {1}".format(self, error))
         self.logger.error("{0} {1}".format(error, type(error)))
-        self._on_close()
         self.handshake_received = False
         self.state = ConnectionState.disconnected
+        self._on_close()        
         #raise HubError(error)
 
     def on_message(self, app, raw_message):
