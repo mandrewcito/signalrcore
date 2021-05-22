@@ -87,7 +87,9 @@ class WebsocketTransport(BaseTransport):
         self._thread = threading.Thread(
             target=lambda: self._ws.run_forever(
                 sslopt={"cert_reqs": ssl.CERT_NONE}
-                if not self.verify_ssl else {}
+                    if not self.verify_ssl else {},
+                skip_utf8_validation=True,
+                ping_interval=0
             ))
         self._thread.daemon = True
         self._thread.start()
