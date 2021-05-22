@@ -148,7 +148,6 @@ class WebsocketTransport(BaseTransport):
         self.send(msg)
 
     def on_close(self, callback, close_status_code, close_reason):
-        print("closinnnnnng")
         self.logger.debug("-- web socket close --")
         self.logger.debug(close_status_code)
         self.logger.debug(close_reason)
