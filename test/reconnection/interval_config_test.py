@@ -10,9 +10,8 @@ from signalrcore.hub_connection_builder import HubConnectionBuilder
 from signalrcore.hub.errors import HubConnectionError
 from test.base_test_case import BaseTestCase, Urls
 from signalrcore.transport.websockets.reconnection import RawReconnectionHandler, IntervalReconnectionHandler
-from .test_mixin import TestMixin
 
-class TestIntervalConfigReconnectMethods(BaseTestCase, TestMixin):
+class TestIntervalConfigReconnectMethods(BaseTestCase):
     def test_reconnect_interval_config(self):
         connection = HubConnectionBuilder()\
             .with_url(self.server_url, options={"verify_ssl": False})\

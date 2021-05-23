@@ -25,26 +25,28 @@ class TestOpenCloseMethod(BaseTestCase):
             .build()
         
         _lock = threading.Lock()
-        self.assertTrue(_lock.acquire(timeout=30))
-        
-
         connection.on_open(lambda: _lock.release())
-        connection.on_close(lambda: _lock.release())
         
+        self.assertTrue(_lock.acquire(timeout=30))
         result = connection.start()
 
         self.assertTrue(result)
-        
         self.assertTrue(_lock.acquire(timeout=30))  # Released on open
         
+        connection.on_open(None)
         result = connection.start()
+        del _lock
 
         self.assertFalse(result)
-        _lock.acquire(timeout=30)
+        
+        _lock = threading.Lock()
+        self.assertTrue(_lock.acquire(timeout=30))
+        connection.on_close(lambda: _lock.release())        
         connection.stop()
-        _lock.acquire(timeout=30)
+        self.assertTrue(_lock.acquire(timeout=30))
         del connection
-
+        del _lock
+        
     def test_open_close(self):
         connection = self.get_connection()
       

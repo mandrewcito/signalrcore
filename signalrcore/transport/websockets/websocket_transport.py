@@ -1,3 +1,4 @@
+from aifc import Error
 import logging
 import websocket
 import threading
@@ -56,7 +57,7 @@ class WebsocketTransport(BaseTransport):
             self.connection_checker.stop()
             try: 
                 self._ws.close(timeout=5)
-            except (AttributeError, ValueError) as ex:
+            except (Exception, Error) as ex:
                 self.logger.warning(ex)
                 if self._on_close is not None and callable(self._on_close):
                     self._on_close()                
@@ -109,6 +110,8 @@ class WebsocketTransport(BaseTransport):
                 if response.status_code != 401 else UnAuthorizedHubError()
 
         data = response.json()
+        
+        del response 
 
         if "connectionId" in data.keys():
             self.url = Helpers.encode_connection_id(
@@ -188,7 +191,7 @@ class WebsocketTransport(BaseTransport):
                 return self._on_message(messages)
 
             return []
-        
+
         return self._on_message(
             self.protocol.parse_messages(raw_message))
 
@@ -204,8 +207,7 @@ class WebsocketTransport(BaseTransport):
             if self.reconnection_handler is not None:
                 self.reconnection_handler.reset()
         except (
-                websocket._exceptions.WebSocketConnectionClosedException,
-                OSError) as ex:
+                websocket._exceptions.WebSocketConnectionClosedException, Error) as ex:
             self.handshake_received = False
             self.logger.warning("Connection closed {0}".format(ex))
             self.state = ConnectionState.disconnected

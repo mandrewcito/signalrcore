@@ -35,22 +35,14 @@ class TestNoReconnect(BaseTestCase):
         connection.start()
 
         self.assertTrue(_lock.acquire(timeout=10))  # Released on ReOpen
+        connection.on_open(lambda: None)
         
         connection.send("DisconnectMe", [])
-
-        self.assertTrue(_lock.acquire(timeout=10))
-
+        
         time.sleep(10)
 
         self.assertRaises(
             HubConnectionError,
             lambda: connection.send("DisconnectMe", []))
-        del _lock
-
-        _lock = threading.Lock()
-        connection.on_close(lambda: _lock.release())
-        _lock.acquire(timeout=self.timeout)
-        connection.stop()
-        _lock.acquire(timeout=self.timeout)
         del _lock
         del connection
