@@ -25,19 +25,20 @@ class TestIntervalReconnectMethods(BaseTestCase):
         self.reconnect_test(connection)
         
     def reconnect_test(self, connection):
-        _lock = threading.Lock()
+        self.open_lock = threading.Lock()
         
-        self.assertTrue(_lock.acquire(timeout=10)) 
+        self.assertTrue(self.open_lock.acquire(timeout=10)) 
 
-        connection.on_open(lambda: _lock.release())
+        connection.on_open(lambda: self.open_lock.release())
 
         connection.start()
 
-        self.assertTrue(_lock.acquire(timeout=10)) # Release on Open
+        self.assertTrue(self.open_lock.acquire(timeout=10)) # Release on Open
 
         connection.send("DisconnectMe", [])
 
-        self.assertTrue(_lock.acquire(timeout=20)) # released on open
+        self.assertTrue(self.open_lock.acquire(timeout=20)) # released on open
+        connection.on_open(None)
         
         connection.send("SendMessage", ["self.username", "self.message"])
 

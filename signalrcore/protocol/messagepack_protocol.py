@@ -55,6 +55,7 @@ class MessagePackHubProtocol(BaseHubProtocol):
 
     def decode_handshake(self, raw_message):
         try:
+            
             raw_message = self.transform(raw_message) # somtimes messages come with windows encoding
             
             if raw_message.decode("utf8").replace(chr(0x1E),"") == "{}":
@@ -163,9 +164,6 @@ class MessagePackHubProtocol(BaseHubProtocol):
 
         elif raw[0] == 7:  # CloseMessageEncoding
             return CloseMessage(error=raw[1])  # AllowReconnect is missing
-        print(".......................................")
-        print(raw)
-        print("---------------------------------------")
         raise Exception("Unknown message type.")
 
     def _to_varint(self, value):

@@ -20,7 +20,6 @@ class TestClientStreamMethod(BaseTestCase):
             subject.next(str(self.items.pop()))
         subject.complete()
         self.assertTrue(len(self.items) == 0)
-        time.sleep(5)
 
 class TestClientStreamMethodMsgPack(TestClientStreamMethod):
     def get_connection(self):

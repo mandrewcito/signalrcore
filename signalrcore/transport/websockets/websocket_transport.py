@@ -10,6 +10,7 @@ import ssl
 from .reconnection import ConnectionStateChecker
 from .connection import ConnectionState
 from ...messages.ping_message import PingMessage
+from ...messages.close_message import CloseMessage
 from ...hub.errors import HubError, HubConnectionError, UnAuthorizedHubError
 from ...protocol.messagepack_protocol import MessagePackHubProtocol
 from ...protocol.json_hub_protocol import JsonHubProtocol
@@ -38,7 +39,6 @@ class WebsocketTransport(BaseTransport):
         self.state = ConnectionState.disconnected
         self.connection_alive = False
         self._thread = None
-        self._ws = None
         self.verify_ssl = verify_ssl
         self.connection_checker = ConnectionStateChecker(
             lambda: self.send(PingMessage()),
@@ -56,7 +56,10 @@ class WebsocketTransport(BaseTransport):
         if force:
             self.connection_checker.stop()
             try: 
-                self._ws.close(timeout=5)
+                self._ws.close(
+                    reason=b'\x92\x07'
+                        if type(self.protocol) == MessagePackHubProtocol else 
+                        bytes('{"type": 7}', encoding='utf-8'))             
             except (Exception, Error) as ex:
                 self.logger.warning(ex)
                 if self._on_close is not None and callable(self._on_close):

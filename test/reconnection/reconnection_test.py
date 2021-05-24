@@ -41,7 +41,6 @@ class TestReconnectMethods(BaseTestCase):
         self.assertTrue(_lock.acquire(timeout=20)) # released on open
         
         connection.send("SendMessage", ["self.username", "self.message"])
-
         _clock = threading.Lock()
         self.assertTrue(_clock.acquire(timeout=self.timeout))
         connection.on_close(lambda: _clock.release())
@@ -49,6 +48,7 @@ class TestReconnectMethods(BaseTestCase):
         self.assertTrue(_clock.acquire(timeout=self.timeout * 2))
         del _clock
         del connection
+
 
     def tearDown(self):
         pass
