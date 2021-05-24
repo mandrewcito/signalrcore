@@ -29,7 +29,5 @@ jobs:
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Test and coverage
       run: |
-         # Coverage
-         coverage run -m unittest discover -s test/ -p "*_test.py"
-         # report to codecov
-         bash <(cat codecov.yml | curl --data-binary @- https://codecov.io/validate)
+         # Test
+         python3 -m unittest discover -s test/ -p "*_test.py" -v
