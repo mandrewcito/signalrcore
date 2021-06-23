@@ -95,6 +95,9 @@ class BaseHubConnection(object):
             arguments (list|Subject): Method parameters
             on_invocation (function, optional): On invocation send callback
                 will be raised on send server function ends. Defaults to None.
+            invocation_id (string, optional): Override invocation ID. Exceptions
+                thrown by the hub will use this ID, making it easier to handle
+                with the on_error call.
 
         Raises:
             HubConnectionError: If hub is not ready to send
