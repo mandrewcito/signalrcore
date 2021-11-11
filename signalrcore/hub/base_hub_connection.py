@@ -24,9 +24,12 @@ class BaseHubConnection(object):
             self,
             url,
             protocol,
-            headers={},
-            **kwargs):        
-        self.headers = headers
+            headers=None,
+            **kwargs):
+        if headers is None:
+            self.headers = dict()
+        else:
+            self.headers = headers
         self.logger = Helpers.get_logger()
         self.handlers = []
         self.stream_handlers = []
@@ -35,7 +38,7 @@ class BaseHubConnection(object):
         self.transport = WebsocketTransport(
             url=url,
             protocol=protocol,
-            headers=headers,
+            headers=self.headers,
             on_message=self.on_message,
             **kwargs)
 
