@@ -71,10 +71,10 @@ class WebsocketTransport(BaseTransport):
         self._ws = websocket.WebSocketApp(
             self.url,
             header=self.headers,
-            on_message=self.on_message,
-            on_error=self.on_socket_error,
-            on_close=self.on_close,
-            on_open=self.on_open,
+            on_message=lambda _, message: self.on_message(message),
+            on_error=lambda _, error: self.on_socket_error(error),
+            on_close=lambda _: self.on_close(),
+            on_open=lambda _: self.on_open(),
             )
             
         self._thread = threading.Thread(
@@ -155,7 +155,7 @@ class WebsocketTransport(BaseTransport):
         self.logger.debug("-- web socket error --")
         if (type(error) is AttributeError and
                 "'NoneType' object has no attribute 'connected'"
-                in str(error)):
+                in str(error) or type(error) and str('<lambda>() takes 1 positional argument but 3 were given')):
             url = "https://github.com/websocket-client" +\
                 "/websocket-client/issues/449"
             self.logger.warning(
@@ -166,7 +166,6 @@ class WebsocketTransport(BaseTransport):
             self.logger.error(traceback.format_exc(5, True))
             self.logger.error("{0} {1}".format(self, error))
             self.logger.error("{0} {1}".format(error, type(error)))
-            self._on_close()
             raise HubError(error)
 
     def on_message(self, raw_message):

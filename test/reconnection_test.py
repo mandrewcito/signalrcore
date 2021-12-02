@@ -24,7 +24,7 @@ class TestReconnectMethods(BaseTestCase):
             .configure_logging(logging.ERROR)\
             .with_automatic_reconnect({
                 "type": "interval",
-                "intervals": [1, 2, 4, 45, 6, 7, 8, 9, 10]
+                "intervals": [10, 22, 41, 45, 6, 7, 8, 9, 10]
             })\
             .build()
         _lock = threading.Lock()
