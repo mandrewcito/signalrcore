@@ -31,15 +31,15 @@ cd ../signalrcore
 make tests
 ```
 
-## known issues
+## Known Issues
 
-Issues related with closing socket inherited from websocket-client library. Due this problems i cant update library to versions higher than websocket-client 0.54.0. 
-I'm working for solve it, for now its patched (Error number 1. Raises an exception, and then exception is treated for prevent errors). 
-If i update weboscket library i fall into error number 2, on local machine i cant reproduce it but on travis builds fails (sometimes and randomly :()
+Issues related with closing sockets are inherited from the websocket-client library. Due to these problems i can't update the library to versions higher than websocket-client 0.54.0. 
+I'm working to solve it but for now its patched (Error number 1. Raises an exception, and then exception is treated for prevent errors). 
+If I update the websocket library I fall into error number 2, on local machine I can't reproduce it but travis builds fail (sometimes and randomly :()
 * [1. Closing socket error](https://github.com/slackapi/python-slackclient/issues/171)
 * [2. Random errors closing socket](https://github.com/websocket-client/websocket-client/issues/449)
 
-# A tiny How To
+# A Tiny How To
 
 ## Connect to a server without auth
 
@@ -75,8 +75,8 @@ hub_connection = HubConnectionBuilder()\
                 "max_attempts": 5
             }).build()
 ```
-### Unauthorized erros
-A login function must provide a error control if authorization fails. When connection starts, if authorization fails exception will be propagued.
+### Unauthorized errors
+A login function must provide an error controller if authorization fails. When connection starts, if authorization fails exception will be propagated.
 
 ```python
     def login(self):
@@ -107,8 +107,8 @@ HubConnectionBuilder()\
     .configure_logging(logging.DEBUG, socket_trace=True) 
     ... 
  ```
- ## Configure your own handler
- ```python
+## Configure your own handler
+```python
  import logging
 handler = logging.StreamHandler()
 handler.setLevel(logging.DEBUG)
@@ -117,16 +117,15 @@ hub_connection = HubConnectionBuilder()\
     .configure_logging(logging.DEBUG, socket_trace=True, handler=handler)
     ...
  ```
-## Configuring reconection
-After reaching max_attemps an exeption will be thrown and on_disconnect event will be
-fired.
+## Configuring reconnection
+After reaching max_attempts an exeption will be thrown and on_disconnect event will be fired.
 ```python
 hub_connection = HubConnectionBuilder()\
     .with_url(server_url)\
     ...
     .build()
 ```
-## Configuring aditional headers
+## Configuring additional headers
 ```python
 hub_connection = HubConnectionBuilder()\
             .with_url(server_url,
@@ -138,7 +137,7 @@ hub_connection = HubConnectionBuilder()\
             ...
             .build()
 ```
-## Configuring aditional querystring parameters
+## Configuring additional querystring parameters
 ```python
 server_url ="http.... /?myquerystringparam=134&foo=bar"
 connection = HubConnectionBuilder()\
@@ -147,7 +146,7 @@ connection = HubConnectionBuilder()\
             })\
             .build()
 ```
-## Congfigure skip negotiation
+## Congfiguring skip negotiation
 ```python
 hub_connection = HubConnectionBuilder() \
         .with_url("ws://"+server_url, options={
@@ -162,7 +161,7 @@ hub_connection = HubConnectionBuilder() \
 ```
 ## Configuring ping(keep alive)
 
-keep_alive_interval sets the secconds of ping message
+keep_alive_interval sets the seconds of ping message
 
 ```python
 hub_connection = HubConnectionBuilder()\
@@ -202,15 +201,15 @@ HubConnectionBuilder()\
 ```
 ## Events
 
-### On connect / On disconnect
-on_open - fires when connection is openned and ready to send messages
+### On Connect / On Disconnect
+on_open - fires when connection is opened and ready to send messages
 on_close - fires when connection is closed
 ```python
 hub_connection.on_open(lambda: print("connection opened and handshake received ready to send messages"))
 hub_connection.on_close(lambda: print("connection closed"))
 
 ```
-### On hub error (Hub Exceptions ...)
+### On Hub Error (Hub Exceptions ...)
 ```
 hub_connection.on_error(lambda data: print(f"An exception was thrown closed{data.error}"))
 ```
@@ -263,10 +262,6 @@ subject.next(str(iteration))
 
 # End streaming
 subject.complete()
-
-
-
-
 ```
 
 # Full Examples
