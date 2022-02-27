@@ -1,4 +1,5 @@
 import os
+import re
 import unittest
 import logging
 import time
@@ -103,10 +104,18 @@ class TestSendMethod(BaseTestCase):
         self.received = False
         _lock = threading.Lock()
         _lock.acquire()
+        uid = str(uuid.uuid4())
+
+        def release(m):
+            self.assertTrue(m.invocation_id, uid)
+            _lock.release()
+
         self.connection.send(
             "SendMessage",
             [self.username, self.message],
-            lambda m: _lock.release())
+            release,
+            invocation_id=uid)
+
         self.assertTrue(_lock.acquire(timeout=10))
         del _lock
 

@@ -1,3 +1,4 @@
+from operator import inv
 import websocket
 import threading
 import requests
@@ -18,6 +19,11 @@ from ..transport.websockets.websocket_transport import WebsocketTransport
 from ..helpers import Helpers
 from ..subject import Subject
 from ..messages.invocation_message import InvocationMessage
+
+class InvocationResult(object):
+    def __init__(self, invocation_id) -> None:
+        self.invocation_id = invocation_id
+        self.message = None
 
 class BaseHubConnection(object):
     def __init__(
@@ -90,7 +96,7 @@ class BaseHubConnection(object):
         self.logger.debug("Handler registered started {0}".format(event))
         self.handlers.append((event, callback_function))
 
-    def send(self, method, arguments, on_invocation=None, invocation_id=str(uuid.uuid4())):
+    def send(self, method, arguments, on_invocation=None, invocation_id=str(uuid.uuid4())) -> InvocationResult:
         """Sends a message
 
         Args:
@@ -113,6 +119,8 @@ class BaseHubConnection(object):
         if type(arguments) is not list and type(arguments) is not Subject:
             raise TypeError("Arguments of a message must be a list or subject")
 
+        result = InvocationResult(invocation_id)
+
         if type(arguments) is list:
             message = InvocationMessage(
                 invocation_id,
@@ -127,11 +135,17 @@ class BaseHubConnection(object):
                         on_invocation))
             
             self.transport.send(message)
-
+            result.message = message
+        
         if type(arguments) is Subject:
             arguments.connection = self
             arguments.target = method
             arguments.start()
+            result.invocation_id = arguments.invocation_id
+            result.message = arguments
+        
+
+        return result
 
 
     def on_message(self, messages):
