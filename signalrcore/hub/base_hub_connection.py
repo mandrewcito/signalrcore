@@ -87,7 +87,7 @@ class BaseHubConnection(object):
         self.logger.debug("Handler registered started {0}".format(event))
         self.handlers.append((event, callback_function))
 
-    def send(self, method, arguments, on_invocation=None):
+    def send(self, method, arguments, on_invocation=None, invocation_id=str(uuid.uuid4())):
         """Sends a message
 
         Args:
@@ -95,6 +95,9 @@ class BaseHubConnection(object):
             arguments (list|Subject): Method parameters
             on_invocation (function, optional): On invocation send callback
                 will be raised on send server function ends. Defaults to None.
+            invocation_id (string, optional): Override invocation ID. Exceptions
+                thrown by the hub will use this ID, making it easier to handle
+                with the on_error call.
 
         Raises:
             HubConnectionError: If hub is not ready to send
@@ -109,7 +112,7 @@ class BaseHubConnection(object):
 
         if type(arguments) is list:
             message = InvocationMessage(
-                str(uuid.uuid4()),
+                invocation_id,
                 method,
                 arguments,
                 headers=self.headers)
