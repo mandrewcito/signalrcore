@@ -225,6 +225,7 @@ username, message - parameters of signalrmethod
 ```python
     hub_connection.send("SendMessage", [username, message])
 ```
+
 ## Sending messages with callback
 SendMessage - signalr method
 username, message - parameters of signalrmethod
@@ -238,6 +239,7 @@ username, message - parameters of signalrmethod
     if not send_callback_received.acquire(timeout=1):
         raise ValueError("CALLBACK NOT RECEIVED")
 ```
+
 ## Requesting streaming (Server to client)
 ```python
 hub_connection.stream(
