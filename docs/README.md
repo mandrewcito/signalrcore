@@ -208,6 +208,7 @@ on_close - fires when connection is closed
 ```python
 hub_connection.on_open(lambda: print("connection opened and handshake received ready to send messages"))
 hub_connection.on_close(lambda: print("connection closed"))
+hub_connection.on_reconnect(lambda: print("reconnection in progress"))
 
 ```
 ### On hub error (Hub Exceptions ...)
@@ -303,6 +304,7 @@ hub_connection = HubConnectionBuilder()\
 
 hub_connection.on_open(lambda: print("connection opened and handshake received ready to send messages"))
 hub_connection.on_close(lambda: print("connection closed"))
+hub_connection.on_reconnect(lambda: print("reconnection in progress"))
 
 hub_connection.on("ReceiveMessage", print)
 hub_connection.start()
