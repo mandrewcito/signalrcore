@@ -30,4 +30,4 @@ jobs:
     - name: Test and coverage
       run: |
          # Test
-         python3 -m unittest discover -s test/ -p "*_test.py" -v
+         coverage run -m unittest discover -s test/ -p "*_test.py"
