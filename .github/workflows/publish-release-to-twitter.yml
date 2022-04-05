@@ -1,7 +1,7 @@
 name: publish-release-to-twitter
 on: 
   release:
-    types: [created]
+    types: [published]
 
 jobs:
   build:
@@ -9,7 +9,7 @@ jobs:
     steps:
       - uses: infraway/tweet-action@v1
         with:
-          status: Tweeted from Github Actions
+          status: Signalrcore ${{ github.event.release.tag_name }} released, https://pypi.org/project/signalrcore/ #SignalR #AspNetCore #Python 
           api_key: ${{ secrets.TWITTER_API_KEY }}
           api_key_secret: ${{ secrets.TWITTER_API_KEY_SECRET }}
           access_token: ${{ secrets.TWITTER_ACCESS_TOKEN }}
