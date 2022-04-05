@@ -13,4 +13,4 @@ jobs:
           api_key: ${{ secrets.TWITTER_API_KEY }}
           api_key_secret: ${{ secrets.TWITTER_API_KEY_SECRET }}
           access_token: ${{ secrets.TWITTER_ACCESS_TOKEN }}
-          access_token_secret: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }
+          access_token_secret: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
