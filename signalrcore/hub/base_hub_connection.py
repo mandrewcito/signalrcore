@@ -174,9 +174,7 @@ class BaseHubConnection(object):
                         lambda h: h[0] == message.target,
                         self.handlers))
                 if len(fired_handlers) == 0:
-                    self.logger.warning(
-                        "event '{0}' hasn't fire any handler".format(
-                            message.target))
+                    self.logger.debug(f"event '{message.target}' hasn't fired any handler")
                 for _, handler in fired_handlers:
                     handler(message.arguments)
 
