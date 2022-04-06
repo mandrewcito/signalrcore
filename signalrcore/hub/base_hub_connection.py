@@ -124,7 +124,7 @@ class BaseHubConnection(object):
         """
         if not self.transport.is_running():
             raise HubConnectionError(
-                "Hub is not running you cand send messages")
+                "Cannot connect to SignalR hub. Unable to transmit messages")
 
         if type(arguments) is not list and type(arguments) is not Subject:
             raise TypeError("Arguments of a message must be a list or subject")
