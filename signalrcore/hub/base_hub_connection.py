@@ -264,3 +264,4 @@ class BaseHubConnection(object):
                 event_params,
                 headers=self.headers))
         return stream_obj
+    
