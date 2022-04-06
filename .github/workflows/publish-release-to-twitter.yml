@@ -9,7 +9,11 @@ jobs:
     steps:
       - uses: infraway/tweet-action@v1
         with:
-          status: Signalrcore ${{ github.event.release.tag_name }} released, https://pypi.org/project/signalrcore/ #SignalR #AspNetCore #Python 
+          status: Signalrcore ${{ github.event.release.tag_name }} released, https://pypi.org/project/signalrcore/
+
+            ${{ github.event.release.body }}
+            
+            #SignalR #AspNetCore #Python
           api_key: ${{ secrets.TWITTER_API_KEY }}
           api_key_secret: ${{ secrets.TWITTER_API_KEY_SECRET }}
           access_token: ${{ secrets.TWITTER_ACCESS_TOKEN }}
