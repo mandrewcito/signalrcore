@@ -7,7 +7,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: infraway/tweet-action@v1
+      - uses: InfraWay/tweet-action@v1.0.1
         with:
           status: Signalrcore ${{ github.event.release.tag_name }} released, https://pypi.org/project/signalrcore/
 
