@@ -1,20 +1,11 @@
-from operator import inv
-import websocket
-import threading
-import requests
-import traceback
 import uuid
-import time
-import ssl
 from typing import Callable
 from signalrcore.messages.message_type import MessageType
 from signalrcore.messages.stream_invocation_message\
     import StreamInvocationMessage
-from signalrcore.messages.ping_message import PingMessage
-from .errors import UnAuthorizedHubError, HubError, HubConnectionError
+from .errors import HubConnectionError
 from signalrcore.helpers import Helpers
 from .handlers import StreamHandler, InvocationHandler
-from ..protocol.messagepack_protocol import MessagePackHubProtocol
 from ..transport.websockets.websocket_transport import WebsocketTransport
 from ..helpers import Helpers
 from ..subject import Subject
@@ -106,7 +97,7 @@ class BaseHubConnection(object):
         self.logger.debug("Handler registered started {0}".format(event))
         self.handlers.append((event, callback_function))
 
-    def send(self, method, arguments, on_invocation=None, invocation_id=str(uuid.uuid4())) -> InvocationResult:
+    def send(self, method, arguments, on_invocation=None, invocation_id=None) -> InvocationResult:
         """Sends a message
 
         Args:
@@ -122,6 +113,9 @@ class BaseHubConnection(object):
             HubConnectionError: If hub is not ready to send
             TypeError: If arguments are invalid list or Subject
         """
+        if invocation_id == None:
+            invocation_id = str(uuid.uuid4())
+
         if not self.transport.is_running():
             raise HubConnectionError(
                 "Cannot connect to SignalR hub. Unable to transmit messages")
