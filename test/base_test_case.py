@@ -3,6 +3,7 @@ import logging
 import time
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from signalrcore.protocol.messagepack_protocol import MessagePackHubProtocol
+
 class Urls:
     server_url_no_ssl = "ws://localhost:5000/chatHub"
     server_url_ssl = "wss://localhost:5001/chatHub"
