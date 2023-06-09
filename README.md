@@ -74,6 +74,27 @@ hub_connection = HubConnectionBuilder()\
                 "max_attempts": 5
             }).build()
 ```
+## Connect to a server using proxy
+To connect to a server using a proxy use the following options:
+* `http_proxy_host` - host name of the proxy server
+* `http_proxy_port` - port number
+* `http_no_proxy` - whitelisted host names that don't use the proxy
+* `http_proxy_auth` - HTTP proxy auth information. Tuple of username and password
+* `http_proxy_timeout` - proxy connection timeout
+* `ws_proxy_type` - value gets forwarded to `websocket-client`, accepted values: `http, socks4, socks4a, 'ocks5, socks5h`
+* `http_proxy_protocol` - used to create proxy URL for `requests` module's HTTP calls, accepted values: `http, https`
+
+```python
+hub_connection = HubConnectionBuilder()\
+    .with_url(server_url,
+    options={
+        "access_token_factory": login_function,
+        "http_proxy_host": proxy_host,
+        "http_proxy_port": port,
+        "http_proxy_protocol": "https",
+        "ws_proxy_type": "http"
+    }).build()
+```
 ### Unauthorized errors
 A login function must provide an error controller if authorization fails. When connection starts, if authorization fails exception will be propagated.
 
