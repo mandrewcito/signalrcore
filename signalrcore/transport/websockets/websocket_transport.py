@@ -4,12 +4,12 @@ import requests
 import traceback
 import time
 import ssl
+from packaging import version
 from .reconnection import ConnectionStateChecker
 from .connection import ConnectionState
 from ...messages.ping_message import PingMessage
-from ...hub.errors import HubError, HubConnectionError, UnAuthorizedHubError
+from ...hub.errors import HubError, UnAuthorizedHubError
 from ...protocol.messagepack_protocol import MessagePackHubProtocol
-from ...protocol.json_hub_protocol import JsonHubProtocol
 from ..base_transport import BaseTransport
 from ...helpers import Helpers
 
@@ -92,18 +92,35 @@ class WebsocketTransport(BaseTransport):
             on_close=self.on_close,
             on_open=self.on_open,
             )
-            
-        self._thread = threading.Thread(
-            target=lambda: self._ws.run_forever(
-                sslopt={"cert_reqs": ssl.CERT_NONE}
-                if not self.verify_ssl else {},
-                http_proxy_host=self.http_proxy_host,
-                http_proxy_port=self.http_proxy_port,
-                http_no_proxy=self.http_no_proxy,
-                http_proxy_auth=self.http_proxy_auth,
-                http_proxy_timeout=self.http_proxy_timeout,
-                proxy_type=self.ws_proxy_type
-            ))
+
+        websocket_version = version.parse(websocket.__version__)
+        if websocket_version >= version.parse("1.4.0"):
+            self._thread = threading.Thread(
+                target=lambda: self._ws.run_forever(
+                    sslopt={"cert_reqs": ssl.CERT_NONE}
+                    if not self.verify_ssl else {},
+                    http_proxy_host=self.http_proxy_host,
+                    http_proxy_port=self.http_proxy_port,
+                    http_no_proxy=self.http_no_proxy,
+                    http_proxy_auth=self.http_proxy_auth,
+                    http_proxy_timeout=self.http_proxy_timeout,
+                    proxy_type=self.ws_proxy_type
+                ))
+
+        elif websocket_version >= version.parse("1.0.0"):
+            self._thread = threading.Thread(
+                target=lambda: self._ws.run_forever(
+                    sslopt={"cert_reqs": ssl.CERT_NONE}
+                    if not self.verify_ssl else {},
+                    http_proxy_host=self.http_proxy_host,
+                    http_proxy_port=self.http_proxy_port,
+                    http_no_proxy=self.http_no_proxy,
+                    http_proxy_auth=self.http_proxy_auth,
+                    proxy_type=self.ws_proxy_type
+                ))
+        else:
+            raise NotImplementedError(
+                f"Unsupported websocket-client version '{websocket_version}' detected, minimum requirement is '1.0.0'")
         self._thread.daemon = True
         self._thread.start()
         return True
