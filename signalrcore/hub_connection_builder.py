@@ -1,12 +1,9 @@
-import uuid
 from .hub.base_hub_connection import BaseHubConnection
 from .hub.auth_hub_connection import AuthHubConnection
 from .transport.websockets.reconnection import \
     IntervalReconnectionHandler, RawReconnectionHandler, ReconnectionType
 from .helpers import Helpers
-from .messages.invocation_message import InvocationMessage
 from .protocol.json_hub_protocol import JsonHubProtocol
-from .subject import Subject
 
 
 class HubConnectionBuilder(object):
@@ -174,6 +171,14 @@ class HubConnectionBuilder(object):
                 and type(self.options["verify_ssl"]) is bool:
             self.verify_ssl = self.options["verify_ssl"]
 
+        http_proxy_host = self.options["http_proxy_host"] if "http_proxy_host" in self.options.keys() else None
+        http_proxy_port = self.options["http_proxy_port"] if "http_proxy_port" in self.options.keys() else None
+        http_no_proxy = self.options["http_no_proxy"] if "http_no_proxy" in self.options.keys() else None
+        http_proxy_auth = self.options["http_proxy_auth"] if "http_proxy_auth" in self.options.keys() else None
+        http_proxy_timeout = self.options["http_proxy_timeout"] if "http_proxy_timeout" in self.options.keys() else None
+        ws_proxy_type = self.options["ws_proxy_type"] if "ws_proxy_type" in self.options.keys() else None
+        http_proxy_protocol = self.options["http_proxy_protocol"] if "http_proxy_protocol" in self.options.keys() else None
+
         return AuthHubConnection(
                 headers=self.headers,
                 auth_function=auth_function,
@@ -183,7 +188,14 @@ class HubConnectionBuilder(object):
                 reconnection_handler=self.reconnection_handler,
                 verify_ssl=self.verify_ssl,
                 skip_negotiation=self.skip_negotiation,
-                enable_trace=self.enable_trace)\
+                enable_trace=self.enable_trace,
+                http_proxy_host=http_proxy_host,
+                http_proxy_port=http_proxy_port,
+                http_no_proxy=http_no_proxy,
+                http_proxy_auth=http_proxy_auth,
+                http_proxy_timeout=http_proxy_timeout,
+                http_proxy_protocol=http_proxy_protocol,
+                ws_proxy_type=ws_proxy_type)\
             if self.has_auth_configured else\
             BaseHubConnection(
                 url=self.hub_url,
@@ -193,7 +205,14 @@ class HubConnectionBuilder(object):
                 headers=self.headers,
                 verify_ssl=self.verify_ssl,
                 skip_negotiation=self.skip_negotiation,
-                enable_trace=self.enable_trace)
+                enable_trace=self.enable_trace,
+                http_proxy_host=http_proxy_host,
+                http_proxy_port=http_proxy_port,
+                http_no_proxy=http_no_proxy,
+                http_proxy_auth=http_proxy_auth,
+                http_proxy_timeout=http_proxy_timeout,
+                http_proxy_protocol=http_proxy_protocol,
+                ws_proxy_type=ws_proxy_type)
             
     def with_automatic_reconnect(self, data: dict):
         """Configures automatic reconnection

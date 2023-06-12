@@ -4,12 +4,12 @@ import requests
 import traceback
 import time
 import ssl
+from packaging import version
 from .reconnection import ConnectionStateChecker
 from .connection import ConnectionState
 from ...messages.ping_message import PingMessage
-from ...hub.errors import HubError, HubConnectionError, UnAuthorizedHubError
+from ...hub.errors import HubError, UnAuthorizedHubError
 from ...protocol.messagepack_protocol import MessagePackHubProtocol
-from ...protocol.json_hub_protocol import JsonHubProtocol
 from ..base_transport import BaseTransport
 from ...helpers import Helpers
 
@@ -22,6 +22,13 @@ class WebsocketTransport(BaseTransport):
             verify_ssl=False,
             skip_negotiation=False,
             enable_trace=False,
+            http_proxy_host=None,
+            http_proxy_port=None,
+            http_no_proxy=None,
+            http_proxy_auth=None,
+            http_proxy_timeout=None,
+            http_proxy_protocol=None,
+            ws_proxy_type=None,
             **kwargs):
         super(WebsocketTransport, self).__init__(**kwargs)
         self._ws = None
@@ -29,6 +36,13 @@ class WebsocketTransport(BaseTransport):
         self._thread = None
         self.skip_negotiation = skip_negotiation
         self.url = url
+        self.http_proxy_host = http_proxy_host
+        self.http_proxy_port = http_proxy_port
+        self.http_no_proxy = http_no_proxy
+        self.http_proxy_auth = http_proxy_auth
+        self.http_proxy_timeout = http_proxy_timeout
+        self.http_proxy_protocol = http_proxy_protocol
+        self.ws_proxy_type = ws_proxy_type
         if headers is None:
             self.headers = dict()
         else:
@@ -78,12 +92,35 @@ class WebsocketTransport(BaseTransport):
             on_close=self.on_close,
             on_open=self.on_open,
             )
-            
-        self._thread = threading.Thread(
-            target=lambda: self._ws.run_forever(
-                sslopt={"cert_reqs": ssl.CERT_NONE}
-                if not self.verify_ssl else {}
-            ))
+
+        websocket_version = version.parse(websocket.__version__)
+        if websocket_version >= version.parse("1.4.0"):
+            self._thread = threading.Thread(
+                target=lambda: self._ws.run_forever(
+                    sslopt={"cert_reqs": ssl.CERT_NONE}
+                    if not self.verify_ssl else {},
+                    http_proxy_host=self.http_proxy_host,
+                    http_proxy_port=self.http_proxy_port,
+                    http_no_proxy=self.http_no_proxy,
+                    http_proxy_auth=self.http_proxy_auth,
+                    http_proxy_timeout=self.http_proxy_timeout,
+                    proxy_type=self.ws_proxy_type
+                ))
+
+        elif websocket_version >= version.parse("1.0.0"):
+            self._thread = threading.Thread(
+                target=lambda: self._ws.run_forever(
+                    sslopt={"cert_reqs": ssl.CERT_NONE}
+                    if not self.verify_ssl else {},
+                    http_proxy_host=self.http_proxy_host,
+                    http_proxy_port=self.http_proxy_port,
+                    http_no_proxy=self.http_no_proxy,
+                    http_proxy_auth=self.http_proxy_auth,
+                    proxy_type=self.ws_proxy_type
+                ))
+        else:
+            raise NotImplementedError(
+                f"Unsupported websocket-client version '{websocket_version}' detected, minimum requirement is '1.0.0'")
         self._thread.daemon = True
         self._thread.start()
         return True
@@ -92,8 +129,13 @@ class WebsocketTransport(BaseTransport):
         negotiate_url = Helpers.get_negotiate_url(self.url)
         self.logger.debug("Negotiate url:{0}".format(negotiate_url))
 
+        if self.http_proxy_protocol and self.http_proxy_host and self.http_proxy_port:
+            proxies = {self.http_proxy_protocol: f"{self.http_proxy_host}:{self.http_proxy_port}"}
+        else:
+            proxies = {}
+
         response = requests.post(
-            negotiate_url, headers=self.headers, verify=self.verify_ssl)
+            negotiate_url, headers=self.headers, verify=self.verify_ssl, proxies=proxies)
         self.logger.debug(
             "Response status code{0}".format(response.status_code))
 
