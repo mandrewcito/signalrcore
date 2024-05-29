@@ -37,10 +37,24 @@ class MessagePackHubProtocol(BaseHubProtocol):
         try:
             messages = []
             offset = 0
+            max_length_prefix_size = 5
+            num_bits_to_shift = [0, 7, 14, 21, 28]
             while offset < len(raw):
-                length = msgpack.unpackb(raw[offset: offset + 1])
-                values = msgpack.unpackb(raw[offset + 1: offset + length + 1])
-                offset = offset + length + 1
+                length = 0
+                num_bytes = 0
+                while True:
+                    byte_read = raw[offset + num_bytes]
+                    length |= (byte_read & 0x7F) << num_bits_to_shift[num_bytes]
+                    num_bytes += 1
+                    if byte_read & 0x80 == 0:
+                        break
+                    if offset == max_length_prefix_size or offset + num_bytes > len(
+                        raw
+                    ):
+                        raise Exception("Cannot read message length")
+                offset = offset + num_bytes
+                values = msgpack.unpackb(raw[offset: offset + length])
+                offset = offset + length
                 message = self._decode_message(values)
                 messages.append(message)
         except Exception as ex:
