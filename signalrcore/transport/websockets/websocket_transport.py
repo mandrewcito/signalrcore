@@ -14,6 +14,8 @@ from ..base_transport import BaseTransport
 from ...helpers import Helpers
 
 class WebsocketTransport(BaseTransport):
+    connection_checker: ConnectionStateChecker
+    
     def __init__(self,
             url="",
             headers=None,
@@ -40,10 +42,7 @@ class WebsocketTransport(BaseTransport):
         self._thread = None
         self._ws = None
         self.verify_ssl = verify_ssl
-        self.connection_checker = ConnectionStateChecker(
-            lambda: self.send(PingMessage()),
-            keep_alive_interval
-        )
+        self.keep_alive_interval = keep_alive_interval
         self.reconnection_handler = reconnection_handler
 
         if len(self.logger.handlers) > 0:
@@ -53,6 +52,7 @@ class WebsocketTransport(BaseTransport):
         return self.state != ConnectionState.disconnected
 
     def stop(self):
+        self.logger.debug("Websocket.stop state={0}, ".format(self.state))
         if self.state == ConnectionState.connected:
             self.connection_checker.stop()
             self._ws.close()
@@ -60,16 +60,24 @@ class WebsocketTransport(BaseTransport):
             self.handshake_received = False
 
     def start(self):
-        if not self.skip_negotiation:
-            self.negotiate()
+        self.logger.debug("Websocket.start state={0}".format(self.state))
 
         if self.state == ConnectionState.connected:
             self.logger.warning("Already connected unable to start")
             return False
 
         self.state = ConnectionState.connecting
+
+        self.connection_checker = ConnectionStateChecker(
+            lambda: self.state == ConnectionState.connected and self.send(PingMessage()),
+            self.keep_alive_interval
+        )
+
+        if not self.skip_negotiation:
+            self.negotiate()
+
         self.logger.debug("start url:" + self.url)
-        
+
         self._ws = websocket.WebSocketApp(
             self.url,
             header=self.headers,
@@ -191,6 +199,9 @@ class WebsocketTransport(BaseTransport):
 
     def send(self, message):
         self.logger.debug("Sending message {0}".format(message))
+        if self._ws  is None:
+            self.logger.warning("Cant send message, ws is disposed")
+            return None
         try:
             self._ws.send(
                 self.protocol.encode(message),
@@ -210,7 +221,7 @@ class WebsocketTransport(BaseTransport):
                 if self._on_close is not None and\
                         callable(self._on_close):
                     self._on_close()
-                raise ValueError(str(ex))
+                raise HubConnectionError(str(ex))
             # Connection closed
             self.handle_reconnect()
         except Exception as ex:

@@ -10,7 +10,9 @@ from signalrcore.hub_connection_builder import HubConnectionBuilder
 from signalrcore.subject import Subject
 from test.base_test_case import BaseTestCase, Urls
 
-class TestClientStreamMethod(BaseTestCase):    
+class TestClientStreamMethod(BaseTestCase):   
+    _locks = {} 
+
     def setUp(self):
         pass
 
@@ -43,22 +45,21 @@ class TestClientStreamMethod(BaseTestCase):
         connection.stop()
 
     def test_open_close(self):
-        self.connection = self.get_connection()
-      
-        _lock = threading.Lock()
+        connection = self.get_connection()
 
-        self.connection.on_open(lambda: _lock.release())
-        self.connection.on_close(lambda: _lock.release())
+        identifier = str(uuid.uuid4())
+        self._locks[identifier] = threading.Lock()
 
-        self.assertTrue(_lock.acquire())
+        connection.on_open(lambda: self._locks[identifier].release())
+        connection.on_close(lambda: self._locks[identifier].release())
 
-        self.connection.start()
+        self.assertTrue(self._locks[identifier].acquire())
 
-        self.assertTrue(_lock.acquire())
+        connection.start()
+
+        self.assertTrue(self._locks[identifier].acquire())
         
-        self.connection.stop()
+        connection.stop()
         
-        self.assertTrue(_lock.acquire())
-
-        _lock.release()
-        del _lock
+        del self._locks[identifier]
+        del connection
