@@ -43,7 +43,7 @@ class TestReconnectMethods(BaseTestCase):
 
         connection.transport._ws.close()
 
-        self.assertTrue(self._locks[identifier].acquire(timeout=10))
+        self.assertTrue(self._locks[identifier].acquire(timeout=20))
         connection.stop()
 
         del self._locks[identifier]

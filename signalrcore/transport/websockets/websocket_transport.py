@@ -9,14 +9,15 @@ from .connection import ConnectionState
 from ...messages.ping_message import PingMessage
 from ...hub.errors import HubError, HubConnectionError, UnAuthorizedHubError
 from ...protocol.messagepack_protocol import MessagePackHubProtocol
-from ...protocol.json_hub_protocol import JsonHubProtocol
 from ..base_transport import BaseTransport
 from ...helpers import Helpers
 
+
 class WebsocketTransport(BaseTransport):
     connection_checker: ConnectionStateChecker
-    
-    def __init__(self,
+
+    def __init__(
+            self,
             url="",
             headers=None,
             keep_alive_interval=15,
@@ -47,7 +48,7 @@ class WebsocketTransport(BaseTransport):
 
         if len(self.logger.handlers) > 0:
             websocket.enableTrace(self.enable_trace, self.logger.handlers[0])
-    
+
     def is_running(self):
         return self.state != ConnectionState.disconnected
 
@@ -69,7 +70,8 @@ class WebsocketTransport(BaseTransport):
         self.state = ConnectionState.connecting
 
         self.connection_checker = ConnectionStateChecker(
-            lambda: self.state == ConnectionState.connected and self.send(PingMessage()),
+            lambda: self.state == ConnectionState.connected
+            and self.send(PingMessage()),
             self.keep_alive_interval
         )
 
@@ -86,7 +88,7 @@ class WebsocketTransport(BaseTransport):
             on_close=self.on_close,
             on_open=self.on_open,
             )
-            
+
         self._thread = threading.Thread(
             target=lambda: self._ws.run_forever(
                 sslopt={"cert_reqs": ssl.CERT_NONE}
@@ -124,7 +126,6 @@ class WebsocketTransport(BaseTransport):
                 Helpers.http_to_websocket(data["url"])
             self.token = data["accessToken"]
             self.headers = {"Authorization": "Bearer " + self.token}
-
 
     def evaluate_handshake(self, message):
         self.logger.debug("Evaluating handshake {0}".format(message))
@@ -167,7 +168,8 @@ class WebsocketTransport(BaseTransport):
     def on_socket_error(self, app, error):
         """
         Args:
-            _: Required to support websocket-client version equal or greater than 0.58.0
+            _: Required to support websocket-client version
+                equal or greater than 0.58.0
             error ([type]): [description]
 
         Raises:
@@ -179,7 +181,7 @@ class WebsocketTransport(BaseTransport):
         self.logger.error("{0} {1}".format(error, type(error)))
         self._on_close()
         self.state = ConnectionState.disconnected
-        #raise HubError(error)
+        #  raise HubError(error)
 
     def on_message(self, app, raw_message):
         self.logger.debug("Message received{0}".format(raw_message))
@@ -193,20 +195,20 @@ class WebsocketTransport(BaseTransport):
                 return self._on_message(messages)
 
             return []
-        
+
         return self._on_message(
             self.protocol.parse_messages(raw_message))
 
     def send(self, message):
         self.logger.debug("Sending message {0}".format(message))
-        if self._ws  is None:
+        if self._ws is None:
             self.logger.warning("Cant send message, ws is disposed")
             return None
         try:
             self._ws.send(
                 self.protocol.encode(message),
                 opcode=0x2
-                if type(self.protocol) == MessagePackHubProtocol else
+                if type(self.protocol) is MessagePackHubProtocol else
                 0x1)
             self.connection_checker.last_message = time.time()
             if self.reconnection_handler is not None:
@@ -228,7 +230,8 @@ class WebsocketTransport(BaseTransport):
             raise ex
 
     def handle_reconnect(self):
-        if not self.reconnection_handler.reconnecting and self._on_reconnect is not None and \
+        if not self.reconnection_handler.reconnecting\
+                and self._on_reconnect is not None and \
                 callable(self._on_reconnect):
             self._on_reconnect()
         self.reconnection_handler.reconnecting = True
