@@ -3,7 +3,10 @@ import threading
 import requests
 import traceback
 import time
+import queue
 import ssl
+from signal import pthread_kill, SIGKILL
+from typing import Callable, List, Any, Tuple
 from .reconnection import ConnectionStateChecker
 from .connection import ConnectionState
 from ...messages.ping_message import PingMessage
@@ -38,7 +41,6 @@ class WebsocketTransport(BaseTransport):
             self.headers = headers
         self.handshake_received = False
         self.token = None  # auth
-        self.state = ConnectionState.disconnected
         self.connection_alive = False
         self._thread = None
         self._ws = None
@@ -48,32 +50,51 @@ class WebsocketTransport(BaseTransport):
 
         if len(self.logger.handlers) > 0:
             websocket.enableTrace(self.enable_trace, self.logger.handlers[0])
+        
+        self.state = WsDisconnectedState(self)
+        self.queue = queue.Queue(maxsize=1000)
+        self.lock = threading.Lock()
+        
+    def change_state(self, state: ConnectionState) -> None:
+        states = {
+            ConnectionState.connected: WsConnectedState,
+            ConnectionState.connecting: WsConnectingState,
+            ConnectionState.disconnected: WsDisconnectedState
+        }
 
+        self.state: WsBaseState
+
+        self.state.on_exit()
+        del self.state
+
+        self.state = states[state](self)
+        self.state.on_enter()
+        
     def is_running(self):
         return self.state != ConnectionState.disconnected
 
-    def stop(self):
-        self.logger.debug("Websocket.stop state={0}, ".format(self.state))
-        if self.state == ConnectionState.connected:
-            self.connection_checker.stop()
+    def dispose(self):
+        if self._ws is not None:
+            self._ws.on_close = None
+            self._ws.on_open = None
+            self._ws.on_error = None
             self._ws.close()
-            self.state = ConnectionState.disconnected
-            self.handshake_received = False
+            self._ws = None
+            self._thread = None
+        
+    def stop(self):
+        return self.state.stop()
 
-    def start(self):
+    def _stop(self):
+        self.logger.debug("Websocket.stop state={0}, ".format(self.state))
+        if self._ws is not None:
+            self._ws.close()
+
+    def start(self) -> bool:
+        return self.state.start()
+    
+    def _start(self) -> bool:
         self.logger.debug("Websocket.start state={0}".format(self.state))
-
-        if self.state == ConnectionState.connected:
-            self.logger.warning("Already connected unable to start")
-            return False
-
-        self.state = ConnectionState.connecting
-
-        self.connection_checker = ConnectionStateChecker(
-            lambda: self.state == ConnectionState.connected
-            and self.send(PingMessage()),
-            self.keep_alive_interval
-        )
 
         if not self.skip_negotiation:
             self.negotiate()
@@ -88,15 +109,25 @@ class WebsocketTransport(BaseTransport):
             on_close=self.on_close,
             on_open=self.on_open,
             )
-
-        self._thread = threading.Thread(
-            target=lambda: self._ws.run_forever(
-                sslopt={"cert_reqs": ssl.CERT_NONE}
-                if not self.verify_ssl else {}
-            ))
-        self._thread.daemon = True
-        self._thread.start()
+        try:
+            self._thread = threading.Thread(
+                target=lambda: self._ws.run_forever(
+                    sslopt={"cert_reqs": ssl.CERT_NONE}
+                    if not self.verify_ssl else {}
+                ))
+            self._thread.daemon = True
+            self._thread.start()
+        except Exception as ex:
+            self.logger.error(ex)
+            return False
         return True
+    
+    def init_state_check(self):
+        self.connection_checker = ConnectionStateChecker(
+            lambda: self.state == ConnectionState.connected
+            and self.send(PingMessage()),
+            self.keep_alive_interval
+        )
 
     def negotiate(self):
         negotiate_url = Helpers.get_negotiate_url(self.url)
@@ -105,7 +136,7 @@ class WebsocketTransport(BaseTransport):
         response = requests.post(
             negotiate_url, headers=self.headers, verify=self.verify_ssl)
         self.logger.debug(
-            "Response status code{0}".format(response.status_code))
+            "Response status code: {0}".format(response.status_code))
 
         if response.status_code != 200:
             raise HubError(response.status_code)\
@@ -116,54 +147,40 @@ class WebsocketTransport(BaseTransport):
         if "connectionId" in data.keys():
             self.url = Helpers.encode_connection_id(
                 self.url, data["connectionId"])
-
+        
         # Azure
-        if 'url' in data.keys() and 'accessToken' in data.keys():
-            Helpers.get_logger().debug(
-                "Azure url, reformat headers, token and url {0}".format(data))
-            self.url = data["url"]\
-                if data["url"].startswith("ws") else\
-                Helpers.http_to_websocket(data["url"])
-            self.token = data["accessToken"]
-            self.headers = {"Authorization": "Bearer " + self.token}
-
-    def evaluate_handshake(self, message):
-        self.logger.debug("Evaluating handshake {0}".format(message))
-        msg, messages = self.protocol.decode_handshake(message)
-        if msg.error is None or msg.error == "":
-            self.handshake_received = True
-            self.state = ConnectionState.connected
-            if self.reconnection_handler is not None:
-                self.reconnection_handler.reconnecting = False
-                if not self.connection_checker.running:
-                    self.connection_checker.start()
-        else:
-            self.logger.error(msg.error)
-            self.on_socket_error(self._ws, msg.error)
-            self.stop()
-            self.state = ConnectionState.disconnected
-        return messages
+        if 'url' not in data.keys() or 'accessToken' not in data.keys():
+            return 
+        
+        Helpers.get_logger().debug(
+            "Azure url, reformat headers, token and url {0}".format(data))
+        self.url = data["url"]\
+            if data["url"].startswith("ws") else\
+            Helpers.http_to_websocket(data["url"])
+        self.token = data["accessToken"]
+        self.headers = {"Authorization": "Bearer " + self.token}
 
     def on_open(self, _):
-        self.logger.debug("-- web socket open --")
-        msg = self.protocol.handshake_message()
-        self.send(msg)
+        self.state.on_open()
 
-    def on_close(self, callback, close_status_code, close_reason):
-        self.logger.debug("-- web socket close --")
-        self.logger.debug(close_status_code)
-        self.logger.debug(close_reason)
-        self.state = ConnectionState.disconnected
-        if self._on_close is not None and callable(self._on_close):
-            self._on_close()
-        if callback is not None and callable(callback):
-            callback()
-
-    def on_reconnect(self):
-        self.logger.debug("-- web socket reconnecting --")
-        self.state = ConnectionState.disconnected
-        if self._on_close is not None and callable(self._on_close):
-            self._on_close()
+    def on_close(self, callback, close_status_code=None, close_reason=None):
+        is_app_closing = type(callback) is websocket.WebSocketApp
+        has_no_params = close_status_code is None and close_reason is None
+        try:
+            if is_app_closing and has_no_params:
+                self.state.on_close(
+                    callback,
+                    close_reason
+                )
+            else:
+                self.state.on_error(
+                    callback,
+                    close_status_code,
+                    close_reason
+                )
+        except Exception as ex:
+            self.logger.error(ex)
+            raise ex
 
     def on_socket_error(self, app, error):
         """
@@ -175,31 +192,19 @@ class WebsocketTransport(BaseTransport):
         Raises:
             HubError: [description]
         """
-        self.logger.debug("-- web socket error --")
-        self.logger.error(traceback.format_exc(10, True))
-        self.logger.error("{0} {1}".format(self, error))
-        self.logger.error("{0} {1}".format(error, type(error)))
-        self._on_close()
-        self.state = ConnectionState.disconnected
-        #  raise HubError(error)
+        self.state.on_error(app, error, None)
 
     def on_message(self, app, raw_message):
-        self.logger.debug("Message received{0}".format(raw_message))
-        if not self.handshake_received:
-            messages = self.evaluate_handshake(raw_message)
-            if self._on_open is not None and callable(self._on_open):
-                self.state = ConnectionState.connected
-                self._on_open()
-
-            if len(messages) > 0:
-                return self._on_message(messages)
-
-            return []
-
-        return self._on_message(
-            self.protocol.parse_messages(raw_message))
-
+        try:
+            self.state.on_message(app, raw_message)
+        except Exception as ex:
+            self.logger.error(ex)
+            raise ex
+        
     def send(self, message):
+        return self.state.send(message)
+
+    def _send(self, message):
         self.logger.debug("Sending message {0}".format(message))
         if self._ws is None:
             self.logger.warning("Cant send message, ws is disposed")
@@ -210,48 +215,210 @@ class WebsocketTransport(BaseTransport):
                 opcode=0x2
                 if type(self.protocol) is MessagePackHubProtocol else
                 0x1)
-            self.connection_checker.last_message = time.time()
+            #self.connection_checker.last_message = time.time()
             if self.reconnection_handler is not None:
                 self.reconnection_handler.reset()
-        except (
-                websocket._exceptions.WebSocketConnectionClosedException,
-                OSError) as ex:
-            self.handshake_received = False
-            self.logger.warning("Connection closed {0}".format(ex))
-            self.state = ConnectionState.disconnected
-            if self.reconnection_handler is None:
-                if self._on_close is not None and\
-                        callable(self._on_close):
-                    self._on_close()
-                raise HubConnectionError(str(ex))
-            # Connection closed
-            self.handle_reconnect()
+        except websocket._exceptions.WebSocketConnectionClosedException as ex:
+            self.state.on_close(self._ws, ex)
+        except OSError as ex:
+            self.state.on_error(self._ws, -1, str(ex))
         except Exception as ex:
             raise ex
 
-    def handle_reconnect(self):
-        if not self.reconnection_handler.reconnecting\
-                and self._on_reconnect is not None and \
-                callable(self._on_reconnect):
-            self._on_reconnect()
-        self.reconnection_handler.reconnecting = True
+
+class WsBaseState(object):
+
+    state: ConnectionState
+
+    def __init__(self, context: WebsocketTransport) -> None:
+        self.context = context
+        self.logger = Helpers.get_logger()
+
+    def start(self) -> None:
+        raise NotImplementedError()
+    
+    def stop(self) -> None:
+        raise NotImplementedError()
+
+    def on_enter(self) -> None:
+        self.logger.debug(f"Entering state {self.state}")
+    
+    def on_exit(self) -> None:
+        self.logger.debug(f"Exiting state {self.state}")
+        
+    def send(self, message):
+        raise NotImplementedError()
+    
+    def on_open(self):
+        raise NotImplementedError()
+    
+    def on_message(self, app, raw_message):
+        raise NotImplementedError()
+
+    def on_close(self, app: websocket.WebSocketApp, exc: websocket.WebSocketConnectionClosedException):
+        raise NotImplementedError()
+
+    def stop(self) -> None:
+        self.context._stop()
+        self.context.change_state(ConnectionState.disconnected)
+
+    def on_error(self, app, code, reason): 
+        self.logger.debug("-- web socket error --")
+        self.logger.error(traceback.format_exc(10, True))
+        self.logger.error("Websocket raises error: {0} {1}".format(code, reason))
+        self.context.change_state(ConnectionState.disconnected)
+
+class WsConnectedState(WsBaseState):
+
+    state: ConnectionState = ConnectionState.connected
+
+    def __init__(self, context: WebsocketTransport) -> None:
+        super().__init__(context)
+
+    def start(self) -> None:
+        self.logger.warning("Already connected unable to start")
+        return False
+
+    def on_open(self):
+        self.logger.error("on_open called on connected state")
+        
+    def send(self, message):
+        return self.context._send(message)
+        
+    def on_message(self, app, raw_message):
+        self.logger.debug("Message received {0}".format(raw_message))
+        return self.context._on_message(
+            self.context.protocol.parse_messages(raw_message))
+
+    def on_close(self, app: websocket.WebSocketApp, exc: websocket.WebSocketConnectionClosedException):
+        self.logger.debug("-- web socket close --")
+        self.logger.debug(exc)
+        self.context.change_state(ConnectionState.disconnected)
+    
+    def on_enter(self) -> None:
+        self.logger.info("Sending queued messages")
+        while not self.context.queue.empty():
+            message = self.context.queue.get()
+            self.send(message)
+        super().on_enter()
+            
+class WsConnectingState(WsBaseState):
+
+    state: ConnectionState = ConnectionState.connecting
+
+    def __init__(self, context: WebsocketTransport) -> None:
+        super().__init__(context)
+
+    def send(self, message):
+        self.logger.warning("Enqueue message, waiting for conneciton")
+        self.context.queue.put(message)
+
+    def start(self):
+        self.logger.warning("Cant start, state connecting.")
+        return False
+    
+    def on_open(self):
+        self.logger.debug("-- web socket open --")
+        msg = self.context.protocol.handshake_message()
+        self.context._send(msg)
+
+    def evaluate_handshake(self, message) -> Tuple[bool, List[Any]]:
+        self.logger.debug("Evaluating handshake {0}".format(message))
+        msg, messages = self.context.protocol.decode_handshake(message)
+        
+        if msg.error is None or msg.error == "":
+            return True, messages
+        
+        self.logger.error(msg.error)
+        return False, messages
+
+    def on_message(self, app, raw_message):
+        self.logger.debug("Message received {0}".format(raw_message))
+        result, messages = self.evaluate_handshake(raw_message)
+
+        if result and self.context._on_open is not None and callable(self.context._on_open):
+            try:
+                self.context._on_open()
+            except Exception as ex:
+                self.logger.error(ex)
+
+            self.context.change_state(ConnectionState.connected)
+
+            if len(messages) > 0:
+                return self.context._on_message(messages)
+
+            return []
+        else:
+            self.context.change_state(ConnectionState.disconnected)
+
+        return self.context._on_message(
+            self.context.protocol.parse_messages(raw_message))
+
+    def on_enter(self) -> None:
+        super(WsConnectingState, self).on_enter()
+
+    def on_exit(self) -> None:
+        super().on_exit()
+        
+    def on_close(self, app: websocket.WebSocketApp, exc: websocket.WebSocketConnectionClosedException):
+        self.logger.debug("-- web socket close --")
+        self.logger.debug(exc)
+        self.context.change_state(ConnectionState.disconnected)
+
+class WsDisconnectedState(WsBaseState):
+
+    state: ConnectionState = ConnectionState.disconnected
+
+    def __init__(self, context: WebsocketTransport) -> None:
+        super().__init__(context)
+    
+    def start(self) -> bool:
+        result = self.context._start()
+        self.context.change_state(ConnectionState.connecting)
+        return result
+    
+    def on_open(self):
+        self.logger.error("on_open called on disconnected state")
+
+    def on_exit(self) -> None:
+        super().on_exit()
+        
+    def send(self, message):
+        raise HubConnectionError("Can not send messages, state disconnected.")
+    
+    def on_message(self, app, raw_message):
+        raise HubConnectionError("I'm disconnected, why am i receiving messages?")
+    
+    def on_enter(self) -> None:
+        super(WsDisconnectedState, self).on_enter()
+        
+        if self.context._on_close is not None and callable(self.context._on_close):
+            self.context._on_close()
+        
+        if self.context.reconnection_handler is not None:
+            self.handle_reconnect()
+
+    def on_reconnect(self):
+        self.logger.debug("-- web socket reconnecting --")
+
+    def handle_reconnect(self, sleep: int = 5) -> None:
+        if sleep:
+            time.sleep(sleep)
+
+
+        self.context.reconnection_handler.reconnecting = True
+
         try:
-            self.stop()
-            self.start()
+            self.context.dispose()
+            self.context._start()
+            self.context.change_state(ConnectionState.connecting)
         except Exception as ex:
             self.logger.error(ex)
-            sleep_time = self.reconnection_handler.next()
+            sleep_time = self.context.reconnection_handler.next()
             threading.Thread(
-                target=self.deferred_reconnect,
+                target=self.handle_reconnect,
                 args=(sleep_time,)
             ).start()
-
-    def deferred_reconnect(self, sleep_time):
-        time.sleep(sleep_time)
-        try:
-            if not self.connection_alive:
-                self.send(PingMessage())
-        except Exception as ex:
-            self.logger.error(ex)
-            self.reconnection_handler.reconnecting = False
-            self.connection_alive = False
+            
+    def on_close(self, app: websocket.WebSocketApp, exc: websocket.WebSocketConnectionClosedException):
+        self.logger.warning("-- web already socket closed --")

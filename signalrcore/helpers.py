@@ -10,7 +10,7 @@ class Helpers:
             handler = logging.StreamHandler()
             handler.setFormatter(
                 logging.Formatter(
-                    '%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+                    '%(asctime)s [%(filename)s:%(lineno)d] %(name)s - %(levelname)s - %(message)s'))
             handler.setLevel(level)
         logger.addHandler(handler)
         logger.setLevel(level)

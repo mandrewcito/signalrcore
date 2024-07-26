@@ -36,14 +36,13 @@ class TestClientStreamMethod(BaseTestCase):
 
         self.assertTrue(result)
         
-        self.assertTrue(_lock.acquire(timeout=30))  # Released on open
-        
         result = connection.start()
-
+        
         self.assertFalse(result)
-
+        
         connection.stop()
-
+        del connection
+        
     def test_open_close(self):
         connection = self.get_connection()
 

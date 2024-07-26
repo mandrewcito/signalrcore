@@ -43,6 +43,9 @@ class ReconnectionHandler(object):
         self.reconnecting = False
         self.attempt_number = 0
         self.last_attempt = time.time()
+    
+    def can_reconnect(self) -> bool:
+        raise NotImplementedError()
 
     def next(self):
         raise NotImplementedError()
@@ -58,6 +61,9 @@ class RawReconnectionHandler(ReconnectionHandler):
         self.sleep_time = sleep_time
         self.max_reconnection_attempts = max_attempts
 
+    def can_reconnect(self) -> bool:
+        return False
+    
     def next(self):
         self.reconnecting = True
         if self.max_reconnection_attempts is not None:
@@ -76,6 +82,9 @@ class IntervalReconnectionHandler(ReconnectionHandler):
     def __init__(self, intervals):
         super(IntervalReconnectionHandler, self).__init__()
         self._intervals = intervals
+    
+    def can_reconnect(self) -> bool:
+        return self.attempt_number >= len(self._intervals)
 
     def next(self):
         self.reconnecting = True
