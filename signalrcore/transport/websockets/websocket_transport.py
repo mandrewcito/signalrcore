@@ -391,10 +391,12 @@ class WsDisconnectedState(WsBaseState):
     
     def on_enter(self) -> None:
         super(WsDisconnectedState, self).on_enter()
-        
-        if self.context._on_close is not None and callable(self.context._on_close):
-            self.context._on_close()
-        
+        try:
+            if self.context._on_close is not None and callable(self.context._on_close):
+                self.context._on_close()
+        except Exception as ex:
+            self.logger.error(ex)
+            
         if self.context.reconnection_handler is not None:
             self.handle_reconnect()
 
