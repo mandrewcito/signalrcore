@@ -5,11 +5,8 @@ import traceback
 import time
 import queue
 import ssl
-from signal import pthread_kill, SIGKILL
-from typing import Callable, List, Any, Tuple
-from .reconnection import ConnectionStateChecker
+from typing import List, Any, Tuple
 from .connection import ConnectionState
-from ...messages.ping_message import PingMessage
 from ...hub.errors import HubError, HubConnectionError, UnAuthorizedHubError
 from ...protocol.messagepack_protocol import MessagePackHubProtocol
 from ..base_transport import BaseTransport
@@ -17,8 +14,6 @@ from ...helpers import Helpers
 
 
 class WebsocketTransport(BaseTransport):
-    connection_checker: ConnectionStateChecker
-
     def __init__(
             self,
             url="",
@@ -121,13 +116,6 @@ class WebsocketTransport(BaseTransport):
             self.logger.error(ex)
             return False
         return True
-    
-    def init_state_check(self):
-        self.connection_checker = ConnectionStateChecker(
-            lambda: self.state == ConnectionState.connected
-            and self.send(PingMessage()),
-            self.keep_alive_interval
-        )
 
     def negotiate(self):
         negotiate_url = Helpers.get_negotiate_url(self.url)
@@ -215,7 +203,6 @@ class WebsocketTransport(BaseTransport):
                 opcode=0x2
                 if type(self.protocol) is MessagePackHubProtocol else
                 0x1)
-            #self.connection_checker.last_message = time.time()
             if self.reconnection_handler is not None:
                 self.reconnection_handler.reset()
         except websocket._exceptions.WebSocketConnectionClosedException as ex:

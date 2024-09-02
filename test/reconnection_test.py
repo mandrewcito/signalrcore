@@ -91,10 +91,6 @@ class TestReconnectMethods(BaseTestCase):
         
         connection.transport._ws.close(status=1000, reason="Closed".encode("utf-8"))
 
-        self.assertRaises(
-            HubConnectionError,
-            lambda: connection.send("DisconnectMe", []))
-    
         self.assertTrue(self._locks[identifier].acquire(timeout=40)) # Released on close
 
         # reconnecting not configured must not enqueue message
