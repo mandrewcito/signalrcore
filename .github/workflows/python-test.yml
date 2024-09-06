@@ -16,7 +16,7 @@ jobs:
 
     steps:
     - run: git clone https://github.com/mandrewcito/signalrcore-containertestservers containers
-    - run: docker-compose -f containers/docker-compose.yml up -d
+    - run: docker compose -f containers/docker-compose.yml up -d
     - uses: actions/checkout@v2
     - name: Set up Python 3.8
       uses: actions/setup-python@v2

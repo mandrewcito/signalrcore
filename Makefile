@@ -14,6 +14,7 @@ upload:
 coverage:
 	coverage run -m unittest discover -s test/ -p "*_test.py"
 	coverage html --omit="venv/*" -d coverage_html
+	firefox coverage_html/index.html
 
 clean:
 	@find . -name "*.pyc" -exec rm -f '{}' +

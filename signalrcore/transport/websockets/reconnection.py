@@ -3,36 +3,6 @@ import time
 from enum import Enum
 
 
-class ConnectionStateChecker(object):
-    def __init__(
-            self,
-            ping_function,
-            keep_alive_interval,
-            sleep=1):
-        self.sleep = sleep
-        self.keep_alive_interval = keep_alive_interval
-        self.last_message = time.time()
-        self.ping_function = ping_function
-        self.running = False
-        self._thread = None
-
-    def start(self):
-        self.running = True
-        self._thread = threading.Thread(target=self.run)
-        self._thread.daemon = True
-        self._thread.start()
-
-    def run(self):
-        while self.running:
-            time.sleep(self.sleep)
-            time_without_messages = time.time() - self.last_message
-            if self.keep_alive_interval < time_without_messages:
-                self.ping_function()
-
-    def stop(self):
-        self.running = False
-
-
 class ReconnectionType(Enum):
     raw = 0  # Reconnection with max reconnections and constant sleep time
     interval = 1  # variable sleep time
@@ -43,6 +13,9 @@ class ReconnectionHandler(object):
         self.reconnecting = False
         self.attempt_number = 0
         self.last_attempt = time.time()
+    
+    def can_reconnect(self) -> bool:
+        raise NotImplementedError()
 
     def next(self):
         raise NotImplementedError()
@@ -58,6 +31,9 @@ class RawReconnectionHandler(ReconnectionHandler):
         self.sleep_time = sleep_time
         self.max_reconnection_attempts = max_attempts
 
+    def can_reconnect(self) -> bool:
+        return False
+    
     def next(self):
         self.reconnecting = True
         if self.max_reconnection_attempts is not None:
@@ -76,6 +52,9 @@ class IntervalReconnectionHandler(ReconnectionHandler):
     def __init__(self, intervals):
         super(IntervalReconnectionHandler, self).__init__()
         self._intervals = intervals
+    
+    def can_reconnect(self) -> bool:
+        return self.attempt_number >= len(self._intervals)
 
     def next(self):
         self.reconnecting = True
