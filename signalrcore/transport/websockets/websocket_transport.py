@@ -190,6 +190,9 @@ class WebsocketTransport(BaseTransport):
             raise ex
         
     def send(self, message):
+        if self.reconnection_handler:
+            while self.reconnection_handler.reconnecting:
+                time.sleep(1)
         return self.state.send(message)
 
     def _send(self, message):
@@ -391,11 +394,10 @@ class WsDisconnectedState(WsBaseState):
         self.logger.debug("-- web socket reconnecting --")
 
     def handle_reconnect(self, sleep: int = 5) -> None:
+        self.context.reconnection_handler.reconnecting = True
+
         if sleep:
             time.sleep(sleep)
-
-
-        self.context.reconnection_handler.reconnecting = True
 
         try:
             self.context.dispose()

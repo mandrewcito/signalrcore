@@ -41,10 +41,8 @@ class TestReconnectIntervalMethods(BaseTestCase):
         self.assertTrue(self._locks[identifier].acquire(timeout=10))
 
         connection.transport._ws.close(status=1000, reason="Closed".encode("utf-8"))
-
-        self.assertRaises(
-            HubConnectionError,
-            lambda: connection.send("DisconnectMe", []))
+        time.sleep(1)
+        self.assertTrue(connection.transport.reconnection_handler.reconnecting)
 
         self.assertTrue(self._locks[identifier].acquire(timeout=30))
 
