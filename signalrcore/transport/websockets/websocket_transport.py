@@ -1,5 +1,4 @@
 import threading
-import requests
 import traceback
 import time
 from .reconnection import ConnectionStateChecker
@@ -8,7 +7,7 @@ from ...messages.ping_message import PingMessage
 from ...hub.errors import HubError, UnAuthorizedHubError
 from ...protocol.messagepack_protocol import MessagePackHubProtocol
 from ..base_transport import BaseTransport
-from ...helpers import Helpers
+from ...helpers import Helpers, RequestHelpers
 from .websocket_client import WebSocketClient
 
 
@@ -90,16 +89,15 @@ class WebsocketTransport(BaseTransport):
         negotiate_url = Helpers.get_negotiate_url(self.url)
         self.logger.debug("Negotiate url:{0}".format(negotiate_url))
 
-        response = requests.post(
-            negotiate_url, headers=self.headers, verify=self.verify_ssl)
+        status_code, data = RequestHelpers.post(
+            negotiate_url, headers=self.headers, verify_ssl=self.verify_ssl)
+
         self.logger.debug(
-            "Response status code{0}".format(response.status_code))
+            "Response status code{0}".format(status_code))
 
-        if response.status_code != 200:
-            raise HubError(response.status_code)\
-                if response.status_code != 401 else UnAuthorizedHubError()
-
-        data = response.json()
+        if status_code != 200:
+            raise HubError(status_code)\
+                if status_code != 401 else UnAuthorizedHubError()
 
         if "connectionId" in data.keys():
             self.url = Helpers.encode_connection_id(
@@ -127,7 +125,7 @@ class WebsocketTransport(BaseTransport):
                     self.connection_checker.start()
         else:
             self.logger.error(msg.error)
-            self.on_socket_error(self._ws, msg.error)
+            self.on_socket_error(msg.error)
             self.stop()
             self.state = ConnectionState.disconnected
         return messages

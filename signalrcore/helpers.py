@@ -1,5 +1,36 @@
 import logging
 import urllib.parse as parse
+import urllib
+import urllib.request
+import ssl
+from typing import Tuple
+import json
+
+
+class RequestHelpers:
+    @staticmethod
+    def post(
+            url: str,
+            headers: dict = {},
+            verify_ssl: bool = False) -> Tuple[int, dict]:
+        context = ssl.create_default_context()
+        if not verify_ssl:
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+        headers.update({'Content-Type': 'application/json'})
+
+        req = urllib.request.Request(url, method="POST", headers=headers)
+
+        with urllib.request.urlopen(req, context=context) as response:
+            status_code = response.getcode()
+            response_body = response.read().decode('utf-8')
+
+            try:
+                json_data = json.loads(response_body)
+            except json.JSONDecodeError:
+                json_data = None
+
+            return status_code, json_data
 
 
 class Helpers:
