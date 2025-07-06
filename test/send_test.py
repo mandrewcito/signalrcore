@@ -10,6 +10,7 @@ from signalrcore.hub_connection_builder import HubConnectionBuilder
 from signalrcore.hub.errors import HubError, HubConnectionError
 from test.base_test_case import BaseTestCase, Urls
 
+
 class TestSendException(BaseTestCase):
     def receive_message(self, _):
         raise Exception()
