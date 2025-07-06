@@ -216,16 +216,14 @@ class WebsocketTransport(BaseTransport):
         except Exception as ex:
             self.logger.error(ex)
             sleep_time = self.reconnection_handler.next()
-            threading.Thread(
-                target=self.deferred_reconnect,
-                args=(sleep_time,)
-            ).start()
+            self.deferred_reconnect(sleep_time)
 
     def deferred_reconnect(self, sleep_time):
         time.sleep(sleep_time)
         try:
             if not self.connection_alive:
-                self.send(PingMessage())
+                 if not self.connection_checker.running:
+                    self.send(PingMessage())
         except Exception as ex:
             self.logger.error(ex)
             self.reconnection_handler.reconnecting = False
