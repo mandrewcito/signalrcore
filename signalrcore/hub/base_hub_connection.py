@@ -7,14 +7,15 @@ from .errors import HubConnectionError
 from signalrcore.helpers import Helpers
 from .handlers import StreamHandler, InvocationHandler
 from ..transport.websockets.websocket_transport import WebsocketTransport
-from ..helpers import Helpers
 from ..subject import Subject
 from ..messages.invocation_message import InvocationMessage
+
 
 class InvocationResult(object):
     def __init__(self, invocation_id) -> None:
         self.invocation_id = invocation_id
         self.message = None
+
 
 class BaseHubConnection(object):
     def __init__(
@@ -62,7 +63,7 @@ class BaseHubConnection(object):
         connection.on_open(lambda: print(
             "connection opened "))
         Args:
-            callback (function): funciton without params
+            callback (function): function without params
         """
         self.transport.on_open_callback(callback)
 
@@ -92,22 +93,23 @@ class BaseHubConnection(object):
         Args:
             event (string):  Event name
             callback_function (Function): callback function,
-                arguments will be binded
+                arguments will be bound
         """
         self.logger.debug("Handler registered started {0}".format(event))
         self.handlers.append((event, callback_function))
-        
-    def ignore(self, event, callback_function: Callable):
+
+    def x(self, event, callback_function: Callable):
         """Removes a callback from the specified event
         Args:
             event (string): Event name
             callback_function (Function): callback function,
-                arguments will be binded
+                arguments will be bound
         """
         self.logger.debug("Handler removed {0}".format(event))
         self.handlers.remove((event, callback_function))
 
-    def send(self, method, arguments, on_invocation=None, invocation_id=None) -> InvocationResult:
+    def send(self, method, arguments, on_invocation=None, invocation_id=None)\
+            -> InvocationResult:
         """Sends a message
 
         Args:
@@ -115,15 +117,15 @@ class BaseHubConnection(object):
             arguments (list|Subject): Method parameters
             on_invocation (function, optional): On invocation send callback
                 will be raised on send server function ends. Defaults to None.
-            invocation_id (string, optional): Override invocation ID. Exceptions
-                thrown by the hub will use this ID, making it easier to handle
-                with the on_error call.
+            invocation_id (string, optional): Override invocation ID.
+                Exceptions thrown by the hub will use this ID,
+                making it easier to handle with the on_error call.
 
         Raises:
             HubConnectionError: If hub is not ready to send
             TypeError: If arguments are invalid list or Subject
         """
-        if invocation_id == None:
+        if invocation_id is None:
             invocation_id = str(uuid.uuid4())
 
         if not self.transport.is_running():
@@ -147,20 +149,18 @@ class BaseHubConnection(object):
                     InvocationHandler(
                         message.invocation_id,
                         on_invocation))
-            
+
             self.transport.send(message)
             result.message = message
-        
+
         if type(arguments) is Subject:
             arguments.connection = self
             arguments.target = method
             arguments.start()
             result.invocation_id = arguments.invocation_id
             result.message = arguments
-        
 
         return result
-
 
     def on_message(self, messages):
         for message in messages:
@@ -178,7 +178,8 @@ class BaseHubConnection(object):
                         lambda h: h[0] == message.target,
                         self.handlers))
                 if len(fired_handlers) == 0:
-                    self.logger.debug(f"event '{message.target}' hasn't fired any handler")
+                    self.logger.debug(
+                        f"event '{message.target}' hasn't fired any handler")
                 for _, handler in fired_handlers:
                     handler(message.arguments)
 
@@ -268,4 +269,3 @@ class BaseHubConnection(object):
                 event_params,
                 headers=self.headers))
         return stream_obj
-    
