@@ -44,23 +44,26 @@ class MessagePackHubProtocol(BaseHubProtocol):
                 message = self._decode_message(values)
                 messages.append(message)
         except Exception as ex:
-            Helpers.get_logger().error("Parse messages Error {0}".format(ex))
-            Helpers.get_logger().error("raw msg '{0}'".format(raw))
+            self.logger.error("Parse messages Error {0}".format(ex))
+            self.logger.error("raw msg '{0}'".format(raw))
         return messages
 
     def decode_handshake(self, raw_message):
         try:
             has_various_messages = 0x1E in raw_message
-            handshake_data = raw_message[0: raw_message.index(0x1E)] if has_various_messages else raw_message
-            messages = self.parse_messages(raw_message[raw_message.index(0x1E) + 1:]) if has_various_messages else []
+            handshake_data = raw_message[0: raw_message.index(0x1E)]\
+                if has_various_messages else raw_message
+            messages = self.parse_messages(
+                raw_message[raw_message.index(0x1E) + 1:])\
+                if has_various_messages else []
             data = json.loads(handshake_data)
             return HandshakeResponseMessage(data.get("error", None)), messages
         except Exception as ex:
             if type(raw_message) is str:
                 data = json.loads(raw_message[0: raw_message.index("}") + 1])
                 return HandshakeResponseMessage(data.get("error", None)), []
-            Helpers.get_logger().error(raw_message)
-            Helpers.get_logger().error(ex)
+            self.logger.error(raw_message)
+            self.logger.error(ex)
             raise ex
 
     def encode(self, message):

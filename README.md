@@ -25,18 +25,10 @@ Test server will be avaiable in [here](https://github.com/mandrewcito/signalrcor
 ```bash
 git clone https://github.com/mandrewcito/signalrcore-containertestservers
 cd signalrcore-containertestservers
-docker-compose up
+docker compose up
 cd ../signalrcore
 make tests
 ```
-
-## Known Issues
-
-Issues related with closing sockets are inherited from the websocket-client library. Due to these problems i can't update the library to versions higher than websocket-client 0.54.0. 
-I'm working to solve it but for now its patched (Error number 1. Raises an exception, and then exception is treated for prevent errors). 
-If I update the websocket library I fall into error number 2, on local machine I can't reproduce it but travis builds fail (sometimes and randomly :()
-* [1. Closing socket error](https://github.com/slackapi/python-slackclient/issues/171)
-* [2. Random errors closing socket](https://github.com/websocket-client/websocket-client/issues/449)
 
 # A Tiny How To
 

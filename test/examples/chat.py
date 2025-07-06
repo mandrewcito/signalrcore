@@ -9,7 +9,7 @@ def input_with_default(input_text, default_value):
     return default_value if value is None or value.strip() == "" else value
 
 
-server_url = input_with_default('Enter your server url(default: {0}): ', "wss://localhost:5001/chatHub")
+server_url = input_with_default('Enter your server url(default: {0}): ', "http://localhost:5000/chathub")
 username = input_with_default('Enter your username (default: {0}): ', "mandrewcito")
 handler = logging.StreamHandler()
 handler.setLevel(logging.DEBUG)
