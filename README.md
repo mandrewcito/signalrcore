@@ -25,7 +25,7 @@ Test server will be avaiable in [here](https://github.com/mandrewcito/signalrcor
 ```bash
 git clone https://github.com/mandrewcito/signalrcore-containertestservers
 cd signalrcore-containertestservers
-docker-compose up
+docker compose up
 cd ../signalrcore
 make tests
 ```
