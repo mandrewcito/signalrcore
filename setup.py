@@ -25,9 +25,9 @@ setuptools.setup(
     ],
     extras_require={
         'dev': [
-            'requests'
+            'requests',
             'flake8',
             'coverage'
-        ],
+        ]
     },
 )
