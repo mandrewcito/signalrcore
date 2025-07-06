@@ -96,6 +96,16 @@ class BaseHubConnection(object):
         """
         self.logger.debug("Handler registered started {0}".format(event))
         self.handlers.append((event, callback_function))
+        
+    def ignore(self, event, callback_function: Callable):
+        """Removes a callback from the specified event
+        Args:
+            event (string): Event name
+            callback_function (Function): callback function,
+                arguments will be binded
+        """
+        self.logger.debug("Handler removed {0}".format(event))
+        self.handlers.remove((event, callback_function))
 
     def send(self, method, arguments, on_invocation=None, invocation_id=None) -> InvocationResult:
         """Sends a message
