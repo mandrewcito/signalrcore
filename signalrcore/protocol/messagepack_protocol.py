@@ -44,13 +44,13 @@ class MessagePackHubProtocol(BaseHubProtocol):
                 num_bytes = 0
                 while True:
                     byte_read = raw[offset + num_bytes]
-                    length |= (byte_read & 0x7F) << num_bits_to_shift[num_bytes]
+                    length |=\
+                        (byte_read & 0x7F) << num_bits_to_shift[num_bytes]
                     num_bytes += 1
                     if byte_read & 0x80 == 0:
                         break
-                    if offset == max_length_prefix_size or offset + num_bytes > len(
-                        raw
-                    ):
+                    if offset == max_length_prefix_size\
+                            or offset + num_bytes > len(raw):
                         raise Exception("Cannot read message length")
                 offset = offset + num_bytes
                 values = msgpack.unpackb(raw[offset: offset + length])

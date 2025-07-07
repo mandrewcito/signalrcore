@@ -2,7 +2,7 @@ import requests
 import sys
 import logging
 sys.path.append("./")
-from signalrcore.hub_connection_builder import HubConnectionBuilder
+from signalrcore.hub_connection_builder import HubConnectionBuilder  # noqa E402
 
 
 def input_with_default(input_text, default_value):
@@ -11,19 +11,26 @@ def input_with_default(input_text, default_value):
 
 
 def signalr_core_example_login(url, user, username_password):
-    response = requests.post(url, json={"username": user, "password": username_password}, verify=False)
+    response = requests.post(
+        url,
+        json={"username": user, "password": username_password},
+        verify=False)
     return response.json()["token"]
 
 
-login_url = input_with_default('Enter your server login url({0}):', "https://localhost:5001/users/authenticate")
-server_url = input_with_default('Enter your server url(default: {0}): ', "wss://localhost:5001/authHub")
+login_url = input_with_default(
+    'Enter your server login url({0}):',
+    "https://localhost:5001/users/authenticate")
+server_url = input_with_default(
+    'Enter your server url(default: {0}): ', "wss://localhost:5001/authHub")
 username = input_with_default('Enter your username (default: {0}): ', "test")
 password = input_with_default('Enter your password (default: {0}): ', "test")
 
 hub_connection = HubConnectionBuilder()\
     .configure_logging(logging_level=logging.DEBUG)\
     .with_url(server_url, options={
-        "access_token_factory": lambda: signalr_core_example_login(login_url, username, password),
+        "access_token_factory": lambda: signalr_core_example_login(
+            login_url, username, password),
         "verify_ssl": False
     }).with_automatic_reconnect({
         "type": "interval",
@@ -32,7 +39,9 @@ hub_connection = HubConnectionBuilder()\
     })\
     .build()
 
-hub_connection.on_open(lambda: print("connection opened and handshake received ready to send messages"))
+hub_connection.on_open(
+    lambda: print(
+        "connection opened and handshake received ready to send messages"))
 hub_connection.on_close(lambda: print("connection closed"))
 
 hub_connection.on("ReceiveSystemMessage", print)

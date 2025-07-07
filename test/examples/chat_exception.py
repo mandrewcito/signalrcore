@@ -1,7 +1,7 @@
 import logging
 import sys
 sys.path.append("./")
-from signalrcore.hub_connection_builder import HubConnectionBuilder
+from signalrcore.hub_connection_builder import HubConnectionBuilder  # noqa E402
 
 
 def input_with_default(input_text, default_value):
@@ -9,7 +9,8 @@ def input_with_default(input_text, default_value):
     return default_value if value is None or value.strip() == "" else value
 
 
-server_url = input_with_default('Enter your server url(default: {0}): ', "wss://localhost:5001/chatHub")
+server_url = input_with_default(
+    'Enter your server url(default: {0}): ', "wss://localhost:5001/chatHub")
 
 handler = logging.StreamHandler()
 handler.setLevel(logging.DEBUG)
@@ -22,9 +23,13 @@ hub_connection = HubConnectionBuilder()\
             "intervals": [1, 3, 5, 6, 7, 87, 3]
         }).build()
 
-hub_connection.on_open(lambda: print("connection opened and handshake received ready to send messages"))
-hub_connection.on_close(lambda: print("connection closed>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<"))
-hub_connection.on_error(lambda err: print("errrrrrrrrrrrrrrrrrrr"))
+hub_connection.on_open(
+    lambda: print(
+        "connection opened and handshake received ready to send messages"))
+hub_connection.on_close(
+    lambda: print(
+        "connection closed>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<"))
+hub_connection.on_error(lambda err: print(f"error {err}"))
 
 hub_connection.on("ThrowExceptionCall", lambda x: print(f">>>{x}"))
 hub_connection.start()

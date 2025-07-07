@@ -1,10 +1,11 @@
 
 import time
 import sys
-sys.path.append("./")
 import logging
-from signalrcore.hub_connection_builder import HubConnectionBuilder
-from signalrcore.subject import Subject
+sys.path.append("./")
+from signalrcore.hub_connection_builder\
+    import HubConnectionBuilder  # noqa: E402
+from signalrcore.subject import Subject  # noqa: E402
 
 
 def input_with_default(input_text, default_value):
@@ -12,7 +13,8 @@ def input_with_default(input_text, default_value):
     return default_value if value is None or value.strip() == "" else value
 
 
-server_url = input_with_default('Enter your server url(default: {0}): ', "wss://localhost:5001/chatHub")
+server_url = input_with_default(
+    'Enter your server url(default: {0}): ', "wss://localhost:5001/chatHub")
 
 hub_connection = HubConnectionBuilder()\
     .with_url(server_url, options={"verify_ssl": False}) \
@@ -54,4 +56,3 @@ hub_connection.send("UploadStream", subject)
 while iteration != 10:
     interval_handle()
     time.sleep(0.5)
-

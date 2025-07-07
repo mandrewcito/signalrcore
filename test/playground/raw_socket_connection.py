@@ -5,7 +5,7 @@ import base64
 import json
 import logging
 sys.path.append("./")
-from signalrcore.transport.websockets.websocket_client import WebSocketClient
+from signalrcore.transport.websockets.websocket_client import WebSocketClient  # noqa E402
 
 logging.basicConfig(level=logging.DEBUG)
 

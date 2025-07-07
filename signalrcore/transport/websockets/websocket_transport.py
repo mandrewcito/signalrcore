@@ -1,4 +1,3 @@
-import threading
 import traceback
 import time
 from .reconnection import ConnectionStateChecker
@@ -222,7 +221,7 @@ class WebsocketTransport(BaseTransport):
         time.sleep(sleep_time)
         try:
             if not self.connection_alive:
-                 if not self.connection_checker.running:
+                if not self.connection_checker.running:
                     self.send(PingMessage())
         except Exception as ex:
             self.logger.error(ex)
