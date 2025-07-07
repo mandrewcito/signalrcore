@@ -9,6 +9,7 @@ from .handlers import StreamHandler, InvocationHandler
 from ..transport.websockets.websocket_transport import WebsocketTransport
 from ..subject import Subject
 from ..messages.invocation_message import InvocationMessage
+from collections import defaultdict
 
 
 class InvocationResult(object):
@@ -29,10 +30,12 @@ class BaseHubConnection(object):
         else:
             self.headers = headers
         self.logger = Helpers.get_logger()
-        self.handlers = []
-        self.stream_handlers = []
+        self.handlers = defaultdict(list)
+        self.stream_handlers = defaultdict(list)
+
         self._on_error = lambda error: self.logger.info(
             "on_error not defined {0}".format(error))
+
         self.transport = WebsocketTransport(
             url=url,
             protocol=protocol,
@@ -96,9 +99,9 @@ class BaseHubConnection(object):
                 arguments will be bound
         """
         self.logger.debug("Handler registered started {0}".format(event))
-        self.handlers.append((event, callback_function))
+        self.handlers[event].append(callback_function)
 
-    def x(self, event, callback_function: Callable):
+    def unsubscribe(self, event, callback_function: Callable):
         """Removes a callback from the specified event
         Args:
             event (string): Event name
@@ -106,7 +109,11 @@ class BaseHubConnection(object):
                 arguments will be bound
         """
         self.logger.debug("Handler removed {0}".format(event))
-        self.handlers.remove((event, callback_function))
+
+        self.handlers[event].remove(callback_function)
+
+        if len(self.handlers[event]) == 0:
+            del self.handlers[event]
 
     def send(self, method, arguments, on_invocation=None, invocation_id=None)\
             -> InvocationResult:
@@ -145,7 +152,7 @@ class BaseHubConnection(object):
                 headers=self.headers)
 
             if on_invocation:
-                self.stream_handlers.append(
+                self.stream_handlers[message.invocation_id].append(
                     InvocationHandler(
                         message.invocation_id,
                         on_invocation))
@@ -173,14 +180,14 @@ class BaseHubConnection(object):
                 continue
 
             if message.type == MessageType.invocation:
-                fired_handlers = list(
-                    filter(
-                        lambda h: h[0] == message.target,
-                        self.handlers))
+
+                fired_handlers = self.handlers.get(message.target, [])
+
                 if len(fired_handlers) == 0:
                     self.logger.debug(
                         f"event '{message.target}' hasn't fired any handler")
-                for _, handler in fired_handlers:
+
+                for handler in fired_handlers:
                     handler(message.arguments)
 
             if message.type == MessageType.close:
@@ -193,30 +200,26 @@ class BaseHubConnection(object):
                     self._on_error(message)
 
                 # Send callbacks
-                fired_handlers = list(
-                    filter(
-                        lambda h: h.invocation_id == message.invocation_id,
-                        self.stream_handlers))
+                fired_handlers = self.stream_handlers.get(
+                    message.invocation_id, [])
 
                 # Stream callbacks
                 for handler in fired_handlers:
                     handler.complete_callback(message)
 
                 # unregister handler
-                self.stream_handlers = list(
-                    filter(
-                        lambda h: h.invocation_id != message.invocation_id,
-                        self.stream_handlers))
+                if message.invocation_id in self.stream_handlers:
+                    del self.stream_handlers[message.invocation_id]
 
             if message.type == MessageType.stream_item:
-                fired_handlers = list(
-                    filter(
-                        lambda h: h.invocation_id == message.invocation_id,
-                        self.stream_handlers))
+                fired_handlers = self.stream_handlers.get(
+                    message.invocation_id, [])
+
                 if len(fired_handlers) == 0:
                     self.logger.warning(
                         "id '{0}' hasn't fire any stream handler".format(
                             message.invocation_id))
+
                 for handler in fired_handlers:
                     handler.next_callback(message.item)
 
@@ -224,10 +227,9 @@ class BaseHubConnection(object):
                 pass
 
             if message.type == MessageType.cancel_invocation:
-                fired_handlers = list(
-                    filter(
-                        lambda h: h.invocation_id == message.invocation_id,
-                        self.stream_handlers))
+                fired_handlers = self.stream_handlers.get(
+                    message.invocation_id, [])
+
                 if len(fired_handlers) == 0:
                     self.logger.warning(
                         "id '{0}' hasn't fire any stream handler".format(
@@ -237,10 +239,8 @@ class BaseHubConnection(object):
                     handler.error_callback(message)
 
                 # unregister handler
-                self.stream_handlers = list(
-                    filter(
-                        lambda h: h.invocation_id != message.invocation_id,
-                        self.stream_handlers))
+                if message.invocation_id in self.stream_handlers:
+                    del self.stream_handlers[message.invocation_id]
 
     def stream(self, event, event_params):
         """Starts server streaming
@@ -261,7 +261,7 @@ class BaseHubConnection(object):
         """
         invocation_id = str(uuid.uuid4())
         stream_obj = StreamHandler(event, invocation_id)
-        self.stream_handlers.append(stream_obj)
+        self.stream_handlers[invocation_id].append(stream_obj)
         self.transport.send(
             StreamInvocationMessage(
                 invocation_id,

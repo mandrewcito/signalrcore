@@ -5,6 +5,9 @@ tests:
 package:
 	python3 setup.py sdist bdist_wheel
 
+lint:
+	flake8 signalrcore test
+
 all:
 	tests package
 

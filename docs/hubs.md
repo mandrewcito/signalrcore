@@ -56,8 +56,7 @@ Example:
 
 ```json
 {
-    "error": "Requ
-    ested protocol 'messagepack' is not available."
+    "error": "Requested protocol 'messagepack' is not available."
 }
 ```
 
