@@ -21,7 +21,7 @@
 
 # Develop
 
-Test server will be avaiable in [here](https://github.com/mandrewcito/signalrcore-containertestservers) and docker compose is required.
+Test server will be available in [here](https://github.com/mandrewcito/signalrcore-containertestservers) and docker compose is required.
 
 ```bash
 git clone https://github.com/mandrewcito/signalrcore-containertestservers
@@ -67,8 +67,8 @@ hub_connection = HubConnectionBuilder()\
                 "max_attempts": 5
             }).build()
 ```
-### Unauthorized erros
-A login function must provide a error control if authorization fails. When connection starts, if authorization fails exception will be propagued.
+### Unauthorized errors
+A login function must provide a error control if authorization fails. When connection starts, if authorization fails exception will be raised.
 
 ```python
     def login(self):
@@ -109,8 +109,8 @@ hub_connection = HubConnectionBuilder()\
     .configure_logging(logging.DEBUG, socket_trace=True, handler=handler)
     ...
  ```
-## Configuring reconection
-After reaching max_attemps an exeption will be thrown and on_disconnect event will be
+## Configuring reconnection
+After reaching max_attempts an exception will be thrown and on_disconnect event will be
 fired.
 ```python
 hub_connection = HubConnectionBuilder()\
@@ -118,7 +118,7 @@ hub_connection = HubConnectionBuilder()\
     ...
     .build()
 ```
-## Configuring aditional headers
+## Configuring additional headers
 ```python
 hub_connection = HubConnectionBuilder()\
             .with_url(server_url,
@@ -130,16 +130,16 @@ hub_connection = HubConnectionBuilder()\
             ...
             .build()
 ```
-## Configuring aditional querystring parameters
+## Configuring additional querystring parameters
 ```python
-server_url ="http.... /?myquerystringparam=134&foo=bar"
+server_url ="http.... /?myQueryStringParam=134&foo=bar"
 connection = HubConnectionBuilder()\
             .with_url(server_url,
             options={
             })\
             .build()
 ```
-## Congfigure skip negotiation
+## Configure skip negotiation
 ```python
 hub_connection = HubConnectionBuilder() \
         .with_url("ws://"+server_url, options={
@@ -154,7 +154,7 @@ hub_connection = HubConnectionBuilder() \
 ```
 ## Configuring ping(keep alive)
 
-keep_alive_interval sets the secconds of ping message
+keep_alive_interval sets the seconds of ping message
 
 ```python
 hub_connection = HubConnectionBuilder()\
@@ -195,8 +195,10 @@ HubConnectionBuilder()\
 ## Events
 
 ### On connect / On disconnect
-on_open - fires when connection is openned and ready to send messages
+
+on_open - fires when connection is opened and ready to send messages
 on_close - fires when connection is closed
+
 ```python
 hub_connection.on_open(lambda: print("connection opened and handshake received ready to send messages"))
 hub_connection.on_close(lambda: print("connection closed"))
@@ -215,13 +217,13 @@ hub_connection.on("ReceiveMessage", print)
 ```
 ## Sending messages
 SendMessage - signalr method
-username, message - parameters of signalrmethod
+username, message - parameters of signalr method
 ```python
     hub_connection.send("SendMessage", [username, message])
 ```
 ## Sending messages with callback
 SendMessage - signalr method
-username, message - parameters of signalrmethod
+username, message - parameters of signalr method
 ```python
     send_callback_received = threading.Lock()
     send_callback_received.acquire()
@@ -264,7 +266,7 @@ subject.complete()
 
 # Full Examples
 
-Examples will be avaiable [here](https://github.com/mandrewcito/signalrcore/tree/master/test/examples)
+Examples will be available [here](https://github.com/mandrewcito/signalrcore/tree/master/test/examples)
 It were developed using package from [aspnet core - SignalRChat](https://codeload.github.com/aspnet/Docs/zip/master) 
 
 ## Chat example

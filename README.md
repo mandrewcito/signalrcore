@@ -20,7 +20,7 @@
 
 # Develop
 
-Test server will be avaiable in [here](https://github.com/mandrewcito/signalrcore-containertestservers) and docker compose is required.
+Test server will be available in [here](https://github.com/mandrewcito/signalrcore-containertestservers) and docker compose is required.
 
 ```bash
 git clone https://github.com/mandrewcito/signalrcore-containertestservers
@@ -137,7 +137,7 @@ connection = HubConnectionBuilder()\
             })\
             .build()
 ```
-## Congfiguring skip negotiation
+## Configuring skip negotiation
 ```python
 hub_connection = HubConnectionBuilder() \
         .with_url("ws://"+server_url, options={
