@@ -49,8 +49,8 @@ class WebsocketTransport(BaseTransport):
         if self.state == ConnectionState.connected:
             self.connection_checker.stop()
             self._ws.close()
-            self.state = ConnectionState.disconnected
-            self.handshake_received = False
+        self.state = ConnectionState.disconnected
+        self.handshake_received = False
 
     def is_trace_enabled(self) -> bool:
         return self._ws.is_trace_enabled
