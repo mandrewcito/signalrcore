@@ -5,7 +5,8 @@ import time
 
 sys.path.append("./")
 
-from signalrcore.hub_connection_builder import HubConnectionBuilder
+from signalrcore.hub_connection_builder\
+    import HubConnectionBuilder  # noqa: E402
 
 connection = HubConnectionBuilder()\
     .with_url("wss://localhost:5001/chathub", options={"verify_ssl": False})\
