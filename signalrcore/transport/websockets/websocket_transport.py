@@ -20,12 +20,14 @@ class WebsocketTransport(BaseTransport):
             verify_ssl=False,
             skip_negotiation=False,
             enable_trace=False,
+            proxies: dict = {},
             **kwargs):
         super(WebsocketTransport, self).__init__(**kwargs)
         self._ws = None
         self.enable_trace = enable_trace
         self.skip_negotiation = skip_negotiation
         self.url = url
+        self.proxies = proxies
         if headers is None:
             self.headers = dict()
         else:
@@ -89,7 +91,10 @@ class WebsocketTransport(BaseTransport):
         self.logger.debug("Negotiate url:{0}".format(negotiate_url))
 
         status_code, data = RequestHelpers.post(
-            negotiate_url, headers=self.headers, verify_ssl=self.verify_ssl)
+            negotiate_url,
+            headers=self.headers,
+            proxies=self.proxies,
+            verify_ssl=self.verify_ssl)
 
         self.logger.debug(
             "Response status code{0}".format(status_code))

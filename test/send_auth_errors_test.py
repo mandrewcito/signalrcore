@@ -21,7 +21,7 @@ class TestSendAuthErrorMethod(BaseTestCase):
                 "password": self.password
                 },
             verify=False)
-        if response.status_code == 200:
+        if response.status_code == 200:  # pragma: no cover
             return response.json()["token"]
         raise requests.exceptions.ConnectionError()
 

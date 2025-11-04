@@ -4,6 +4,7 @@ import base64
 import threading
 import os
 import struct
+import urllib.parse as parse
 from typing import Optional, Callable, Union
 from signalrcore.helpers import Helpers
 
@@ -45,6 +46,7 @@ class WebSocketClient(object):
             url: str,
             is_binary: bool = False,
             headers: Optional[dict] = None,
+            proxies: dict = {},
             verify_ssl: bool = True,
             enable_trace: bool = False,
             on_message: Callable = None,
@@ -52,6 +54,7 @@ class WebSocketClient(object):
             on_error: Callable = None,
             on_close: Callable = None):
         self.is_trace_enabled = enable_trace
+        self.proxies = proxies
         self.url = url
         self.is_binary = is_binary
         self.headers = headers or {}
@@ -71,18 +74,28 @@ class WebSocketClient(object):
 
     def connect(self):
         # ToDo URL PARSE
-        scheme, rest = self.url.split("://", 1)
-        host_port, path = rest.split("/", 1)
-        path = "/" + path
+        parsed_url = parse.urlparse(self.url)
+        is_secure_connection = parsed_url.scheme == "wss"\
+            or parsed_url.scheme == "https"
 
-        if ":" in host_port:
-            host, port = host_port.split(":")
-            port = int(port)
-        else:
-            host = host_port
-            port = 443 if scheme == "wss" else 80
+        proxy_info = None
+        if is_secure_connection\
+                and self.proxies.get("https", None) is not None:
+            proxy_info = parse.urlparse(self.proxies.get("https"))
+
+        if not is_secure_connection\
+                and self.proxies.get("http", None) is not None:
+            proxy_info = parse.urlparse(self.proxies.get("http"))
+
+        host, port = parsed_url.hostname, parsed_url.port
+
+        if proxy_info is not None:
+            host = proxy_info.hostname,
+            port = proxy_info.port
+
         raw_sock = socket.create_connection((host, port))
-        if scheme == "wss" or scheme == "https":
+
+        if is_secure_connection:
             raw_sock = self.ssl_context.wrap_socket(
                 raw_sock,
                 server_hostname=host)
@@ -92,8 +105,8 @@ class WebSocketClient(object):
         # Perform the WebSocket handshake
         key = base64.b64encode(os.urandom(16)).decode("utf-8")
         request_headers = [
-            f"GET {path} HTTP/1.1",
-            f"Host: {host}",
+            f"GET {parsed_url.path} HTTP/1.1",
+            f"Host: {parsed_url.hostname}",
             "Upgrade: websocket",
             "Connection: Upgrade",
             f"Sec-WebSocket-Key: {key}",
@@ -162,8 +175,13 @@ class WebSocketClient(object):
 
     def _recv_frame(self):
         # Very basic, single-frame, unfragmented
-        header = self.sock.recv(2)
-        if not header:
+        try:
+            header = self.sock.recv(2)
+        except ssl.SSLError as ex:
+            self.logger.error(ex)
+            header = None
+
+        if header is None or len(header) < 2:
             raise NoHeaderException()
 
         fin_opcode = header[0]
