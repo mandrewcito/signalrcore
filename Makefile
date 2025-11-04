@@ -18,6 +18,9 @@ coverage:
 	coverage run -m unittest discover -s test/ -p "*_test.py"
 	coverage html --omit="venv/*" -d coverage_html
 
+pytest-cov:
+	pytest --junitxml=reports/junit.xml --cov=. --cov-report=xml:coverage.xml --cov-report=term
+
 clean:
 	@find . -name "*.pyc" -exec rm -f '{}' +
 	@find . -name "*~" -exec rm -f '{}' +

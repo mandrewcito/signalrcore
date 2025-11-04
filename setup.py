@@ -8,7 +8,10 @@ setuptools.setup(
     version="0.9.6",
     author="mandrewcito",
     author_email="signalrcore@mandrewcito.dev",
-    description="A Python SignalR Core client(json and messagepack), with invocation auth and two way streaming. Compatible with azure / serverless functions. Also with automatic reconnect and manually reconnect.",
+    description="A Python SignalR Core client(json and messagepack),"
+    "with invocation auth and two way streaming."
+    "Compatible with azure / serverless functions."
+    "Also with automatic reconnect and manually reconnect.",
     keywords="signalr core client 3.1",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -27,7 +30,9 @@ setuptools.setup(
         'dev': [
             'requests',
             'flake8',
-            'coverage'
+            'coverage',
+            'pytest',
+            'pytest-cov'
         ]
     },
 )
