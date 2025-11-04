@@ -34,6 +34,7 @@ class HubConnectionBuilder(object):
         self.enable_trace = False  # socket trace
         self.skip_negotiation = False  # By default do not skip negotiation
         self.running = False
+        self.proxies = dict()
 
     def with_url(
             self,
@@ -124,6 +125,28 @@ class HubConnectionBuilder(object):
         self.enable_trace = socket_trace
         return self
 
+    def configure_proxies(
+            self,
+            proxies: dict):
+        """configures proxies
+
+        Args:
+            proxies (dict): {
+              "http"  : "http://host:port",
+              "https" : "https://host:port",
+              "ftp"   : "ftp://port:port"
+            }
+
+        Returns:
+            [HubConnectionBuilder]: Instance hub with proxies configured
+        """
+
+        if "http" not in proxies.keys() or "https" not in proxies.keys():
+            raise ValueError("Only http and https keys are allowed")
+
+        self.proxies = proxies
+        return self
+
     def with_hub_protocol(self, protocol):
         """Changes transport protocol
             from signalrcore.protocol.messagepack_protocol\
@@ -179,6 +202,7 @@ class HubConnectionBuilder(object):
                 keep_alive_interval=self.keep_alive_interval,
                 reconnection_handler=self.reconnection_handler,
                 verify_ssl=self.verify_ssl,
+                proxies=self.proxies,
                 skip_negotiation=self.skip_negotiation,
                 enable_trace=self.enable_trace)\
             if self.has_auth_configured else\
@@ -189,6 +213,7 @@ class HubConnectionBuilder(object):
                 reconnection_handler=self.reconnection_handler,
                 headers=self.headers,
                 verify_ssl=self.verify_ssl,
+                proxies=self.proxies,
                 skip_negotiation=self.skip_negotiation,
                 enable_trace=self.enable_trace)
 

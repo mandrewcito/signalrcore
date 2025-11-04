@@ -15,10 +15,6 @@ LOCKS = {}
 
 class TestReconnectMethods(BaseTestCase):
 
-    def receive_message(self, args):
-        self.assertEqual(args[1], self.message)
-        self.received = True
-
     def test_reconnect_interval_config(self):
         connection = HubConnectionBuilder()\
             .with_url(self.server_url, options={"verify_ssl": False})\
