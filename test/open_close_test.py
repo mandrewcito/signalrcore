@@ -8,7 +8,7 @@ from test.base_test_case import BaseTestCase
 LOCKS = {}
 
 
-class TestClientStreamMethod(BaseTestCase):
+class TestOpenCloseMethods(BaseTestCase):
     def setUp(self):
         pass
 

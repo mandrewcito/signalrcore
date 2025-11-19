@@ -1,5 +1,5 @@
 import uuid
-from typing import Callable
+from typing import Callable, List, Union, Optional
 from signalrcore.messages.message_type import MessageType
 from signalrcore.messages.stream_invocation_message\
     import StreamInvocationMessage
@@ -43,15 +43,15 @@ class BaseHubConnection(object):
             on_message=self.on_message,
             **kwargs)
 
-    def start(self):
+    def start(self) -> None:
         self.logger.debug("Connection started")
         return self.transport.start()
 
-    def stop(self):
+    def stop(self) -> None:
         self.logger.debug("Connection stop")
         return self.transport.stop()
 
-    def on_close(self, callback):
+    def on_close(self, callback) -> None:
         """Configures on_close connection callback.
             It will be raised on connection closed event
         connection.on_close(lambda: print("connection closed"))
@@ -60,7 +60,7 @@ class BaseHubConnection(object):
         """
         self.transport.on_close_callback(callback)
 
-    def on_open(self, callback):
+    def on_open(self, callback) -> None:
         """Configures on_open connection callback.
             It will be raised on connection open event
         connection.on_open(lambda: print(
@@ -70,7 +70,7 @@ class BaseHubConnection(object):
         """
         self.transport.on_open_callback(callback)
 
-    def on_error(self, callback):
+    def on_error(self, callback) -> None:
         """Configures on_error connection callback. It will be raised
             if any hub method throws an exception.
         connection.on_error(lambda data:
@@ -81,7 +81,7 @@ class BaseHubConnection(object):
         """
         self._on_error = callback
 
-    def on_reconnect(self, callback):
+    def on_reconnect(self, callback) -> None:
         """Configures on_reconnect reconnection callback.
             It will be raised on reconnection event
         connection.on_reconnect(lambda: print(
@@ -91,7 +91,7 @@ class BaseHubConnection(object):
         """
         self.transport.on_reconnect_callback(callback)
 
-    def on(self, event, callback_function: Callable):
+    def on(self, event, callback_function: Callable) -> None:
         """Register a callback on the specified event
         Args:
             event (string):  Event name
@@ -101,7 +101,7 @@ class BaseHubConnection(object):
         self.logger.debug("Handler registered started {0}".format(event))
         self.handlers[event].append(callback_function)
 
-    def unsubscribe(self, event, callback_function: Callable):
+    def unsubscribe(self, event, callback_function: Callable) -> None:
         """Removes a callback from the specified event
         Args:
             event (string): Event name
@@ -117,7 +117,32 @@ class BaseHubConnection(object):
 
     def send(self, method, arguments, on_invocation=None, invocation_id=None)\
             -> InvocationResult:
-        """Sends a message
+        """invokes a server function
+        Deprecated: 0.96
+            Use invoke instead
+        Args:
+            method (string): Method name
+            arguments (list|Subject): Method parameters
+            on_invocation (function, optional): On invocation send callback
+                will be raised on send server function ends. Defaults to None.
+            invocation_id (string, optional): Override invocation ID.
+                Exceptions thrown by the hub will use this ID,
+                making it easier to handle with the on_error call.
+
+        Raises:
+            HubConnectionError: If hub is not ready to send
+            TypeError: If arguments are invalid list or Subject
+        """
+        return self.invoke(method, arguments, on_invocation, invocation_id)
+
+    def invoke(
+            self,
+            method: str,
+            arguments: Union[List, Subject],
+            on_invocation: Optional[Callable] = None,
+            invocation_id: Optional[str] = None)\
+            -> InvocationResult:
+        """invokes a server function
 
         Args:
             method (string): Method name
@@ -169,7 +194,7 @@ class BaseHubConnection(object):
 
         return result
 
-    def on_message(self, messages):
+    def on_message(self, messages) -> None:
         for message in messages:
             if message.type == MessageType.invocation_binding_failure:
                 self.logger.error(message)
@@ -242,7 +267,7 @@ class BaseHubConnection(object):
                 if message.invocation_id in self.stream_handlers:
                     del self.stream_handlers[message.invocation_id]
 
-    def stream(self, event, event_params):
+    def stream(self, event, event_params) -> StreamHandler:
         """Starts server streaming
             connection.stream(
             "Counter",
