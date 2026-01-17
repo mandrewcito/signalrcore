@@ -7,7 +7,7 @@ from ...hub.errors import HubError, UnAuthorizedHubError
 from ...protocol.messagepack_protocol import MessagePackHubProtocol
 from ..base_transport import BaseTransport, TransportState
 from ...helpers import Helpers, RequestHelpers
-from .websocket_client import WebSocketClient
+from .websocket_client import WebSocketClient, SocketClosedError
 
 
 class WebsocketTransport(BaseTransport):
@@ -18,7 +18,6 @@ class WebsocketTransport(BaseTransport):
             url="",
             headers=None,
             keep_alive_interval=15,
-            reconnection_handler=None,
             verify_ssl=False,
             skip_negotiation=False,
             enable_trace=False,
@@ -43,19 +42,21 @@ class WebsocketTransport(BaseTransport):
             lambda: self.send(PingMessage()),
             keep_alive_interval
         )
-        self.reconnection_handler = reconnection_handler
 
-    def stop(self):
+    def dispose(self):
         if self.is_connected():
             self.connection_checker.stop()
             self._ws.close()
+
+    def stop(self):
+        self.dispose()
         self._set_state(TransportState.disconnected)
         self.handshake_received = False
 
     def is_trace_enabled(self) -> bool:
         return self._ws.is_trace_enabled
 
-    def start(self):
+    def start(self, reconnection: bool = False):
         if not self.skip_negotiation:
             self.negotiate()
 
@@ -63,7 +64,11 @@ class WebsocketTransport(BaseTransport):
             self.logger.warning("Already connected unable to start")
             return False
 
-        self._set_state(TransportState.connecting)
+        self._set_state(
+            TransportState.reconnecting
+            if reconnection else
+            TransportState.connecting)
+
         self.logger.debug("start url:" + self.url)
 
         self._ws = WebSocketClient(
@@ -95,7 +100,7 @@ class WebsocketTransport(BaseTransport):
             verify_ssl=self.verify_ssl)
 
         self.logger.debug(
-            "Response status code{0}".format(status_code))
+            "Response status code {0}".format(status_code))
 
         if status_code != 200:
             raise HubError(status_code)\
@@ -161,7 +166,7 @@ class WebsocketTransport(BaseTransport):
         # raise HubError(error)
 
     def on_message(self, app, raw_message):
-        self.logger.debug("Message received{0}".format(raw_message))
+        self.logger.debug("Message received {0}".format(raw_message))
         if not self.handshake_received:
             messages = self.evaluate_handshake(raw_message)
             self._set_state(TransportState.connected)
@@ -185,11 +190,11 @@ class WebsocketTransport(BaseTransport):
             self.connection_checker.last_message = time.time()
             if self.reconnection_handler is not None:
                 self.reconnection_handler.reset()
-        except OSError as ex:
+        except (OSError, SocketClosedError) as ex:
             self.handshake_received = False
             self.logger.warning("Connection closed {0}".format(ex))
-            self._set_state(TransportState.disconnected)
             if self.reconnection_handler is None:
+                self._set_state(TransportState.disconnected)
                 raise ValueError(str(ex))
             # Connection closed
             self.handle_reconnect()
@@ -200,8 +205,8 @@ class WebsocketTransport(BaseTransport):
         self.reconnection_handler.reconnecting = True
         self._set_state(TransportState.reconnecting)
         try:
-            self.stop()
-            self.start()
+            self._ws.dispose()
+            self.start(reconnection=True)
         except Exception as ex:
             self.logger.error(ex)
             sleep_time = self.reconnection_handler.next()

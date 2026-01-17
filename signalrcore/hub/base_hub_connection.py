@@ -217,7 +217,7 @@ class BaseHubConnection(object):
 
             if message.type == MessageType.close:
                 self.logger.info("Close message received from server")
-                self.stop()
+                self.transport.dispose()
                 return
 
             if message.type == MessageType.completion:

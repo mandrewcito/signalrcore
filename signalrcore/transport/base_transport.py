@@ -1,7 +1,8 @@
 import enum
+from typing import Callable
 from ..protocol.json_hub_protocol import JsonHubProtocol
 from ..helpers import Helpers
-
+from ..transport.base_reconnection import BaseReconnection
 
 class TransportState(enum.Enum):
     connecting = 0  # connection established, handshake not received
@@ -11,16 +12,22 @@ class TransportState(enum.Enum):
 
 
 class BaseTransport(object):
-    def __init__(self, protocol=JsonHubProtocol(), on_message=None):
+    def __init__(
+            self,
+            protocol=JsonHubProtocol(),
+            reconnection_handler: BaseReconnection = None,
+            on_message: Callable = None):
         self.protocol = protocol
         self._on_message = on_message
+        self.reconnection_handler = reconnection_handler
         self.logger = Helpers.get_logger()
         self._on_open = lambda: self.logger.info("on_connect not defined")
-        self._on_close = lambda: self.logger.info("on_disconnect not defined")
+        self._on_close = lambda: self.logger.info("on_close not defined")
         self._on_reconnect =\
             lambda: self.logger.info("on_reconnect not defined")
 
         self.state = TransportState.disconnected
+        self.reconnection_handler = reconnection_handler
 
     def _set_state(self, new_state: TransportState):
         """Internal helper to change state and call appropriate callbacks."""
@@ -29,14 +36,18 @@ class BaseTransport(object):
 
         old_state = self.state
         self.state = new_state
+
         self.logger.debug(
             f"Transport state changed: {old_state.name} → {new_state.name}")
+
+        cant_reconnect = self.reconnection_handler is None\
+            or not self.reconnection_handler.reconnecting
 
         if old_state == TransportState.connecting and\
                 new_state == TransportState.connected:
             self._on_open()
 
-        elif new_state == TransportState.disconnected:
+        elif new_state == TransportState.disconnected and cant_reconnect:
             self._on_close()
 
         elif old_state == TransportState.reconnecting and\

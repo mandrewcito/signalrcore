@@ -46,9 +46,10 @@ class TestOpenCloseMethods(BaseTestCase):
         connection.stop()
 
         del LOCKS[identifier]
+        del connection
 
     def test_open_close(self):
-        self.connection = self.get_connection()
+        connection = self.get_connection()
 
         identifier = str(uuid.uuid4())
         LOCKS[identifier] = threading.Lock()
@@ -56,18 +57,18 @@ class TestOpenCloseMethods(BaseTestCase):
         def release():
             LOCKS[identifier].release()
 
-        self.connection.on_open(release)
-        self.connection.on_close(release)
+        connection.on_open(release)
+        connection.on_close(release)
 
-        self.assertTrue(LOCKS[identifier].acquire())
+        self.assertTrue(LOCKS[identifier].acquire(timeout=30))
 
-        self.connection.start()
+        connection.start()
 
-        self.assertTrue(LOCKS[identifier].acquire())
+        self.assertTrue(LOCKS[identifier].acquire(timeout=30))
 
-        self.connection.stop()
+        connection.stop()
 
-        self.assertTrue(LOCKS[identifier].acquire())
+        self.assertTrue(LOCKS[identifier].acquire(timeout=30))
 
-        release()
         del LOCKS[identifier]
+        del connection
