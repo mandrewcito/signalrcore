@@ -1,7 +1,6 @@
 import threading
 import logging
 import sys
-import time
 
 sys.path.append("./")
 
