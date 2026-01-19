@@ -158,7 +158,7 @@ class WebSocketClient(object):
         self.recv_thread.start()
 
     def is_connection_closed(self):
-        return not self.recv_thread.is_alive()
+        return self.recv_thread is None or not self.recv_thread.is_alive()
 
     def _recv_loop(self):
         self.on_open()
