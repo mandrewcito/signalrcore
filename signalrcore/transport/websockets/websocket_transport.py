@@ -78,8 +78,8 @@ class WebsocketTransport(BaseTransport):
             verify_ssl=self.verify_ssl,
             on_message=self.on_message,
             on_error=self.on_socket_error,
-            on_close=self.on_close,
-            on_open=self.on_open,
+            on_close=self.on_socket_close,
+            on_open=self.on_socket_open,
             enable_trace=self.enable_trace
             )
 
@@ -134,12 +134,12 @@ class WebsocketTransport(BaseTransport):
             self.logger.error(msg.error)
             self.on_socket_error(msg.error)
             self.stop()
-            self._set_state(TransportState.disconnected)
         return messages
 
     def on_open(self):
         self.logger.debug("-- web socket open --")
         msg = self.protocol.handshake_message()
+        self.handshake_received = False
         self.send(msg)
 
     def on_close(self):
@@ -164,6 +164,16 @@ class WebsocketTransport(BaseTransport):
         self.logger.error("{0} {1}".format(error, type(error)))
         self._set_state(TransportState.disconnected)
         # raise HubError(error)
+
+    def on_socket_close(self):
+        if self.reconnection_handler is not None\
+                and not self.is_reconnecting():
+            self.handle_reconnect()
+            return
+        self.on_close()
+
+    def on_socket_open(self):
+        self.on_open()
 
     def on_message(self, app, raw_message):
         self.logger.debug("Message received {0}".format(raw_message))
@@ -202,6 +212,9 @@ class WebsocketTransport(BaseTransport):
             raise ex
 
     def handle_reconnect(self):
+        if self.is_reconnecting():
+            return
+
         self.reconnection_handler.reconnecting = True
         self._set_state(TransportState.reconnecting)
         try:

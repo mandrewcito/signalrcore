@@ -35,7 +35,7 @@ class SocketClosedError(Exception):
     Args:
         data (bytes): raw bytes sent by the server
     """
-    def __init__(self, data: Optional[bytes] = None):
+    def __init__(self, data: Optional[bytes] = None):  # pragma: no cover
         self.data = data
         super().__init__("Socket closed by the the server")
 
@@ -273,7 +273,7 @@ class WebSocketClient(object):
         try:
             self.is_closing = True
             self.logger.debug("Start closing socket")
-    
+
             self.running = False
 
             self.dispose()

@@ -64,11 +64,16 @@ class TestOpenCloseMethods(BaseTestCase):
 
         connection.start()
 
-        self.assertTrue(LOCKS[identifier].acquire(timeout=30))
+        self.assertTrue(
+            LOCKS[identifier].acquire(timeout=30),
+            "on_open was not fired")
+        connection.on_open(lambda: None)
 
         connection.stop()
 
-        self.assertTrue(LOCKS[identifier].acquire(timeout=30))
+        self.assertTrue(
+            LOCKS[identifier].acquire(timeout=30),
+            "on_close was not fired")
 
         del LOCKS[identifier]
         del connection

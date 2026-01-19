@@ -4,6 +4,7 @@ from ..protocol.json_hub_protocol import JsonHubProtocol
 from ..helpers import Helpers
 from ..transport.base_reconnection import BaseReconnection
 
+
 class TransportState(enum.Enum):
     connecting = 0  # connection established, handshake not received
     connected = 1  # connection established, handshake received
@@ -40,24 +41,22 @@ class BaseTransport(object):
         self.logger.debug(
             f"Transport state changed: {old_state.name} → {new_state.name}")
 
-        cant_reconnect = self.reconnection_handler is None\
-            or not self.reconnection_handler.reconnecting
+        was_connecting = old_state == TransportState.connecting
+        was_connected = old_state == TransportState.connected
+        was_reconnecting = old_state == TransportState.reconnecting
 
-        if old_state == TransportState.connecting and\
-                new_state == TransportState.connected:
+        if was_connecting and self.is_connected():
             self._on_open()
-
-        elif new_state == TransportState.disconnected and cant_reconnect:
+        elif (was_connected or was_reconnecting)\
+                and self.is_disconnected():
             self._on_close()
-
-        elif old_state == TransportState.reconnecting and\
-                new_state == TransportState.connected:
+        elif was_reconnecting and self.is_connected():
             self._on_reconnect()
 
     def is_connected(self):
         return self.state == TransportState.connected
 
-    def is_connecting(self):
+    def is_connecting(self):  # pragma: no cover
         return self.state == TransportState.connecting
 
     def is_reconnecting(self):
