@@ -57,8 +57,8 @@ class BaseHubProtocol(object):
     def handshake_message(self) -> HandshakeRequestMessage:
         return HandshakeRequestMessage(self.protocol, self.version)
 
-    def parse_messages(self, raw_message: str):
-        raise ValueError("Protocol must implement this method")
+    def parse_messages(self, raw_message: str):  # pragma: no cover
+        raise NotImplementedError("Protocol must implement this method")
 
-    def write_message(self, hub_message):
-        raise ValueError("Protocol must implement this method")
+    def write_message(self, hub_message):  # pragma: no cover
+        raise NotImplementedError("Protocol must implement this method")

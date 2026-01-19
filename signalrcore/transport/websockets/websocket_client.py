@@ -178,6 +178,7 @@ class WebSocketClient(object):
             # is closing and errno indicates
             # that file descriptor points to a closed file
             has_closed_fd = type(e) is OSError and e.errno == 9
+
             # closed by the server
             connection_closed = has_closed_fd or type(e) is SocketClosedError
 
@@ -189,6 +190,7 @@ class WebSocketClient(object):
 
             if self.logger:
                 self.logger.error(f"Receive error: {e}")
+
             self.on_error(e)
 
     def _recv_frame(self):
@@ -264,7 +266,9 @@ class WebSocketClient(object):
     def dispose(self):
         if self.sock:
             self.sock.close()
+
         is_same_thread = threading.current_thread().name == THREAD_NAME
+
         if self.recv_thread and not is_same_thread:
             self.recv_thread.join()
             self.recv_thread = None
@@ -272,13 +276,14 @@ class WebSocketClient(object):
     def close(self):
         try:
             self.is_closing = True
-            self.logger.debug("Start closing socket")
-
             self.running = False
+
+            self.logger.debug("Start closing socket")
 
             self.dispose()
 
             self.on_close()
+
             self.logger.debug("socket closed successfully")
         except Exception as ex:
             self.logger.error(ex)

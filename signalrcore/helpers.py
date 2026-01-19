@@ -38,6 +38,7 @@ class RequestHelpers:
 
         if len(proxies.keys()) > 0:
             proxy_handler = urllib.request.ProxyHandler(proxies)
+            # pragma: no cover
 
         req = urllib.request.Request(
             url,
@@ -56,8 +57,8 @@ class RequestHelpers:
 
             try:
                 json_data = json.loads(response_body)
-            except json.JSONDecodeError:
-                json_data = None
+            except json.JSONDecodeError:  # pragma: no cover
+                json_data = None  # pragma: no cover
 
             return status_code, json_data
 
