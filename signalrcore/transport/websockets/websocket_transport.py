@@ -64,10 +64,10 @@ class WebsocketTransport(BaseTransport):
             self.logger.warning("Already connected unable to start")
             return False
 
-        self._set_state(
-            TransportState.reconnecting
-            if reconnection else
-            TransportState.connecting)
+        if reconnection:
+            self._set_state(TransportState.reconnecting)
+        else:
+            self._set_state(TransportState.connecting)
 
         self.logger.debug("start url:" + self.url)
 

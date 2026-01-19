@@ -67,6 +67,7 @@ class TestOpenCloseMethods(BaseTestCase):
         self.assertTrue(
             LOCKS[identifier].acquire(timeout=30),
             "on_open was not fired")
+
         connection.on_open(lambda: None)
 
         connection.stop()
