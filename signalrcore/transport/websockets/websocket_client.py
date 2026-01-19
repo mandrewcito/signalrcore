@@ -168,7 +168,7 @@ class WebSocketClient(object):
 
                 if self.on_message:
                     self.on_message(self, message)
-        except Exception as e:
+        except (OSError, Exception) as e:
             self.running = False
 
             # is closing and no header indicates
@@ -184,7 +184,7 @@ class WebSocketClient(object):
             if connection_closed and not self.is_closing:
                 raise e
 
-            if (has_no_content) and self.is_closing:
+            if (has_closed_fd or has_no_content) and self.is_closing:
                 return
 
             if self.logger:

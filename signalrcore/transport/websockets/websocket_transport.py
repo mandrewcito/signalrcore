@@ -42,6 +42,7 @@ class WebsocketTransport(BaseTransport):
             lambda: self.send(PingMessage()),
             keep_alive_interval
         )
+        self.manually_closing = False
 
     def dispose(self):
         if self.is_connected():
@@ -49,6 +50,7 @@ class WebsocketTransport(BaseTransport):
             self._ws.close()
 
     def stop(self):
+        self.manually_closing = True
         self.dispose()
         self._set_state(TransportState.disconnected)
         self.handshake_received = False
@@ -212,7 +214,7 @@ class WebsocketTransport(BaseTransport):
             raise ex
 
     def handle_reconnect(self):
-        if self.is_reconnecting():
+        if self.is_reconnecting() or self.manually_closing:
             return
 
         self.reconnection_handler.reconnecting = True

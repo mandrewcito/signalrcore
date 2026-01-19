@@ -12,7 +12,7 @@ all:
 	tests package
 
 upload:
-	twine upload dist/* --verbose
+	venv/bin/twine upload dist/* --verbose
 
 coverage:
 	venv/bin/coverage run -m unittest discover -s test/ -p "*_test.py"
