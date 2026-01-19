@@ -10,15 +10,21 @@ from signalrcore.hub_connection_builder\
 
 connection = HubConnectionBuilder()\
     .with_url("wss://localhost:5001/chathub", options={"verify_ssl": False})\
-    .configure_logging(logging.ERROR)\
+    .configure_logging(logging.DEBUG)\
     .build()
 
 _lock = threading.Lock()
 
-connection.on_open(lambda: _lock.release())
-connection.on_close(lambda: _lock.release())
 
-connection.on("ReceiveMessage", lambda _: _lock.release())
+def release():
+    global _lock
+    _lock.release()
+
+
+connection.on_open(release)
+connection.on_close(release)
+
+connection.on("ReceiveMessage", release)
 
 (_lock.acquire(timeout=30))  # Released on open
 

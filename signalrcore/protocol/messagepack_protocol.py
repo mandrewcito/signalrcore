@@ -167,9 +167,6 @@ class MessagePackHubProtocol(BaseHubProtocol):
 
         elif raw[0] == 7:  # CloseMessageEncoding
             return CloseMessage(error=raw[1])  # AllowReconnect is missing
-        print(".......................................")
-        print(raw)
-        print("---------------------------------------")
         raise Exception("Unknown message type.")
 
     def _to_varint(self, value):

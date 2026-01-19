@@ -69,9 +69,14 @@ class Helpers:
         logger = Helpers.get_logger()
         if handler is None:
             handler = logging.StreamHandler()
+            debug_formatter = ""\
+                if level != logging.DEBUG else\
+                "- %(filename)s:%(lineno)d "
             handler.setFormatter(
                 logging.Formatter(
-                    '%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+                    '%(asctime)s - %(name)s '
+                    + debug_formatter +
+                    '- %(levelname)s - %(message)s'))
             handler.setLevel(level)
         logger.addHandler(handler)
         logger.setLevel(level)

@@ -1,22 +1,23 @@
 import traceback
 import time
+from typing import Optional
 from .reconnection import ConnectionStateChecker
-from .connection import ConnectionState
 from ...messages.ping_message import PingMessage
 from ...hub.errors import HubError, UnAuthorizedHubError
 from ...protocol.messagepack_protocol import MessagePackHubProtocol
-from ..base_transport import BaseTransport
+from ..base_transport import BaseTransport, TransportState
 from ...helpers import Helpers, RequestHelpers
-from .websocket_client import WebSocketClient
+from .websocket_client import WebSocketClient, SocketClosedError
 
 
 class WebsocketTransport(BaseTransport):
+    _ws: Optional[WebSocketClient]
+
     def __init__(
             self,
             url="",
             headers=None,
             keep_alive_interval=15,
-            reconnection_handler=None,
             verify_ssl=False,
             skip_negotiation=False,
             enable_trace=False,
@@ -34,7 +35,6 @@ class WebsocketTransport(BaseTransport):
             self.headers = headers
         self.handshake_received = False
         self.token = None  # auth
-        self.state = ConnectionState.disconnected
         self.connection_alive = False
         self._ws = None
         self.verify_ssl = verify_ssl
@@ -42,30 +42,33 @@ class WebsocketTransport(BaseTransport):
             lambda: self.send(PingMessage()),
             keep_alive_interval
         )
-        self.reconnection_handler = reconnection_handler
 
-    def is_running(self):
-        return self.state != ConnectionState.disconnected
-
-    def stop(self):
-        if self.state == ConnectionState.connected:
+    def dispose(self):
+        if self.is_connected():
             self.connection_checker.stop()
             self._ws.close()
-        self.state = ConnectionState.disconnected
+
+    def stop(self):
+        self.dispose()
+        self._set_state(TransportState.disconnected)
         self.handshake_received = False
 
     def is_trace_enabled(self) -> bool:
         return self._ws.is_trace_enabled
 
-    def start(self):
+    def start(self, reconnection: bool = False):
         if not self.skip_negotiation:
             self.negotiate()
 
-        if self.state == ConnectionState.connected:
+        if self.is_connected():
             self.logger.warning("Already connected unable to start")
             return False
 
-        self.state = ConnectionState.connecting
+        if reconnection:
+            self._set_state(TransportState.reconnecting)
+        else:
+            self._set_state(TransportState.connecting)
+
         self.logger.debug("start url:" + self.url)
 
         self._ws = WebSocketClient(
@@ -75,8 +78,8 @@ class WebsocketTransport(BaseTransport):
             verify_ssl=self.verify_ssl,
             on_message=self.on_message,
             on_error=self.on_socket_error,
-            on_close=self.on_close,
-            on_open=self.on_open,
+            on_close=self.on_socket_close,
+            on_open=self.on_socket_open,
             enable_trace=self.enable_trace
             )
 
@@ -97,7 +100,7 @@ class WebsocketTransport(BaseTransport):
             verify_ssl=self.verify_ssl)
 
         self.logger.debug(
-            "Response status code{0}".format(status_code))
+            "Response status code {0}".format(status_code))
 
         if status_code != 200:
             raise HubError(status_code)\
@@ -122,7 +125,7 @@ class WebsocketTransport(BaseTransport):
         msg, messages = self.protocol.decode_handshake(message)
         if msg.error is None or msg.error == "":
             self.handshake_received = True
-            self.state = ConnectionState.connected
+            self._set_state(TransportState.connected)
             if self.reconnection_handler is not None:
                 self.reconnection_handler.reconnecting = False
                 if not self.connection_checker.running:
@@ -131,25 +134,21 @@ class WebsocketTransport(BaseTransport):
             self.logger.error(msg.error)
             self.on_socket_error(msg.error)
             self.stop()
-            self.state = ConnectionState.disconnected
         return messages
 
     def on_open(self):
         self.logger.debug("-- web socket open --")
         msg = self.protocol.handshake_message()
+        self.handshake_received = False
         self.send(msg)
 
     def on_close(self):
         self.logger.debug("-- web socket close --")
-        self.state = ConnectionState.disconnected
-        if self._on_close is not None and callable(self._on_close):
-            self._on_close()
+        self._set_state(TransportState.disconnected)
 
     def on_reconnect(self):
         self.logger.debug("-- web socket reconnecting --")
-        self.state = ConnectionState.disconnected
-        if self._on_close is not None and callable(self._on_close):
-            self._on_close()
+        self._set_state(TransportState.reconnecting)
 
     def on_socket_error(self, error: Exception):
         """
@@ -163,17 +162,24 @@ class WebsocketTransport(BaseTransport):
         self.logger.error(traceback.format_exc(10, True))
         self.logger.error("{0} {1}".format(self, error))
         self.logger.error("{0} {1}".format(error, type(error)))
-        self._on_close()
-        self.state = ConnectionState.disconnected
+        self._set_state(TransportState.disconnected)
         # raise HubError(error)
 
+    def on_socket_close(self):
+        if self.reconnection_handler is not None\
+                and not self.is_reconnecting():
+            self.handle_reconnect()
+            return
+        self.on_close()
+
+    def on_socket_open(self):
+        self.on_open()
+
     def on_message(self, app, raw_message):
-        self.logger.debug("Message received{0}".format(raw_message))
+        self.logger.debug("Message received {0}".format(raw_message))
         if not self.handshake_received:
             messages = self.evaluate_handshake(raw_message)
-            if self._on_open is not None and callable(self._on_open):
-                self.state = ConnectionState.connected
-                self._on_open()
+            self._set_state(TransportState.connected)
 
             if len(messages) > 0:
                 return self._on_message(messages)
@@ -194,14 +200,11 @@ class WebsocketTransport(BaseTransport):
             self.connection_checker.last_message = time.time()
             if self.reconnection_handler is not None:
                 self.reconnection_handler.reset()
-        except OSError as ex:
+        except (OSError, SocketClosedError) as ex:
             self.handshake_received = False
             self.logger.warning("Connection closed {0}".format(ex))
-            self.state = ConnectionState.disconnected
             if self.reconnection_handler is None:
-                if self._on_close is not None and\
-                        callable(self._on_close):
-                    self._on_close()
+                self._set_state(TransportState.disconnected)
                 raise ValueError(str(ex))
             # Connection closed
             self.handle_reconnect()
@@ -209,14 +212,14 @@ class WebsocketTransport(BaseTransport):
             raise ex
 
     def handle_reconnect(self):
-        if not self.reconnection_handler.reconnecting \
-                and self._on_reconnect is not None and \
-                callable(self._on_reconnect):
-            self._on_reconnect()
+        if self.is_reconnecting():
+            return
+
         self.reconnection_handler.reconnecting = True
+        self._set_state(TransportState.reconnecting)
         try:
-            self.stop()
-            self.start()
+            self._ws.dispose()
+            self.start(reconnection=True)
         except Exception as ex:
             self.logger.error(ex)
             sleep_time = self.reconnection_handler.next()

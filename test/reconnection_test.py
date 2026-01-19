@@ -2,7 +2,7 @@ import logging
 import time
 import uuid
 import threading
-
+from typing import Dict
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from signalrcore.hub.errors import HubConnectionError
 from test.base_test_case import BaseTestCase
@@ -10,7 +10,7 @@ from signalrcore.transport.websockets.reconnection\
     import RawReconnectionHandler, IntervalReconnectionHandler
 
 
-LOCKS = {}
+LOCKS: Dict[str, threading.Lock] = {}
 
 
 class TestReconnectMethods(BaseTestCase):
@@ -102,16 +102,21 @@ class TestReconnectMethods(BaseTestCase):
             LOCKS[identifier].release()
 
         connection.on_open(release)
+        connection.on_reconnect(release)
+
+        self.assertTrue(LOCKS[identifier].acquire(timeout=10))
 
         connection.start()
 
         self.assertTrue(LOCKS[identifier].acquire(timeout=10))
-        # Release on Open
 
+        connection.on_open(lambda: None)
+
+        # Release on Open
         connection.send("DisconnectMe", [])
 
-        self.assertTrue(LOCKS[identifier].acquire(timeout=10))
-        # released on open
+        self.assertTrue(LOCKS[identifier].acquire(timeout=60))
+        # released on reopen
 
         connection.stop()
         del LOCKS[identifier]
@@ -119,7 +124,7 @@ class TestReconnectMethods(BaseTestCase):
     def test_raw_reconnection(self):
         connection = HubConnectionBuilder()\
             .with_url(self.server_url, options={"verify_ssl": False})\
-            .configure_logging(logging.ERROR)\
+            .configure_logging(logging.DEBUG)\
             .with_automatic_reconnect({
                 "type": "raw",
                 "keep_alive_interval": 10,

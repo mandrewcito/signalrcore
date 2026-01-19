@@ -8,7 +8,7 @@ from test.base_test_case import BaseTestCase
 LOCKS = {}
 
 
-class TestClientStreamMethod(BaseTestCase):
+class TestOpenCloseMethods(BaseTestCase):
     def setUp(self):
         pass
 
@@ -46,9 +46,10 @@ class TestClientStreamMethod(BaseTestCase):
         connection.stop()
 
         del LOCKS[identifier]
+        del connection
 
     def test_open_close(self):
-        self.connection = self.get_connection()
+        connection = self.get_connection()
 
         identifier = str(uuid.uuid4())
         LOCKS[identifier] = threading.Lock()
@@ -56,18 +57,24 @@ class TestClientStreamMethod(BaseTestCase):
         def release():
             LOCKS[identifier].release()
 
-        self.connection.on_open(release)
-        self.connection.on_close(release)
+        connection.on_open(release)
+        connection.on_close(release)
 
-        self.assertTrue(LOCKS[identifier].acquire())
+        self.assertTrue(LOCKS[identifier].acquire(timeout=30))
 
-        self.connection.start()
+        connection.start()
 
-        self.assertTrue(LOCKS[identifier].acquire())
+        self.assertTrue(
+            LOCKS[identifier].acquire(timeout=30),
+            "on_open was not fired")
 
-        self.connection.stop()
+        connection.on_open(lambda: None)
 
-        self.assertTrue(LOCKS[identifier].acquire())
+        connection.stop()
 
-        release()
+        self.assertTrue(
+            LOCKS[identifier].acquire(timeout=30),
+            "on_close was not fired")
+
         del LOCKS[identifier]
+        del connection

@@ -29,6 +29,17 @@ class SocketHandshakeError(Exception):
         super().__init__(msg)
 
 
+class SocketClosedError(Exception):
+    """Socket closed by the server fin opcode: 129, masked len 3
+
+    Args:
+        data (bytes): raw bytes sent by the server
+    """
+    def __init__(self, data: Optional[bytes] = None):  # pragma: no cover
+        self.data = data
+        super().__init__("Socket closed by the the server")
+
+
 class WebSocketClient(object):
     """Minimal websocket client
 
@@ -73,7 +84,6 @@ class WebSocketClient(object):
         self.is_closing = False
 
     def connect(self):
-        # ToDo URL PARSE
         parsed_url = parse.urlparse(self.url)
         is_secure_connection = parsed_url.scheme == "wss"\
             or parsed_url.scheme == "https"
@@ -147,6 +157,9 @@ class WebSocketClient(object):
         self.recv_thread.daemon = True
         self.recv_thread.start()
 
+    def is_connection_closed(self):
+        return self.recv_thread is None or not self.recv_thread.is_alive()
+
     def _recv_loop(self):
         self.on_open()
         try:
@@ -165,8 +178,13 @@ class WebSocketClient(object):
             # is closing and errno indicates
             # that file descriptor points to a closed file
             has_closed_fd = type(e) is OSError and e.errno == 9
+            # closed by the server
+            connection_closed = has_closed_fd or type(e) is SocketClosedError
 
-            if (has_no_content or has_closed_fd) and self.is_closing:
+            if connection_closed and not self.is_closing:
+                raise e
+
+            if (has_no_content) and self.is_closing:
                 return
 
             if self.logger:
@@ -191,6 +209,8 @@ class WebSocketClient(object):
             self.logger.debug(
                 f"fin opcode: {fin_opcode}, masked len: {masked_len}")
 
+        if fin_opcode == 8:
+            raise SocketClosedError(header)
         payload_len = masked_len & 0x7F
         if payload_len == 126:
             payload_len = struct.unpack(">H", self.sock.recv(2))[0]
@@ -218,6 +238,9 @@ class WebSocketClient(object):
             self,
             message: Union[str, bytes],
             opcode=0x1):
+        if self.is_connection_closed():
+            raise SocketClosedError()
+
         # Text or binary opcode (no fragmentation)
         payload = message.encode("utf-8")\
             if type(message) is str else message
@@ -247,9 +270,10 @@ class WebSocketClient(object):
             self.recv_thread = None
 
     def close(self):
-        self.logger.debug("Start closing socket")
         try:
             self.is_closing = True
+            self.logger.debug("Start closing socket")
+
             self.running = False
 
             self.dispose()
