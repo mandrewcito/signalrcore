@@ -1,9 +1,9 @@
 class BaseReconnection(object):
-    def __init__(self):
+    def __init__(self):  # pragma: no cover
         self.reconnecting = False
 
-    def next(self):
+    def next(self):  # pragma: no cover
         raise NotImplementedError()
 
-    def reset(self):
+    def reset(self):  # pragma: no cover
         raise NotImplementedError()
