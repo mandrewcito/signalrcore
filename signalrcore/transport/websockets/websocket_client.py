@@ -129,7 +129,7 @@ class WebSocketClient(object):
         req = request.encode("utf-8")
 
         if self.is_trace_enabled:
-            self.logger.debug(req)
+            self.logger.debug(f"[TRACE] - {req}")
 
         self.sock.sendall(req)
 
@@ -137,14 +137,15 @@ class WebSocketClient(object):
         response = b""
         while b"\r\n\r\n" not in response:
             chunk = self.sock.recv(WINDOW_SIZE)
-            if self.is_trace_enabled:
-                self.logger.debug(chunk)
 
             if not chunk:
                 raise SocketHandshakeError(
                     "Connection closed during handshake")
 
             response += chunk
+
+        if self.is_trace_enabled:
+            self.logger.debug(f"[TRACE] - {response}")
 
         if b"101" not in response:
             raise SocketHandshakeError(
@@ -229,7 +230,7 @@ class WebSocketClient(object):
             data = self.sock.recv(payload_len)
 
         if self.is_trace_enabled:
-            self.logger.debug(data)
+            self.logger.debug(f"[TRACE] - {data}")
 
         if self.is_binary:
             return data
