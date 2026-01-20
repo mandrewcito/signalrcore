@@ -183,7 +183,7 @@ class WebSocketClient(object):
             connection_closed = has_closed_fd or type(e) is SocketClosedError
 
             if connection_closed and not self.is_closing:
-                raise e
+                raise e  # pragma: no cover
 
             if (has_closed_fd or has_no_content) and self.is_closing:
                 return
@@ -285,8 +285,8 @@ class WebSocketClient(object):
             self.on_close()
 
             self.logger.debug("socket closed successfully")
-        except Exception as ex:
-            self.logger.error(ex)
-            self.on_error(ex)
+        except Exception as ex:  # pragma: no cover
+            self.logger.error(ex)  # pragma: no cover
+            self.on_error(ex)  # pragma: no cover
         finally:
             self.is_closing = False

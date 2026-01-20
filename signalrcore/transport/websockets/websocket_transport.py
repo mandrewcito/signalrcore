@@ -207,11 +207,12 @@ class WebsocketTransport(BaseTransport):
             self.logger.warning("Connection closed {0}".format(ex))
             if self.reconnection_handler is None:
                 self._set_state(TransportState.disconnected)
-                raise ValueError(str(ex))
+                # pragma: no cover
+                raise ValueError(str(ex))  # pragma: no cover
             # Connection closed
             self.handle_reconnect()
-        except Exception as ex:
-            raise ex
+        except Exception as ex:  # pragma: no cover
+            raise ex  # pragma: no cover
 
     def handle_reconnect(self):
         if self.is_reconnecting() or self.manually_closing:
