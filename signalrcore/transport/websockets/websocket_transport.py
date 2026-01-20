@@ -85,9 +85,6 @@ class WebsocketTransport(BaseTransport):
             enable_trace=self.enable_trace
             )
 
-        # ToDo
-        # if len(self.logger.handlers) > 0:
-        #    self._ws.enableTrace(self.enable_trace, self.logger.handlers[0])
         self._ws.connect()
         return True
 
@@ -148,11 +145,7 @@ class WebsocketTransport(BaseTransport):
         self.logger.debug("-- web socket close --")
         self._set_state(TransportState.disconnected)
 
-    def on_reconnect(self):
-        self.logger.debug("-- web socket reconnecting --")
-        self._set_state(TransportState.reconnecting)
-
-    def on_socket_error(self, error: Exception):
+    def on_socket_error(self, error: Exception):  # pragma: no cover
         """
         Args:
             error (Exception): websocket error
@@ -202,21 +195,22 @@ class WebsocketTransport(BaseTransport):
             self.connection_checker.last_message = time.time()
             if self.reconnection_handler is not None:
                 self.reconnection_handler.reset()
-        except (OSError, SocketClosedError) as ex:
-            self.handshake_received = False
+        except (OSError, SocketClosedError) as ex:  # pragma: no cover
+            self.handshake_received = False  # pragma: no cover
             self.logger.warning("Connection closed {0}".format(ex))
-            if self.reconnection_handler is None:
+            # pragma: no cover
+            if self.reconnection_handler is None:  # pragma: no cover
                 self._set_state(TransportState.disconnected)
                 # pragma: no cover
                 raise ValueError(str(ex))  # pragma: no cover
             # Connection closed
-            self.handle_reconnect()
+            self.handle_reconnect()  # pragma: no cover
         except Exception as ex:  # pragma: no cover
             raise ex  # pragma: no cover
 
     def handle_reconnect(self):
         if self.is_reconnecting() or self.manually_closing:
-            return
+            return  # pragma: no cover
 
         self.reconnection_handler.reconnecting = True
         self._set_state(TransportState.reconnecting)

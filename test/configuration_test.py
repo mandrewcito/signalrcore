@@ -1,5 +1,7 @@
 import logging
+
 from signalrcore.hub_connection_builder import HubConnectionBuilder
+from signalrcore.protocol.messagepack_protocol import MessagePackHubProtocol
 
 from test.base_test_case import BaseTestCase
 
@@ -56,6 +58,24 @@ class TestConfiguration(BaseTestCase):
                 "reconnect_interval": 5,
                 "max_attempts": 5
             })\
+            .build()
+        hub.on_open(self.on_open)
+        hub.on_close(self.on_close)
+        hub.start()
+        self.assertTrue(hub.transport.is_trace_enabled())
+        hub.stop()
+
+    def test_enable_trace_messagepack(self):
+        hub = HubConnectionBuilder()\
+            .with_url(self.server_url, options={"verify_ssl": False})\
+            .configure_logging(logging.WARNING, socket_trace=True)\
+            .with_automatic_reconnect({
+                "type": "raw",
+                "keep_alive_interval": 10,
+                "reconnect_interval": 5,
+                "max_attempts": 5
+            })\
+            .with_hub_protocol(MessagePackHubProtocol())\
             .build()
         hub.on_open(self.on_open)
         hub.on_close(self.on_close)
