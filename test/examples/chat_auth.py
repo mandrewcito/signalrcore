@@ -44,14 +44,12 @@ hub_connection.on_open(
         "connection opened and handshake received ready to send messages"))
 hub_connection.on_close(lambda: print("connection closed"))
 
-hub_connection.on("ReceiveSystemMessage", print)
-hub_connection.on("ReceiveChatMessage", print)
-hub_connection.on("ReceiveDirectMessage", print)
+hub_connection.on("ReceiveMessage", print)
 
 hub_connection.start()
 message = None
 while message != "exit()":
     message = input(">> ")
     if message is not None and message != "" and message != "exit()":
-        hub_connection.send("Send", [message])
+        hub_connection.send("SendMessage", [message])
 hub_connection.stop()

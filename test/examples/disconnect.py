@@ -1,7 +1,6 @@
 import threading
 import logging
 import sys
-import time
 
 sys.path.append("./")
 
@@ -24,18 +23,15 @@ def release():
 connection.on_open(release)
 connection.on_close(release)
 
-connection.on("ReceiveMessage", release)
+connection.on("ReceiveMessage", print)
 
-(_lock.acquire(timeout=30))  # Released on open
+assert (_lock.acquire(timeout=30))  # Released on open
 
 connection.start()
 
-(_lock.acquire(timeout=30))  # Released on ReOpen
+assert (_lock.acquire(timeout=30))  # Released on ReOpen
+
 
 connection.send("DisconnectMe", [])
 
-time.sleep(30)
-
-(_lock.acquire(timeout=30))
-
-connection.send("DisconnectMe", [])
+assert (_lock.acquire(timeout=30))

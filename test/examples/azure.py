@@ -1,7 +1,9 @@
 import logging
 import sys
 import requests
-from signalrcore.hub_connection_builder import HubConnectionBuilder
+
+sys.path.append("./")
+from signalrcore.hub_connection_builder import HubConnectionBuilder  # noqa: E402, E501
 
 
 def input_with_default(input_text, default_value):
@@ -14,11 +16,14 @@ server_url = input_with_default(
     "localhost:7071/api")
 username = input_with_default(
     'Enter your username (default: {0}): ', "mandrewcito")
+
 handler = logging.StreamHandler()
 handler.setLevel(logging.DEBUG)
 formatter = logging.Formatter(
     '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
+
+
 hub_connection = HubConnectionBuilder() \
         .with_url("ws://"+server_url, options={
             "verify_ssl": False,

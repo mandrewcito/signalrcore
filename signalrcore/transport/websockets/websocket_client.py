@@ -168,7 +168,7 @@ class WebSocketClient(object):
 
                 if self.on_message:
                     self.on_message(self, message)
-        except Exception as e:
+        except (OSError, Exception) as e:
             self.running = False
 
             # is closing and no header indicates
@@ -178,17 +178,19 @@ class WebSocketClient(object):
             # is closing and errno indicates
             # that file descriptor points to a closed file
             has_closed_fd = type(e) is OSError and e.errno == 9
+
             # closed by the server
             connection_closed = has_closed_fd or type(e) is SocketClosedError
 
             if connection_closed and not self.is_closing:
-                raise e
+                raise e  # pragma: no cover
 
-            if (has_no_content) and self.is_closing:
+            if (has_closed_fd or has_no_content) and self.is_closing:
                 return
 
             if self.logger:
                 self.logger.error(f"Receive error: {e}")
+
             self.on_error(e)
 
     def _recv_frame(self):
@@ -264,7 +266,9 @@ class WebSocketClient(object):
     def dispose(self):
         if self.sock:
             self.sock.close()
+
         is_same_thread = threading.current_thread().name == THREAD_NAME
+
         if self.recv_thread and not is_same_thread:
             self.recv_thread.join()
             self.recv_thread = None
@@ -272,16 +276,17 @@ class WebSocketClient(object):
     def close(self):
         try:
             self.is_closing = True
-            self.logger.debug("Start closing socket")
-
             self.running = False
+
+            self.logger.debug("Start closing socket")
 
             self.dispose()
 
             self.on_close()
+
             self.logger.debug("socket closed successfully")
-        except Exception as ex:
-            self.logger.error(ex)
-            self.on_error(ex)
+        except Exception as ex:  # pragma: no cover
+            self.logger.error(ex)  # pragma: no cover
+            self.on_error(ex)  # pragma: no cover
         finally:
             self.is_closing = False
