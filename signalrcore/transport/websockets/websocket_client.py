@@ -85,8 +85,14 @@ class WebSocketClient(object):
 
     def connect(self):
         parsed_url = parse.urlparse(self.url)
-        is_secure_connection = parsed_url.scheme == "wss"\
-            or parsed_url.scheme == "https"
+        host, port = parsed_url.hostname, parsed_url.port
+
+        is_secure_connection = parsed_url.scheme in ("wss", "https")
+
+        if not port:
+            port = 80
+            if is_secure_connection:
+                port = 443
 
         proxy_info = None
         if is_secure_connection\
@@ -96,8 +102,6 @@ class WebSocketClient(object):
         if not is_secure_connection\
                 and self.proxies.get("http", None) is not None:
             proxy_info = parse.urlparse(self.proxies.get("http"))
-
-        host, port = parsed_url.hostname, parsed_url.port
 
         if proxy_info is not None:
             host = proxy_info.hostname,
