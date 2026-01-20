@@ -118,8 +118,11 @@ class WebSocketClient(object):
 
         # Perform the WebSocket handshake
         key = base64.b64encode(os.urandom(16)).decode("utf-8")
+        relative_reference = parsed_url.path
+        if parsed_url.query:
+            relative_reference = f"{parsed_url.path}?{parsed_url.query}"
         request_headers = [
-            f"GET {parsed_url.path} HTTP/1.1",
+            f"GET {relative_reference} HTTP/1.1",
             f"Host: {parsed_url.hostname}",
             "Upgrade: websocket",
             "Connection: Upgrade",
