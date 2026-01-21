@@ -4,6 +4,7 @@ from .transport.websockets.reconnection import \
     IntervalReconnectionHandler, RawReconnectionHandler, ReconnectionType
 from .helpers import Helpers
 from .protocol.json_hub_protocol import JsonHubProtocol
+from .types import HttpTransportType
 
 
 class HubConnectionBuilder(object):
@@ -20,6 +21,7 @@ class HubConnectionBuilder(object):
     def __init__(self):
         self.hub_url = None
         self.hub = None
+        self.transport = None
         self.options = {
             "access_token_factory": None
         }
@@ -100,6 +102,13 @@ class HubConnectionBuilder(object):
 
             self.skip_negotiation = "skip_negotiation" in options.keys()\
                 and options["skip_negotiation"]
+
+            if "transport" in options.keys():
+                transport = options.get("transport")
+                if type(transport) is not HttpTransportType:
+                    raise TypeError(
+                        f"transport types:  {HttpTransportType}")
+                self.transport = transport
 
         self.hub_url = hub_url
         self.hub = None
@@ -204,7 +213,8 @@ class HubConnectionBuilder(object):
                 verify_ssl=self.verify_ssl,
                 proxies=self.proxies,
                 skip_negotiation=self.skip_negotiation,
-                enable_trace=self.enable_trace)\
+                enable_trace=self.enable_trace,
+                preferred_transport=self.transport)\
             if self.has_auth_configured else\
             BaseHubConnection(
                 url=self.hub_url,
@@ -215,7 +225,8 @@ class HubConnectionBuilder(object):
                 verify_ssl=self.verify_ssl,
                 proxies=self.proxies,
                 skip_negotiation=self.skip_negotiation,
-                enable_trace=self.enable_trace)
+                enable_trace=self.enable_trace,
+                preferred_transport=self.transport)
 
     def with_automatic_reconnect(self, data: dict):
         """Configures automatic reconnection

@@ -15,6 +15,9 @@ class TransportState(enum.Enum):
 class BaseTransport(object):
     def __init__(
             self,
+            on_open: Callable = None,
+            on_close: Callable = None,
+            on_reconnect: Callable = None,
             protocol=JsonHubProtocol(),
             reconnection_handler: BaseReconnection = None,
             on_message: Callable = None,
@@ -24,10 +27,9 @@ class BaseTransport(object):
         self._on_message = on_message
         self.reconnection_handler = reconnection_handler
         self.logger = Helpers.get_logger()
-        self._on_open = lambda: self.logger.info("on_connect not defined")
-        self._on_close = lambda: self.logger.info("on_close not defined")
-        self._on_reconnect =\
-            lambda: self.logger.info("on_reconnect not defined")
+        self._on_open = on_open
+        self._on_close = on_close
+        self._on_reconnect = on_reconnect
 
         self.state = TransportState.disconnected
         self.reconnection_handler = reconnection_handler
@@ -66,15 +68,6 @@ class BaseTransport(object):
 
     def is_disconnected(self):
         return self.state == TransportState.disconnected
-
-    def on_open_callback(self, callback):
-        self._on_open = callback
-
-    def on_close_callback(self, callback):
-        self._on_close = callback
-
-    def on_reconnect_callback(self, callback):
-        self._on_reconnect = callback
 
     def start(self):  # pragma: no cover
         raise NotImplementedError()

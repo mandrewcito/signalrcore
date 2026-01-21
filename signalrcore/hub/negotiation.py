@@ -1,18 +1,8 @@
 from dataclasses import dataclass
-from typing import List, Literal, Tuple
+from typing import List, Tuple
 from ..helpers import Helpers, RequestHelpers
 from .errors import UnAuthorizedHubError, HubError
-
-TransportName = Literal[
-    "WebSockets",
-    "ServerSentEvents",
-    "LongPolling",
-]
-
-TransferFormat = Literal[
-    "Text",
-    "Binary",
-]
+from ..types import HttpTransportType, HubProtocolEncoding
 
 
 class NegotiateValidationError(ValueError):
@@ -21,31 +11,30 @@ class NegotiateValidationError(ValueError):
 
 @dataclass(frozen=True)
 class AvailableTransport:
-    transport: TransportName
-    transfer_formats: List[TransferFormat]
+    transport: HttpTransportType
+    transfer_formats: List[HubProtocolEncoding]
 
     @classmethod
     def from_dict(cls, data: dict) -> "AvailableTransport":
         if not isinstance(data, dict):
+            # pragma: no cover
             raise NegotiateValidationError(
                 "availableTransports item must be an object")
 
-        transport = data.get("transport")
-        if transport not in ("WebSockets", "ServerSentEvents", "LongPolling"):
-            raise NegotiateValidationError(
-                f"Invalid transport: {transport}")
+        transport = HttpTransportType(data.get("transport"))
 
         transfer_formats = data.get("transferFormats")
+
         if not isinstance(transfer_formats, list) or not transfer_formats:
+            # pragma: no cover
             raise NegotiateValidationError(
                 f"transferFormats for {transport} must be a non-empty list"
             )
 
-        for fmt in transfer_formats:
-            if fmt not in ("Text", "Binary"):
-                raise NegotiateValidationError(
-                    f"Invalid transfer format '{fmt}' for transport {transport}"  # noqa: E501
-                )
+        transfer_formats = [
+            HubProtocolEncoding(fmt)
+            for fmt in transfer_formats
+        ]
 
         return cls(
             transport=transport,
@@ -63,22 +52,24 @@ class NegotiateResponse:
 
     @classmethod
     def from_dict(cls, data: dict) -> "NegotiateResponse":
-        if not isinstance(data, dict):
+        if not isinstance(data, dict):  # pragma: no cover
             raise NegotiateValidationError(
                 "Negotiate response must be a JSON object")
 
         version = data.get("negotiateVersion")
-        if not isinstance(version, int):
+        if not isinstance(version, int):  # pragma: no cover
             raise NegotiateValidationError(
                 "negotiateVersion must be an integer")
 
         connection_id = data.get("connectionId")
         if not isinstance(connection_id, str) or not connection_id:
+            # pragma: no cover
             raise NegotiateValidationError(
                 "connectionId must be a non-empty string")
 
         transports = data.get("availableTransports")
         if not isinstance(transports, list) or not transports:
+            # pragma: no cover
             raise NegotiateValidationError(
                 "availableTransports must be a non-empty list")
 

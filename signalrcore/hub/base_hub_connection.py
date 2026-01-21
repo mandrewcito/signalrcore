@@ -13,6 +13,7 @@ from collections import defaultdict
 from ..protocol.base_hub_protocol import BaseHubProtocol
 from ..transport.transport_factory import TransportFactory
 from .negotiation import NegotiateResponse, NegotiationHandler
+from ..types import HttpTransportType
 
 
 class InvocationResult(object):
@@ -29,12 +30,24 @@ class HubCallbacks(object):
 
     def __init__(self):
         self.logger = Helpers.get_logger()
-        self.on_open = lambda: self.logger.info("on_open not defined")
-        self.on_close = lambda: self.logger.info("on_close not defined")
-        self.on_error = lambda error: self.logger.info(
+        self._on_open = lambda: self.logger.info("on_open not defined")
+        self._on_close = lambda: self.logger.info("on_close not defined")
+        self._on_error = lambda error: self.logger.info(
             "on_error not defined {0}".format(error))
-        self.on_reconnect = lambda: self.logger.info(
+        self._on_reconnect = lambda: self.logger.info(
             "on_reconnect not defined")
+
+    def on_open(self):
+        return self._on_open()
+
+    def on_close(self):
+        return self._on_close()
+
+    def on_error(self, error):
+        return self._on_open(error)
+
+    def on_reconnect(self):
+        return self._on_reconnect()
 
 
 class BaseHubConnection(object):
@@ -44,16 +57,19 @@ class BaseHubConnection(object):
     headers: dict
     token: str
     verify_ssl: bool
+    preferred_transport: Optional[HttpTransportType]
 
     def __init__(
             self,
             url: str,
             protocol: BaseHubProtocol,
+            preferred_transport: Optional[HttpTransportType] = None,
             skip_negotiation=False,
             headers=None,
             verify_ssl=False,
             proxies: dict = {},
             **kwargs):
+        self.preferred_transport = preferred_transport
         self.kwargs = kwargs
         self.url = url
         self.verify_ssl = verify_ssl
@@ -96,20 +112,19 @@ class BaseHubConnection(object):
 
         self.transport = TransportFactory.create(
             available_transports,
+            self.preferred_transport,
             url=self.url,
             protocol=self.protocol,
             headers=self.headers,
             token=self.token,
             verify_ssl=self.verify_ssl,
             proxies=self.proxies,
+            on_close=self._callbacks.on_close,
+            on_open=self._callbacks.on_open,
+            on_reconnect=self._callbacks.on_reconnect,
             on_message=self.on_message,
             **self.kwargs
         )
-
-        # Register transport callbacks
-        self.transport.on_close_callback(self._callbacks.on_close)
-        self.transport.on_open_callback(self._callbacks.on_open)
-        self.transport.on_reconnect_callback(self._callbacks.on_reconnect)
 
         return self.transport.start()
 
@@ -125,7 +140,7 @@ class BaseHubConnection(object):
         Args:
             callback (function): function without params
         """
-        self._callbacks.on_close = callback
+        self._callbacks._on_close = callback
 
     def on_open(self, callback) -> None:
         """Configures on_open connection callback.
@@ -135,7 +150,7 @@ class BaseHubConnection(object):
         Args:
             callback (function): function without params
         """
-        self._callbacks.on_open = callback
+        self._callbacks._on_open = callback
 
     def on_error(self, callback) -> None:
         """Configures on_error connection callback. It will be raised
@@ -146,7 +161,7 @@ class BaseHubConnection(object):
             callback (function): function with one parameter.
                 A CompletionMessage object.
         """
-        self._callbacks.on_error = callback
+        self._callbacks._on_error = callback
 
     def on_reconnect(self, callback) -> None:
         """Configures on_reconnect reconnection callback.
@@ -156,7 +171,7 @@ class BaseHubConnection(object):
         Args:
             callback (function): function without params
         """
-        self._callbacks.on_reconnect = callback
+        self._callbacks._on_reconnect = callback
 
     def on(self, event, callback_function: Callable) -> None:
         """Register a callback on the specified event
