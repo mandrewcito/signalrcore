@@ -85,8 +85,14 @@ class WebSocketClient(object):
 
     def connect(self):
         parsed_url = parse.urlparse(self.url)
-        is_secure_connection = parsed_url.scheme == "wss"\
-            or parsed_url.scheme == "https"
+        host, port = parsed_url.hostname, parsed_url.port
+
+        is_secure_connection = parsed_url.scheme in ("wss", "https")
+
+        if not port:
+            port = 80
+            if is_secure_connection:
+                port = 443
 
         proxy_info = None
         if is_secure_connection\
@@ -96,8 +102,6 @@ class WebSocketClient(object):
         if not is_secure_connection\
                 and self.proxies.get("http", None) is not None:
             proxy_info = parse.urlparse(self.proxies.get("http"))
-
-        host, port = parsed_url.hostname, parsed_url.port
 
         if proxy_info is not None:
             host = proxy_info.hostname,
@@ -114,8 +118,11 @@ class WebSocketClient(object):
 
         # Perform the WebSocket handshake
         key = base64.b64encode(os.urandom(16)).decode("utf-8")
+        relative_reference = parsed_url.path
+        if parsed_url.query:
+            relative_reference = f"{parsed_url.path}?{parsed_url.query}"
         request_headers = [
-            f"GET {parsed_url.path} HTTP/1.1",
+            f"GET {relative_reference} HTTP/1.1",
             f"Host: {parsed_url.hostname}",
             "Upgrade: websocket",
             "Connection: Upgrade",
