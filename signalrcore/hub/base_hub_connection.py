@@ -6,10 +6,13 @@ from signalrcore.messages.stream_invocation_message\
 from .errors import HubConnectionError
 from signalrcore.helpers import Helpers
 from .handlers import StreamHandler, InvocationHandler
-from ..transport.websockets.websocket_transport import WebsocketTransport
+from ..transport.base_transport import BaseTransport
 from ..subject import Subject
 from ..messages.invocation_message import InvocationMessage
 from collections import defaultdict
+from ..protocol.base_hub_protocol import BaseHubProtocol
+from ..transport.transport_factory import TransportFactory
+from .negotiation import NegotiateResponse, NegotiationHandler
 
 
 class InvocationResult(object):
@@ -18,38 +21,102 @@ class InvocationResult(object):
         self.message = None
 
 
+class HubCallbacks(object):
+    on_open: Callable
+    on_close: Callable
+    on_error: Callable
+    on_reconnect: Callable
+
+    def __init__(self):
+        self.logger = Helpers.get_logger()
+        self.on_open = lambda: self.logger.info("on_open not defined")
+        self.on_close = lambda: self.logger.info("on_close not defined")
+        self.on_error = lambda error: self.logger.info(
+            "on_error not defined {0}".format(error))
+        self.on_reconnect = lambda: self.logger.info(
+            "on_reconnect not defined")
+
+
 class BaseHubConnection(object):
+    transport: BaseTransport = None
+    url: str
+    protocol: BaseHubProtocol
+    headers: dict
+    token: str
+    verify_ssl: bool
+
     def __init__(
             self,
-            url,
-            protocol,
+            url: str,
+            protocol: BaseHubProtocol,
+            skip_negotiation=False,
             headers=None,
+            verify_ssl=False,
+            proxies: dict = {},
             **kwargs):
+        self.kwargs = kwargs
+        self.url = url
+        self.verify_ssl = verify_ssl
+        self.protocol = protocol
+        self.proxies = proxies
+        self.token = None
+
         if headers is None:
             self.headers = dict()
         else:
             self.headers = headers
+
         self.logger = Helpers.get_logger()
         self.handlers = defaultdict(list)
         self.stream_handlers = defaultdict(list)
+        self.skip_negotiation = skip_negotiation
+        self._callbacks = HubCallbacks()
 
-        self._on_error = lambda error: self.logger.info(
-            "on_error not defined {0}".format(error))
-
-        self.transport = WebsocketTransport(
-            url=url,
-            protocol=protocol,
-            headers=self.headers,
-            on_message=self.on_message,
-            **kwargs)
+    def negotiate(self) -> NegotiateResponse:
+        handler = NegotiationHandler(
+            self.url,
+            self.headers,
+            self.proxies,
+            self.verify_ssl
+        )
+        self.url, self.headers, response = handler.negotiate()
+        return response
 
     def start(self) -> None:
+        if self.transport is not None and self.transport.is_connected():
+            self.logger.warning("Already connected unable to start")
+            return False
+
         self.logger.debug("Connection started")
+        available_transports = None
+
+        if not self.skip_negotiation:
+            response = self.negotiate()
+            available_transports = response.available_transports
+
+        self.transport = TransportFactory.create(
+            available_transports,
+            url=self.url,
+            protocol=self.protocol,
+            headers=self.headers,
+            token=self.token,
+            verify_ssl=self.verify_ssl,
+            proxies=self.proxies,
+            on_message=self.on_message,
+            **self.kwargs
+        )
+
+        # Register transport callbacks
+        self.transport.on_close_callback(self._callbacks.on_close)
+        self.transport.on_open_callback(self._callbacks.on_open)
+        self.transport.on_reconnect_callback(self._callbacks.on_reconnect)
+
         return self.transport.start()
 
     def stop(self) -> None:
         self.logger.debug("Connection stop")
-        return self.transport.stop()
+        if self.transport is not None:
+            return self.transport.stop()
 
     def on_close(self, callback) -> None:
         """Configures on_close connection callback.
@@ -58,7 +125,7 @@ class BaseHubConnection(object):
         Args:
             callback (function): function without params
         """
-        self.transport.on_close_callback(callback)
+        self._callbacks.on_close = callback
 
     def on_open(self, callback) -> None:
         """Configures on_open connection callback.
@@ -68,7 +135,7 @@ class BaseHubConnection(object):
         Args:
             callback (function): function without params
         """
-        self.transport.on_open_callback(callback)
+        self._callbacks.on_open = callback
 
     def on_error(self, callback) -> None:
         """Configures on_error connection callback. It will be raised
@@ -79,7 +146,7 @@ class BaseHubConnection(object):
             callback (function): function with one parameter.
                 A CompletionMessage object.
         """
-        self._on_error = callback
+        self._callbacks.on_error = callback
 
     def on_reconnect(self, callback) -> None:
         """Configures on_reconnect reconnection callback.
@@ -89,7 +156,7 @@ class BaseHubConnection(object):
         Args:
             callback (function): function without params
         """
-        self.transport.on_reconnect_callback(callback)
+        self._callbacks.on_reconnect = callback
 
     def on(self, event, callback_function: Callable) -> None:
         """Register a callback on the specified event
@@ -160,7 +227,7 @@ class BaseHubConnection(object):
         if invocation_id is None:
             invocation_id = str(uuid.uuid4())
 
-        if not self.transport.is_running():
+        if self.transport is None or not self.transport.is_running():
             raise HubConnectionError(
                 "Cannot connect to SignalR hub. Unable to transmit messages")
 
@@ -198,7 +265,7 @@ class BaseHubConnection(object):
         for message in messages:
             if message.type == MessageType.invocation_binding_failure:
                 self.logger.error(message)
-                self._on_error(message)
+                self._callbacks.on_error(message)
                 continue
 
             if message.type == MessageType.ping:
@@ -222,7 +289,7 @@ class BaseHubConnection(object):
 
             if message.type == MessageType.completion:
                 if message.error is not None and len(message.error) > 0:
-                    self._on_error(message)
+                    self._callbacks.on_error(message)
 
                 # Send callbacks
                 fired_handlers = self.stream_handlers.get(

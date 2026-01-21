@@ -17,7 +17,9 @@ class BaseTransport(object):
             self,
             protocol=JsonHubProtocol(),
             reconnection_handler: BaseReconnection = None,
-            on_message: Callable = None):
+            on_message: Callable = None,
+            proxies: dict = None):
+        self.proxies = proxies
         self.protocol = protocol
         self._on_message = on_message
         self.reconnection_handler = reconnection_handler

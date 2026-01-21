@@ -115,7 +115,7 @@ class TestReconnectMethods(BaseTestCase):
         # Release on Open
         connection.send("DisconnectMe", [])
 
-        self.assertTrue(LOCKS[identifier].acquire(timeout=60))
+        self.assertTrue(LOCKS[identifier].acquire(timeout=20))
         # released on reopen
 
         connection.stop()

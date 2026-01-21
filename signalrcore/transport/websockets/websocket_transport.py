@@ -3,11 +3,10 @@ import time
 from typing import Optional
 from .reconnection import ConnectionStateChecker
 from ...messages.ping_message import PingMessage
-from ...hub.errors import HubError, UnAuthorizedHubError
 from ...protocol.messagepack_protocol import MessagePackHubProtocol
 from ..base_transport import BaseTransport, TransportState
-from ...helpers import Helpers, RequestHelpers
 from .websocket_client import WebSocketClient, SocketClosedError
+from ...hub.negotiation import NegotiateResponse, NegotiationHandler
 
 
 class WebsocketTransport(BaseTransport):
@@ -17,24 +16,21 @@ class WebsocketTransport(BaseTransport):
             self,
             url="",
             headers=None,
+            token=None,
             keep_alive_interval=15,
             verify_ssl=False,
-            skip_negotiation=False,
             enable_trace=False,
-            proxies: dict = {},
             **kwargs):
         super(WebsocketTransport, self).__init__(**kwargs)
         self._ws = None
         self.enable_trace = enable_trace
-        self.skip_negotiation = skip_negotiation
         self.url = url
-        self.proxies = proxies
         if headers is None:
             self.headers = dict()
         else:
             self.headers = headers
         self.handshake_received = False
-        self.token = None  # auth
+        self.token = token
         self.connection_alive = False
         self._ws = None
         self.verify_ssl = verify_ssl
@@ -58,15 +54,19 @@ class WebsocketTransport(BaseTransport):
     def is_trace_enabled(self) -> bool:
         return self._ws.is_trace_enabled
 
+    def negotiate(self) -> NegotiateResponse:
+        handler = NegotiationHandler(
+            self.url,
+            self.headers,
+            self.proxies,
+            self.verify_ssl
+        )
+        self.url, self.headers, response = handler.negotiate()
+        return response
+
     def start(self, reconnection: bool = False):
-        if not self.skip_negotiation:
-            self.negotiate()
-
-        if self.is_connected():
-            self.logger.warning("Already connected unable to start")
-            return False
-
         if reconnection:
+            self.negotiate()
             self._set_state(TransportState.reconnecting)
         else:
             self._set_state(TransportState.connecting)
@@ -87,37 +87,6 @@ class WebsocketTransport(BaseTransport):
 
         self._ws.connect()
         return True
-
-    def negotiate(self):
-        negotiate_url = Helpers.get_negotiate_url(self.url)
-        self.logger.debug("Negotiate url:{0}".format(negotiate_url))
-
-        status_code, data = RequestHelpers.post(
-            negotiate_url,
-            headers=self.headers,
-            proxies=self.proxies,
-            verify_ssl=self.verify_ssl)
-
-        self.logger.debug(
-            "Response status code {0}".format(status_code))
-
-        if status_code != 200:
-            raise HubError(status_code)\
-                if status_code != 401 else UnAuthorizedHubError()
-
-        if "connectionId" in data.keys():
-            self.url = Helpers.encode_connection_id(
-                self.url, data["connectionId"])
-
-        # Azure
-        if 'url' in data.keys() and 'accessToken' in data.keys():
-            Helpers.get_logger().debug(
-                "Azure url, reformat headers, token and url {0}".format(data))
-            self.url = data["url"]\
-                if data["url"].startswith("ws") else\
-                Helpers.http_to_websocket(data["url"])
-            self.token = data["accessToken"]
-            self.headers = {"Authorization": "Bearer " + self.token}
 
     def evaluate_handshake(self, message):
         self.logger.debug("Evaluating handshake {0}".format(message))

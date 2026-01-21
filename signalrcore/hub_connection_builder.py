@@ -233,7 +233,7 @@ class HubConnectionBuilder(object):
             .build()
 
         Args:
-            data (dict): [dict with autmatic reconnection parameters]
+            data (dict): [dict with automatic reconnection parameters]
 
         Returns:
             [HubConnectionBuilder]: [self object for fluent interface purposes]
