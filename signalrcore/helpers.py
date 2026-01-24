@@ -192,3 +192,19 @@ class Helpers:
             if is_secure_connection:
                 port = 443
         return port
+
+    @staticmethod
+    def get_proxy_info(
+            is_secure_connection: bool,
+            proxies: dict):
+        proxy_info = None
+
+        if is_secure_connection\
+                and proxies.get("https", None) is not None:
+            proxy_info = parse.urlparse(proxies.get("https"))
+
+        if not is_secure_connection\
+                and proxies.get("http", None) is not None:
+            proxy_info = parse.urlparse(proxies.get("http"))
+
+        return proxy_info

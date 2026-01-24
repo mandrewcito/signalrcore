@@ -5,7 +5,6 @@ from typing import Optional
 
 from ..base_transport import BaseTransport
 from .sse_client import SSEClient
-from ...hub.negotiation import NegotiateResponse, NegotiationHandler
 from ..base_transport import TransportState
 from ..reconnection import ConnectionStateChecker
 from ...messages.ping_message import PingMessage
@@ -17,24 +16,16 @@ class SSETransport(BaseTransport):
 
     def __init__(
             self,
-            url="",
-            headers=None,
-            token=None,
             keep_alive_interval=15,
-            verify_ssl=False,
-            enable_trace=False,
             **kwargs):
         super(SSETransport, self).__init__(**kwargs)
-        self.url = url
-        self.headers = headers
-        self.token = token
+
         self.keep_alive_interval = keep_alive_interval
-        self.verify_ssl = verify_ssl
-        self.enable_trace = enable_trace
         self.connection_checker = ConnectionStateChecker(
             lambda: self.send(PingMessage()),
             keep_alive_interval
         )
+
         self.manually_closing = False
 
     def start(self, reconnection: bool = False):
@@ -75,19 +66,6 @@ class SSETransport(BaseTransport):
         self.dispose()
         self._set_state(TransportState.disconnected)
         self.handshake_received = False
-
-    def negotiate(self) -> NegotiateResponse:
-        handler = NegotiationHandler(
-            self.url,
-            self.headers,
-            self.proxies,
-            self.verify_ssl
-        )
-
-        self.url, self.headers, response = handler.negotiate()
-        self.connection_id = response.connection_id
-
-        return response
 
     def on_open(self):
         self.logger.debug("-- SSE open --")
@@ -147,7 +125,14 @@ class SSETransport(BaseTransport):
             if len(messages) > 0:
                 return self._on_message(messages)
 
+            self.connection_checker.last_message = time.time()
+
             return []
+
+        self.connection_checker.last_message = time.time()
+
+        if self.reconnection_handler is not None:
+            self.reconnection_handler.reset()
 
         return self._on_message(
             self.protocol.parse_messages(raw_message))
@@ -157,9 +142,6 @@ class SSETransport(BaseTransport):
         try:
             self._client.send(
                 self.protocol.encode(message))
-            self.connection_checker.last_message = time.time()
-            if self.reconnection_handler is not None:
-                self.reconnection_handler.reset()
         except OSError as ex:  # pragma: no cover
             self.handshake_received = False  # pragma: no cover
             self.logger.warning("Connection closed {0}".format(ex))

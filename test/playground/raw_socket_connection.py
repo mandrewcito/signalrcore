@@ -26,7 +26,10 @@ def on_close():
 
 app = WebSocketClient(
     url="https://localhost:5001/chathub",
+    connection_id=None,
+    enable_trace=False,
     headers={},
+    proxies={},
     verify_ssl=False,
     on_open=on_open,
     on_error=on_error,

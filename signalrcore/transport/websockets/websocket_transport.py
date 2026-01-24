@@ -6,31 +6,18 @@ from ...messages.ping_message import PingMessage
 from ...protocol.messagepack_protocol import MessagePackHubProtocol
 from ..base_transport import BaseTransport, TransportState
 from .websocket_client import WebSocketClient, SocketClosedError
-from ...hub.negotiation import NegotiateResponse, NegotiationHandler
 
 
 class WebsocketTransport(BaseTransport):
-    _ws: Optional[WebSocketClient]
+    _client: Optional[WebSocketClient] = None
 
     def __init__(
             self,
-            url="",
-            headers=dict(),
-            token=None,
             keep_alive_interval=15,
-            verify_ssl=False,
-            enable_trace=False,
             **kwargs):
         super(WebsocketTransport, self).__init__(**kwargs)
-        self._ws = None
-        self.enable_trace = enable_trace
-        self.url = url
-        self.headers = headers
         self.handshake_received = False
-        self.token = token
         self.connection_alive = False
-        self._ws = None
-        self.verify_ssl = verify_ssl
         self.connection_checker = ConnectionStateChecker(
             lambda: self.send(PingMessage()),
             keep_alive_interval
@@ -40,7 +27,7 @@ class WebsocketTransport(BaseTransport):
     def dispose(self):
         if self.is_connected():
             self.connection_checker.stop()
-            self._ws.close()
+            self._client.close()
 
     def stop(self):
         self.manually_closing = True
@@ -49,17 +36,7 @@ class WebsocketTransport(BaseTransport):
         self.handshake_received = False
 
     def is_trace_enabled(self) -> bool:
-        return self._ws.is_trace_enabled
-
-    def negotiate(self) -> NegotiateResponse:
-        handler = NegotiationHandler(
-            self.url,
-            self.headers,
-            self.proxies,
-            self.verify_ssl
-        )
-        self.url, self.headers, response = handler.negotiate()
-        return response
+        return self._client.is_trace_enabled
 
     def start(self, reconnection: bool = False):
         if reconnection:
@@ -70,8 +47,9 @@ class WebsocketTransport(BaseTransport):
 
         self.logger.debug("start url:" + self.url)
 
-        self._ws = WebSocketClient(
-            self.url,
+        self._client = WebSocketClient(
+            url=self.url,
+            connection_id=self.connection_id,
             headers=self.headers,
             is_binary=type(self.protocol) is MessagePackHubProtocol,
             verify_ssl=self.verify_ssl,
@@ -82,7 +60,7 @@ class WebsocketTransport(BaseTransport):
             on_open=self.on_socket_open
             )
 
-        self._ws.connect()
+        self._client.connect()
 
         return True
 
@@ -154,7 +132,7 @@ class WebsocketTransport(BaseTransport):
     def send(self, message):
         self.logger.debug("Sending message {0}".format(message))
         try:
-            self._ws.send(
+            self._client.send(
                 self.protocol.encode(message),
                 opcode=0x2
                 if type(self.protocol) is MessagePackHubProtocol else
@@ -182,7 +160,7 @@ class WebsocketTransport(BaseTransport):
         self.reconnection_handler.reconnecting = True
         self._set_state(TransportState.reconnecting)
         try:
-            self._ws.dispose()
+            self._client.dispose()
             self.start(reconnection=True)
         except Exception as ex:
             self.logger.error(ex)
