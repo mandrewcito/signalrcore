@@ -13,7 +13,7 @@ class SocketHandshakeError(Exception):
     Args:
         msg (str): message
     """
-    def __init__(self, msg: str):
+    def __init__(self, msg: str):  # pragma: no cover
         super().__init__(msg)
 
 

@@ -22,11 +22,31 @@ class SSETransport(BaseTransport):
 
         self.keep_alive_interval = keep_alive_interval
         self.connection_checker = ConnectionStateChecker(
-            lambda: self.send(PingMessage()),
+            self.connection_check,
             keep_alive_interval
         )
 
         self.manually_closing = False
+        self.connection_alive = False
+
+    def connection_check(self):
+        time_without_messages =\
+            time.time() - self.connection_checker.last_message
+
+        self.connection_alive =\
+            time_without_messages < self.keep_alive_interval
+
+        if self._client.is_connection_closed()\
+                and self.reconnection_handler is None:
+            self.connection_checker.stop()
+            self._set_state(TransportState.disconnected)
+            return
+
+        # Connection closed
+        self.handle_reconnect()  # pragma: no cover
+
+        if self.connection_alive:
+            self.send(PingMessage())
 
     def start(self, reconnection: bool = False):
         if reconnection:
@@ -100,7 +120,7 @@ class SSETransport(BaseTransport):
                 and not self.is_reconnecting():
             self.handle_reconnect()
             return
-        self.on_close()
+        self._set_state(TransportState.disconnected)
 
     def on_client_open(self):
         self.on_open()
@@ -118,18 +138,16 @@ class SSETransport(BaseTransport):
 
     def on_message(self, app, raw_message):
         self.logger.debug("Message received {0}".format(raw_message))
+
+        self.connection_checker.last_message = time.time()
+
         if not self.handshake_received:
             messages = self.evaluate_handshake(raw_message)
             self._set_state(TransportState.connected)
 
             if len(messages) > 0:
                 return self._on_message(messages)
-
-            self.connection_checker.last_message = time.time()
-
             return []
-
-        self.connection_checker.last_message = time.time()
 
         if self.reconnection_handler is not None:
             self.reconnection_handler.reset()

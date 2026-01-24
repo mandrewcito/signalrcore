@@ -52,7 +52,9 @@ class BaseSocketClient(object):
         return self.enable_trace
 
     def is_connection_closed(self):
-        return self.recv_thread is None or not self.recv_thread.is_alive()
+        return not self.running\
+            or self.recv_thread is None\
+            or not self.recv_thread.is_alive()
 
     def get_socket_headers(self) -> str:  # pragma: no cover
         raise NotImplementedError("Clients must implement this method")
@@ -175,8 +177,9 @@ class BaseSocketClient(object):
             # closed by the server
             connection_closed = has_closed_fd or type(e) is SocketClosedError
 
-            if connection_closed and not self.is_closing:
-                raise e  # pragma: no cover
+            if (has_no_content or connection_closed) and not self.is_closing:
+                self.on_close()
+                return
 
             if (has_closed_fd or has_no_content) and self.is_closing:
                 return

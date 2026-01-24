@@ -6,6 +6,7 @@ from typing import Tuple, Any
 from .base_hub_protocol import BaseHubProtocol
 from ..messages.message_type import MessageType
 from ..messages.handshake.response import HandshakeResponseMessage
+from ..messages.ping_message import PingMessage
 from ..helpers import Helpers
 
 
@@ -54,24 +55,29 @@ class JsonHubProtocol(BaseHubProtocol):
 class JsonHubSseProtocol(BaseHubProtocol):
     # records appear wrapped with b'\n[content]\r\n' so we unwrap
     def __init__(self):
-        super(JsonHubSseProtocol, self).__init__("json", 1, "Text", '\r\n')
+        super(JsonHubSseProtocol, self).__init__(
+            "json", 1, "Text", chr(0x1E))
+        self.socket_record_separator = chr(0x1E)
         self.encoder = MyEncoder()
+        self.logger = Helpers.get_logger()
+        self.handshake_str = "data: "
 
     def decode_handshake(
             self,
             raw_message: str) -> Tuple[HandshakeResponseMessage, Any]:
 
-        messages = raw_message.split(self.record_separator)
-        messages = list(filter(lambda x: x != "", messages))
+        raw_messages = [
+            record.replace(self.record_separator, "")
+            for record in raw_message.split(self.record_separator)
+            if record is not None and record != ""
+            and record != self.record_separator
+            ]
 
-        idx = raw_message.index(self.record_separator)
-        result = None if "data:" in messages[0] else messages[0]
+        error = None\
+            if raw_messages[0] == self.handshake_str\
+            else raw_messages[0]
 
-        return (
-            HandshakeResponseMessage(result),
-            self.parse_messages(raw_message[idx + 1:])
-            if len(messages) > 1 else []
-            )
+        return HandshakeResponseMessage(error), []
 
     def parse_messages(self, raw):
         Helpers.get_logger().debug("Raw message incoming: ")
@@ -87,9 +93,19 @@ class JsonHubSseProtocol(BaseHubProtocol):
         result = []
 
         for raw_message in raw_messages:
-            dict_message = json.loads(raw_message)
+            if raw_message == self.handshake_str:
+                continue
+            try:
+                dict_message = json.loads(raw_message)
+            except Exception as ex:
+                self.logger.error(ex)
+                self.logger.error(raw_message)
+                continue
+
             if len(dict_message.keys()) > 0:
                 result.append(self.get_message(dict_message))
+            else:
+                result.append(PingMessage())
 
         return result
 

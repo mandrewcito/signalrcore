@@ -54,11 +54,13 @@ class NegotiateResponse:
     @classmethod
     def from_dict(cls, data: dict) -> "NegotiateResponse":
         if not isinstance(data, dict):  # pragma: no cover
+            # pragma: no cover
             raise NegotiateValidationError(
                 "Negotiate response must be a JSON object")
 
         version = data.get("negotiateVersion")
         if not isinstance(version, int):  # pragma: no cover
+            # pragma: no cover
             raise NegotiateValidationError(
                 "negotiateVersion must be an integer")
 

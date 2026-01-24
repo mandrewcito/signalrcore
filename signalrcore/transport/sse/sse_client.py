@@ -76,4 +76,4 @@ class SSEClient(BaseSocketClient):
         self.logger.debug(f"SSE send response: {status_code} - {response}")
 
     def prepare_data(self, data):
-        return data[1:].decode("utf-8")
+        return data[1:].decode("utf-8").replace("\r\n", "")

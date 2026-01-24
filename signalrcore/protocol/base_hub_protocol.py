@@ -21,7 +21,7 @@ class BaseHubProtocol(object):
 
     @staticmethod
     def get_message(dict_message):
-        message_type = MessageType.close\
+        message_type = MessageType.ping\
             if "type" not in dict_message.keys() else\
             MessageType(dict_message["type"])
 
@@ -29,6 +29,7 @@ class BaseHubProtocol(object):
         dict_message["headers"] = dict_message.get("headers", {})
         dict_message["error"] = dict_message.get("error", None)
         dict_message["result"] = dict_message.get("result", None)
+
         if message_type is MessageType.invocation:
             return InvocationMessage(**dict_message)
         if message_type is MessageType.stream_item:
