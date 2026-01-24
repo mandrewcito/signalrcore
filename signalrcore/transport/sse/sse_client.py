@@ -1,72 +1,62 @@
-import socket
 import ssl
-import base64
+import socket
 import threading
-import os
 import struct
 import urllib.parse as parse
 
-from typing import Optional, Callable, Union
+from typing import Callable, Union
 
 from ...helpers import Helpers
-from ..sockets.errors import\
-    NoHeaderException, SocketClosedError, \
-    SocketHandshakeError
+from ...helpers import RequestHelpers
 from ..sockets.utils import WINDOW_SIZE
+from ..sockets.errors import SocketHandshakeError, \
+    NoHeaderException, SocketClosedError
 
-THREAD_NAME = "Signalrcore websocket client"
+THREAD_NAME = "Signalrcore SSE client"
 
 
-class WebSocketClient(object):
-    """Minimal websocket client
-
-    Args:
-        url (str): Websocket url
-        headers (Optional[dict]): additional headers
-        verify_ssl (bool): Verify SSL y/n
-        on_message (callable): on message callback
-        on_error (callable): on error callback
-        on_open (callable): on open callback
-        on_close (callable): on close callback
-    """
+class SSEClient(object):
     def __init__(
             self,
-            url: str,
-            is_binary: bool = False,
-            headers: Optional[dict] = None,
-            proxies: dict = {},
+            url: str = None,
+            connection_id: str = None,
+            headers: dict = dict(),
+            proxies: dict = dict(),
             verify_ssl: bool = True,
             enable_trace: bool = False,
             on_message: Callable = None,
             on_open: Callable = None,
             on_error: Callable = None,
             on_close: Callable = None):
-        self.is_trace_enabled = enable_trace
+        self.url = Helpers.websocket_to_http(url)
+        self.connection_id = connection_id
+        self.headers = headers
         self.proxies = proxies
-        self.url = url
-        self.is_binary = is_binary
-        self.headers = headers or {}
         self.verify_ssl = verify_ssl
-        self.sock = None
+        self.enable_trace = enable_trace
+        self.on_message = on_message
+        self.on_open = on_open
+        self.on_error = on_error
+        self.on_close = on_close
+
         self.ssl_context = ssl.create_default_context()\
             if verify_ssl else\
             ssl._create_unverified_context()
         self.logger = Helpers.get_logger()
-        self.recv_thread = None
-        self.on_message = on_message
-        self.on_close = on_close
-        self.on_error = on_error
-        self.on_open = on_open
+
         self.running = False
         self.is_closing = False
+
+    def is_trace_enabled(self):
+        return self.enable_trace
 
     def connect(self):
         parsed_url = parse.urlparse(self.url)
         host, port = parsed_url.hostname, parsed_url.port
         is_secure_connection = parsed_url.scheme in ("wss", "https")
         port = Helpers.get_port(parsed_url)
-
         proxy_info = None
+
         if is_secure_connection\
                 and self.proxies.get("https", None) is not None:
             proxy_info = parse.urlparse(self.proxies.get("https"))
@@ -87,9 +77,6 @@ class WebSocketClient(object):
                 server_hostname=host)
 
         self.sock = raw_sock
-
-        # Perform the WebSocket handshake
-        key = base64.b64encode(os.urandom(16)).decode("utf-8")
         relative_reference = parsed_url.path
 
         if parsed_url.query:
@@ -98,18 +85,18 @@ class WebSocketClient(object):
         request_headers = [
             f"GET {relative_reference} HTTP/1.1",
             f"Host: {parsed_url.hostname}",
-            "Upgrade: websocket",
-            "Connection: Upgrade",
-            f"Sec-WebSocket-Key: {key}",
-            "Sec-WebSocket-Version: 13"
+            "Accept: text/event-stream",
+            "Cache-Control: no-cache",
+            "Connection: keep-alive"
         ]
+
         for k, v in self.headers.items():
             request_headers.append(f"{k}: {v}")
 
         request = "\r\n".join(request_headers) + "\r\n\r\n"
         req = request.encode("utf-8")
 
-        if self.is_trace_enabled:
+        if self.is_trace_enabled():
             self.logger.debug(f"[TRACE] - {req}")
 
         self.sock.sendall(req)
@@ -125,29 +112,75 @@ class WebSocketClient(object):
 
             response += chunk
 
-        if self.is_trace_enabled:
+        if self.is_trace_enabled():
             self.logger.debug(f"[TRACE] - {response}")
 
-        if b"101" not in response:
+        if b"200" not in response:
             raise SocketHandshakeError(
                 f"Handshake failed: {response.decode()}")
 
         self.running = True
         self.recv_thread = threading.Thread(
-            target=self._recv_loop,
+            target=self.run,
             name=THREAD_NAME)
         self.recv_thread.daemon = True
         self.recv_thread.start()
 
-    def is_connection_closed(self):
-        return self.recv_thread is None or not self.recv_thread.is_alive()
+    def close(self):
+        try:
+            self.is_closing = True
+            self.running = False
 
-    def _recv_loop(self):
+            self.logger.debug("SSE closing socket")
+
+            self.dispose()
+
+            self.on_close()
+
+            self.logger.debug("SSE closed successfully")
+        except Exception as ex:  # pragma: no cover
+            self.logger.error(ex)  # pragma: no cover
+            self.on_error(ex)  # pragma: no cover
+        finally:
+            self.is_closing = False
+
+    def dispose(self):
+        if self.sock:
+            self.sock.close()
+
+        is_same_thread = threading.current_thread().name == THREAD_NAME
+
+        if self.recv_thread and not is_same_thread:
+            self.recv_thread.join()
+            self.recv_thread = None
+
+    def send(
+            self,
+            message: Union[str, bytes],
+            headers: dict = None):
+
+        headers = {
+            "Content-Type": "application/octet-stream",
+        } if headers is None else headers
+
+        headers.update(self.headers)
+
+        status_code, response = RequestHelpers.post(
+            Helpers.websocket_to_http(self.url),
+            headers,
+            self.proxies,
+            self.verify_ssl,
+            message if type(message) is bytes else message.encode("utf-8")
+        )
+
+        self.logger.debug(f"SSE send response: {status_code} - {response}")
+
+    def run(self):
         self.on_open()
         try:
             while self.running:
                 message = self._recv_frame()
-
+                print(message)
                 if self.on_message:
                     self.on_message(self, message)
         except (OSError, Exception) as e:
@@ -212,63 +245,4 @@ class WebSocketClient(object):
 
         if self.is_trace_enabled:
             self.logger.debug(f"[TRACE] - {data}")
-
-        if self.is_binary:
-            return data
-
-        return data.decode("utf-8")
-
-    def send(
-            self,
-            message: Union[str, bytes],
-            opcode=0x1):
-        if self.is_connection_closed():
-            raise SocketClosedError()
-
-        # Text or binary opcode (no fragmentation)
-        payload = message.encode("utf-8")\
-            if type(message) is str else message
-        header = bytes([0x80 | opcode])
-        length = len(payload)
-        if length <= 125:
-            header += bytes([0x80 | length])
-        elif length <= 65535:
-            header += bytes([0x80 | 126]) + struct.pack(">H", length)
-        else:
-            header += bytes([0x80 | 127]) + struct.pack(">Q", length)
-
-        # Mask the payload
-        masking_key = os.urandom(4)
-        masked_payload = bytes(
-            b ^ masking_key[i % 4]
-            for i, b in enumerate(payload))
-        frame = header + masking_key + masked_payload
-        self.sock.sendall(frame)
-
-    def dispose(self):
-        if self.sock:
-            self.sock.close()
-
-        is_same_thread = threading.current_thread().name == THREAD_NAME
-
-        if self.recv_thread and not is_same_thread:
-            self.recv_thread.join()
-            self.recv_thread = None
-
-    def close(self):
-        try:
-            self.is_closing = True
-            self.running = False
-
-            self.logger.debug("Start closing socket")
-
-            self.dispose()
-
-            self.on_close()
-
-            self.logger.debug("socket closed successfully")
-        except Exception as ex:  # pragma: no cover
-            self.logger.error(ex)  # pragma: no cover
-            self.on_error(ex)  # pragma: no cover
-        finally:
-            self.is_closing = False
+        return data[1:].decode("utf-8")

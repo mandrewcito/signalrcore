@@ -1,10 +1,11 @@
-import logging
-import urllib.parse as parse
-import urllib
-import urllib.request
-import ssl
-from typing import Tuple
 import json
+import ssl
+import copy
+import logging
+import urllib
+import urllib.parse as parse
+import urllib.request
+from typing import Tuple
 
 
 class RequestHelpers:
@@ -13,27 +14,40 @@ class RequestHelpers:
             url: str,
             headers: dict = {},
             proxies: dict = {},
-            verify_ssl: bool = False) -> Tuple[int, dict]:
+            verify_ssl: bool = False,
+            payload: bytes = None) -> Tuple[int, dict]:
         return RequestHelpers.request(
             url,
             "POST",
             headers=headers,
             proxies=proxies,
-            verify_ssl=verify_ssl
+            verify_ssl=verify_ssl,
+            payload=payload
         )
 
     @staticmethod
     def request(
             url: str,
             method: str,
-            headers: dict = {},
+            headers: dict = None,
             proxies: dict = {},
-            verify_ssl: bool = False) -> Tuple[int, dict]:
+            verify_ssl: bool = False,
+            payload: bytes = None) -> Tuple[int, dict]:
+
         context = ssl.create_default_context()
+        request_headers = {}
+        if headers is None:
+            request_headers = {'Content-Type': 'application/json'}
+
+        request_headers = copy.deepcopy(headers)
+
+        if payload is not None:
+            request_headers.update({"Content-Length": str(len(payload))})
+
         if not verify_ssl:
             context.check_hostname = False
             context.verify_mode = ssl.CERT_NONE
-        headers.update({'Content-Type': 'application/json'})
+
         proxy_handler = None
 
         if len(proxies.keys()) > 0:
@@ -41,9 +55,10 @@ class RequestHelpers:
             # pragma: no cover
 
         req = urllib.request.Request(
-            url,
-            method=method,
-            headers=headers)
+                url,
+                method=method,
+                headers=request_headers,
+                data=payload)
 
         opener = urllib.request.build_opener(proxy_handler)\
             if proxy_handler is not None else\
@@ -52,8 +67,10 @@ class RequestHelpers:
         with opener(
                 req,
                 context=context) as response:
+
             status_code = response.getcode()
-            response_body = response.read().decode('utf-8')
+            response_bytes = response.read()
+            response_body = response_bytes.decode('utf-8')
 
             try:
                 json_data = json.loads(response_body)
@@ -164,3 +181,14 @@ class Helpers:
                 doseq=True))
 
         return Helpers.http_to_websocket(parse.urlunsplit(url_parts))
+
+    @staticmethod
+    def get_port(parsed_url) -> int:
+        port = parsed_url.port
+        is_secure_connection = parsed_url.scheme in ("wss", "https")
+
+        if not port:
+            port = 80
+            if is_secure_connection:
+                port = 443
+        return port

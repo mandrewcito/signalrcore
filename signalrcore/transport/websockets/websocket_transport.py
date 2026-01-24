@@ -1,7 +1,7 @@
 import traceback
 import time
 from typing import Optional
-from .reconnection import ConnectionStateChecker
+from ..reconnection import ConnectionStateChecker
 from ...messages.ping_message import PingMessage
 from ...protocol.messagepack_protocol import MessagePackHubProtocol
 from ..base_transport import BaseTransport, TransportState
@@ -15,7 +15,7 @@ class WebsocketTransport(BaseTransport):
     def __init__(
             self,
             url="",
-            headers=None,
+            headers=dict(),
             token=None,
             keep_alive_interval=15,
             verify_ssl=False,
@@ -25,10 +25,7 @@ class WebsocketTransport(BaseTransport):
         self._ws = None
         self.enable_trace = enable_trace
         self.url = url
-        if headers is None:
-            self.headers = dict()
-        else:
-            self.headers = headers
+        self.headers = headers
         self.handshake_received = False
         self.token = token
         self.connection_alive = False
@@ -78,14 +75,15 @@ class WebsocketTransport(BaseTransport):
             headers=self.headers,
             is_binary=type(self.protocol) is MessagePackHubProtocol,
             verify_ssl=self.verify_ssl,
+            enable_trace=self.enable_trace,
             on_message=self.on_message,
             on_error=self.on_socket_error,
             on_close=self.on_socket_close,
-            on_open=self.on_socket_open,
-            enable_trace=self.enable_trace
+            on_open=self.on_socket_open
             )
 
         self._ws.connect()
+
         return True
 
     def evaluate_handshake(self, message):

@@ -15,6 +15,7 @@ class TransportState(enum.Enum):
 class BaseTransport(object):
     def __init__(
             self,
+            connection_id: str = None,
             on_open: Callable = None,
             on_close: Callable = None,
             on_reconnect: Callable = None,
@@ -22,6 +23,7 @@ class BaseTransport(object):
             reconnection_handler: BaseReconnection = None,
             on_message: Callable = None,
             proxies: dict = None):
+        self.connection_id = connection_id
         self.proxies = proxies
         self.protocol = protocol
         self._on_message = on_message

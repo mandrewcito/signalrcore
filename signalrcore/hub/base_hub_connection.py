@@ -1,4 +1,5 @@
 import uuid
+import copy
 from typing import Callable, List, Union, Optional
 from signalrcore.messages.message_type import MessageType
 from signalrcore.messages.stream_invocation_message\
@@ -95,7 +96,9 @@ class BaseHubConnection(object):
             self.proxies,
             self.verify_ssl
         )
-        self.url, self.headers, response = handler.negotiate()
+        (url, headers, response) = handler.negotiate()
+        self.url = url
+        self.headers = copy.deepcopy(headers)
         return response
 
     def start(self) -> None:
@@ -106,9 +109,8 @@ class BaseHubConnection(object):
         self.logger.debug("Connection started")
         available_transports = None
 
-        if not self.skip_negotiation:
-            response = self.negotiate()
-            available_transports = response.available_transports
+        response = self.negotiate()
+        available_transports = response.available_transports
 
         self.transport = TransportFactory.create(
             available_transports,
@@ -117,6 +119,7 @@ class BaseHubConnection(object):
             protocol=self.protocol,
             headers=self.headers,
             token=self.token,
+            connection_id=response.connection_id,
             verify_ssl=self.verify_ssl,
             proxies=self.proxies,
             on_close=self._callbacks.on_close,

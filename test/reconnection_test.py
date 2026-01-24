@@ -6,7 +6,7 @@ from typing import Dict
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from signalrcore.hub.errors import HubConnectionError
 from test.base_test_case import BaseTestCase
-from signalrcore.transport.websockets.reconnection\
+from signalrcore.transport.reconnection\
     import RawReconnectionHandler, IntervalReconnectionHandler
 
 

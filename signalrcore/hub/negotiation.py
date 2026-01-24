@@ -1,3 +1,4 @@
+import copy
 from dataclasses import dataclass
 from typing import List, Tuple
 from ..helpers import Helpers, RequestHelpers
@@ -104,7 +105,8 @@ class NegotiationHandler(object):
 
     def negotiate(self) -> Tuple[str, dict, NegotiateResponse]:
         url = self.url
-        headers = self.headers
+        headers = copy.deepcopy(self.headers)
+        headers.update({'Content-Type': 'application/json'})
 
         negotiate_url = Helpers.get_negotiate_url(self.url)
 
@@ -112,7 +114,7 @@ class NegotiationHandler(object):
 
         status_code, data = RequestHelpers.post(
             negotiate_url,
-            headers=self.headers,
+            headers=headers,
             proxies=self.proxies,
             verify_ssl=self.verify_ssl)
 
@@ -126,7 +128,7 @@ class NegotiationHandler(object):
                 if status_code != 401 else UnAuthorizedHubError()
 
         if "connectionId" in data.keys():
-            self.url = Helpers.encode_connection_id(
+            url = Helpers.encode_connection_id(
                 self.url, negotiate_response.connection_id)
 
         # Azure

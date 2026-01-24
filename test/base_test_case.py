@@ -13,6 +13,12 @@ class Urls:
     login_url_ssl = "https://localhost:5001/users/authenticate"
     login_url_no_ssl = "http://localhost:5000/users/authenticate"
 
+    @staticmethod
+    def ws_to_http(url: str) -> str:
+        return url\
+            .replace("wss://", "https://")\
+            .replace("ws://", "http://")
+
 
 class InternalTestCase(unittest.TestCase):
     connection = None

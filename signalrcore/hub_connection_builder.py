@@ -1,6 +1,6 @@
 from .hub.base_hub_connection import BaseHubConnection
 from .hub.auth_hub_connection import AuthHubConnection
-from .transport.websockets.reconnection import \
+from .transport.reconnection import \
     IntervalReconnectionHandler, RawReconnectionHandler, ReconnectionType
 from .helpers import Helpers
 from .protocol.json_hub_protocol import JsonHubProtocol

@@ -5,6 +5,7 @@ import uuid
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from signalrcore.types import HttpTransportType
 from test.base_test_case import BaseTestCase
+from test.base_test_case import Urls
 
 LOCKS = {}
 
@@ -27,9 +28,10 @@ class TesTransportSelection(BaseTestCase):
 
     def test_sse(self):
         connection = HubConnectionBuilder()\
-            .with_url(self.server_url, options={
+            .with_url(Urls.ws_to_http(self.server_url), options={
                 "verify_ssl": False,
-                "transport": HttpTransportType.server_sent_events})\
+                "transport": HttpTransportType.server_sent_events
+                })\
             .configure_logging(logging.ERROR)\
             .build()
         self._test_run(connection)
@@ -51,11 +53,30 @@ class TesTransportSelection(BaseTestCase):
         self.assertTrue(result)
 
         self.assertTrue(LOCKS[identifier].acquire(timeout=30))
-        # Released on open
 
         result = connection.start()
 
         self.assertFalse(result)
+
+        message = "new message {0}".format(uuid.uuid4())
+        username = "mandrewcito"
+
+        identifier2 = str(uuid.uuid4())
+        LOCKS[identifier2] = threading.Lock()
+
+        LOCKS[identifier2].acquire()
+        uid = str(uuid.uuid4())
+
+        def release(m):
+            global LOCKS
+            self.assertTrue(m.invocation_id, uid)
+            LOCKS[identifier2].release()
+
+        connection.send(
+            "SendMessage",
+            [username, message],
+            release,
+            invocation_id=uid)
 
         connection.stop()
 
