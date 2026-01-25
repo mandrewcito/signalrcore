@@ -36,7 +36,9 @@ class RequestHelpers:
 
         context = ssl.create_default_context()
         request_headers = {}
+
         if headers is None:
+            # pragma: no cover
             request_headers = {'Content-Type': 'application/json'}
 
         request_headers = copy.deepcopy(headers)
@@ -187,9 +189,9 @@ class Helpers:
         port = parsed_url.port
         is_secure_connection = parsed_url.scheme in ("wss", "https")
 
-        if not port:
+        if not port:  # pragma: no cover
             port = 80
-            if is_secure_connection:
+            if is_secure_connection:  # pragma: no cover
                 port = 443
         return port
 

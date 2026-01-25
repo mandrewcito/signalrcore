@@ -78,14 +78,14 @@ class SSETransport(BaseTransport):
 
     def dispose(self):
         if self.is_connected():
+            self.keep_alive_interval = 0
             self.connection_checker.stop()
             self._client.close()
 
     def stop(self):
         self.manually_closing = True
-        self.dispose()
-        self._set_state(TransportState.disconnected)
         self.handshake_received = False
+        self.dispose()
 
     def on_open(self):
         self.logger.debug("-- SSE open --")
@@ -117,7 +117,8 @@ class SSETransport(BaseTransport):
 
     def on_client_close(self):
         if self.reconnection_handler is not None\
-                and not self.is_reconnecting():
+                and not self.is_reconnecting()\
+                and not self.manually_closing:
             self.handle_reconnect()
             return
         self._set_state(TransportState.disconnected)
@@ -133,6 +134,9 @@ class SSETransport(BaseTransport):
         )
 
         self.handshake_received = handshake_response.error is None
+
+        if self.handshake_received and not self.connection_checker.running:
+            self.connection_checker.start()
 
         return messages
 

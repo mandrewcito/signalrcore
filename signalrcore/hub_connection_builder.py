@@ -106,6 +106,7 @@ class HubConnectionBuilder(object):
             if "transport" in options.keys():
                 transport = options.get("transport")
                 if type(transport) is not HttpTransportType:
+                    # pragma: no cover
                     raise TypeError(
                         f"transport types:  {HttpTransportType}")
                 self.transport = transport
