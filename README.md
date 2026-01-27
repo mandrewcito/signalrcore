@@ -1,3 +1,7 @@
+
+![logo alt](https://raw.githubusercontent.com/mandrewcito/signalrcore/master/docs/img/logo_temp.128.svg.png)
+
+
 # SignalR core client
 [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg?logo=paypal&style=flat-square)](https://www.paypal.me/mandrewcito/1)
 ![Pypi](https://img.shields.io/pypi/v/signalrcore.svg)
@@ -7,8 +11,7 @@
 ![Open issues](https://img.shields.io/github/issues-raw/mandrewcito/signalrcore.svg)
 ![codecov.io](https://codecov.io/github/mandrewcito/signalrcore/coverage.svg?branch=master)
 
-![logo alt](https://raw.githubusercontent.com/mandrewcito/signalrcore/master/docs/img/logo_temp.128.svg.png)
-
+Python signalr core client library, made by a guy born in Vilalba (Lugo).
 
 # Links 
 
@@ -18,19 +21,32 @@
 
 * [Wiki - This Doc](https://mandrewcito.github.io/signalrcore/)
 
-# Develop
+# Development
+Software requirements:
+> - python > 3.8
+> - virtualenv
+> - pip
+> - docker
+> - docker compose
+> 
+> Test environment has as a requirement a signalr core server, is available in [here](https://github.com/mandrewcito/signalrcore-containertestservers)
 
-Test server will be available in [here](https://github.com/mandrewcito/signalrcore-containertestservers) and docker compose is required.
-
+Clone repos and install virtual environment:
 ```bash
+git clone https://github.com/mandrewcito/signalrcore-containertestservers
+cd signalrcore
+make dev-install
 git clone https://github.com/mandrewcito/signalrcore-containertestservers
 cd signalrcore-containertestservers
 docker compose up
 cd ../signalrcore
-make tests
+make pytest-cov
 ```
+Have fun :)
 
 # A Tiny How To
+
+You can reach a lot of examples in *tests* folder, raw implementations in *playground* and fully working examples at the *examples* folder.
 
 ## Connect to a server without auth
 
@@ -108,6 +124,7 @@ hub_connection = HubConnectionBuilder()\
     .configure_logging(logging.DEBUG, socket_trace=True, handler=handler)
     ...
  ```
+ 
 ## Configuring reconnection
 After reaching max_attempts an exeption will be thrown and on_disconnect event will be fired.
 ```python
@@ -128,6 +145,7 @@ hub_connection = HubConnectionBuilder()\
             ...
             .build()
 ```
+
 ## Configuring additional querystring parameters
 ```python
 server_url ="http.... /?myquerystringparam=134&foo=bar"
@@ -137,6 +155,7 @@ connection = HubConnectionBuilder()\
             })\
             .build()
 ```
+
 ## Configuring skip negotiation
 ```python
 hub_connection = HubConnectionBuilder() \
@@ -150,6 +169,7 @@ hub_connection = HubConnectionBuilder() \
         .build()
 
 ```
+
 ## Configuring ping(keep alive)
 
 keep_alive_interval sets the seconds of ping message
@@ -165,6 +185,7 @@ hub_connection = HubConnectionBuilder()\
         "max_attempts": 5
     }).build()
 ```
+
 ## Configuring logging
 ```python
 hub_connection = HubConnectionBuilder()\
@@ -189,6 +210,18 @@ HubConnectionBuilder()\
             .with_hub_protocol(MessagePackHubProtocol())\
                 ...
             .build()
+```
+
+## Configure another transport layer
+
+```python
+HubConnectionBuilder()\
+    .with_url(server_http_url, options={
+        ...
+        "transport": HttpTransportType.server_sent_events
+        })\
+    .configure_logging(logging.ERROR)\
+    .build()
 ```
 ## Events
 

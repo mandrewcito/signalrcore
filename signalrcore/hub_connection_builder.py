@@ -1,9 +1,10 @@
 from .hub.base_hub_connection import BaseHubConnection
 from .hub.auth_hub_connection import AuthHubConnection
-from .transport.websockets.reconnection import \
+from .transport.reconnection import \
     IntervalReconnectionHandler, RawReconnectionHandler, ReconnectionType
 from .helpers import Helpers
 from .protocol.json_hub_protocol import JsonHubProtocol
+from .types import HttpTransportType
 
 
 class HubConnectionBuilder(object):
@@ -20,6 +21,7 @@ class HubConnectionBuilder(object):
     def __init__(self):
         self.hub_url = None
         self.hub = None
+        self.transport = None
         self.options = {
             "access_token_factory": None
         }
@@ -29,7 +31,7 @@ class HubConnectionBuilder(object):
         self.has_auth_configured = None
         self.protocol = None
         self.reconnection_handler = None
-        self.keep_alive_interval = None
+        self.keep_alive_interval = 15
         self.verify_ssl = True
         self.enable_trace = False  # socket trace
         self.skip_negotiation = False  # By default do not skip negotiation
@@ -100,6 +102,14 @@ class HubConnectionBuilder(object):
 
             self.skip_negotiation = "skip_negotiation" in options.keys()\
                 and options["skip_negotiation"]
+
+            if "transport" in options.keys():
+                transport = options.get("transport")
+                if type(transport) is not HttpTransportType:
+                    # pragma: no cover
+                    raise TypeError(
+                        f"transport types:  {HttpTransportType}")
+                self.transport = transport
 
         self.hub_url = hub_url
         self.hub = None
@@ -204,7 +214,8 @@ class HubConnectionBuilder(object):
                 verify_ssl=self.verify_ssl,
                 proxies=self.proxies,
                 skip_negotiation=self.skip_negotiation,
-                enable_trace=self.enable_trace)\
+                enable_trace=self.enable_trace,
+                preferred_transport=self.transport)\
             if self.has_auth_configured else\
             BaseHubConnection(
                 url=self.hub_url,
@@ -215,7 +226,8 @@ class HubConnectionBuilder(object):
                 verify_ssl=self.verify_ssl,
                 proxies=self.proxies,
                 skip_negotiation=self.skip_negotiation,
-                enable_trace=self.enable_trace)
+                enable_trace=self.enable_trace,
+                preferred_transport=self.transport)
 
     def with_automatic_reconnect(self, data: dict):
         """Configures automatic reconnection
@@ -233,7 +245,7 @@ class HubConnectionBuilder(object):
             .build()
 
         Args:
-            data (dict): [dict with autmatic reconnection parameters]
+            data (dict): [dict with automatic reconnection parameters]
 
         Returns:
             [HubConnectionBuilder]: [self object for fluent interface purposes]

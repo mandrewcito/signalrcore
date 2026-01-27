@@ -19,6 +19,6 @@ class CancelInvocationMessage(BaseHeadersMessage):
     def __init__(
             self,
             invocation_id,
-            **kwargs):
+            **kwargs):  # pragma: no cover
         super(CancelInvocationMessage, self).__init__(5, **kwargs)
         self.invocation_id = invocation_id

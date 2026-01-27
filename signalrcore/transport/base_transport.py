@@ -1,8 +1,9 @@
 import enum
-from typing import Callable
+from typing import Callable, Dict, Optional
 from ..protocol.json_hub_protocol import JsonHubProtocol
 from ..helpers import Helpers
 from ..transport.base_reconnection import BaseReconnection
+from ..hub.negotiation import NegotiateResponse, NegotiationHandler
 
 
 class TransportState(enum.Enum):
@@ -15,17 +16,36 @@ class TransportState(enum.Enum):
 class BaseTransport(object):
     def __init__(
             self,
+            url: str = None,
+            connection_id: str = None,
+            is_binary: bool = False,
+            token: Optional[str] = None,
+            headers: Optional[Dict] = None,
+            proxies: Optional[Dict] = None,
+            verify_ssl: bool = True,
+            enable_trace: bool = False,
+            on_open: Callable = None,
+            on_close: Callable = None,
+            on_reconnect: Callable = None,
             protocol=JsonHubProtocol(),
             reconnection_handler: BaseReconnection = None,
             on_message: Callable = None):
+        self.url = url
+        self.is_binary = is_binary
+        self.headers = headers
+        self.token = token
+        self.verify_ssl = verify_ssl
+        self.enable_trace = enable_trace
+        self.verify_ssl = verify_ssl
+        self.connection_id = connection_id
+        self.proxies = proxies
         self.protocol = protocol
         self._on_message = on_message
         self.reconnection_handler = reconnection_handler
         self.logger = Helpers.get_logger()
-        self._on_open = lambda: self.logger.info("on_connect not defined")
-        self._on_close = lambda: self.logger.info("on_close not defined")
-        self._on_reconnect =\
-            lambda: self.logger.info("on_reconnect not defined")
+        self._on_open = on_open
+        self._on_close = on_close
+        self._on_reconnect = on_reconnect
 
         self.state = TransportState.disconnected
         self.reconnection_handler = reconnection_handler
@@ -65,15 +85,6 @@ class BaseTransport(object):
     def is_disconnected(self):
         return self.state == TransportState.disconnected
 
-    def on_open_callback(self, callback):
-        self._on_open = callback
-
-    def on_close_callback(self, callback):
-        self._on_close = callback
-
-    def on_reconnect_callback(self, callback):
-        self._on_reconnect = callback
-
     def start(self):  # pragma: no cover
         raise NotImplementedError()
 
@@ -85,3 +96,16 @@ class BaseTransport(object):
 
     def send(self, message, on_invocation=None):  # pragma: no cover
         raise NotImplementedError()
+
+    def negotiate(self) -> NegotiateResponse:
+        handler = NegotiationHandler(
+            self.url,
+            self.headers,
+            self.proxies,
+            self.verify_ssl
+        )
+
+        self.url, self.headers, response = handler.negotiate()
+        self.connection_id = response.connection_id
+
+        return response
