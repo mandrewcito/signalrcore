@@ -1,3 +1,6 @@
+dev-install:
+	python3 -m venv venv
+	venv/bin/pip install .[dev]
 
 tests:
 	venv/bin/python3 -m unittest discover -s test/ -p "*_test.py" -v
