@@ -33,13 +33,16 @@ class JsonHubProtocol(BaseHubProtocol):
     def parse_messages(self, raw):
         Helpers.get_logger().debug("Raw message incoming: ")
         Helpers.get_logger().debug(raw)
+
         raw_messages = [
             record.replace(self.record_separator, "")
             for record in raw.split(self.record_separator)
             if record is not None and record != ""
             and record != self.record_separator
             ]
+
         result = []
+
         for raw_message in raw_messages:
             dict_message = json.loads(raw_message)
             if len(dict_message.keys()) > 0:
@@ -60,40 +63,34 @@ class JsonHubSseProtocol(BaseHubProtocol):
         self.socket_record_separator = chr(0x1E)
         self.encoder = MyEncoder()
         self.logger = Helpers.get_logger()
-        self.handshake_str = "data: "
 
     def decode_handshake(
             self,
-            raw_message: str) -> Tuple[HandshakeResponseMessage, Any]:
+            raw: str) -> Tuple[HandshakeResponseMessage, Any]:
 
-        raw_messages = [
-            record.replace(self.record_separator, "")
-            for record in raw_message.split(self.record_separator)
-            if record is not None and record != ""
-            and record != self.record_separator
-            ]
+        raw_messages = self._split_messages(raw)
+        data = json.loads(raw_messages[0])
 
-        error = None\
-            if raw_messages[0] == self.handshake_str\
-            else raw_messages[0]
+        return\
+            HandshakeResponseMessage(data.get("error", None)), \
+            self._parse_messages(raw_messages[1:])
 
-        return HandshakeResponseMessage(error), []
-
-    def parse_messages(self, raw):
-        Helpers.get_logger().debug("Raw message incoming: ")
-        Helpers.get_logger().debug(raw)
-
-        raw_messages = [
+    def _split_messages(self, raw) -> list:
+        return [
             record.replace(self.record_separator, "")
             for record in raw.split(self.record_separator)
-            if record is not None and record != ""
+            if record is not None
+            and record != ""
             and record != self.record_separator
-            ]
+            and record != "\r"
+        ]
 
+    def _parse_messages(self, raw_messages):
         result = []
 
         for raw_message in raw_messages:
-            if raw_message == self.handshake_str:
+
+            if not raw_message.startswith("{"):
                 continue
             try:
                 dict_message = json.loads(raw_message)
@@ -109,7 +106,15 @@ class JsonHubSseProtocol(BaseHubProtocol):
 
         return result
 
+    def parse_messages(self, raw):
+        Helpers.get_logger().debug("Raw message incoming: ")
+        Helpers.get_logger().debug(raw)
+
+        raw_messages = self._split_messages(raw)
+
+        return self._parse_messages(raw_messages)
+
     def encode(self, message):
         Helpers.get_logger()\
             .debug(self.encoder.encode(message))
-        return self.encoder.encode(message).encode("utf-8")
+        return self.encoder.encode(message).encode("utf-8") + b"\x1e"

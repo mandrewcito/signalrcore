@@ -9,37 +9,52 @@ class ConnectionStateChecker(object):
     def __init__(
             self,
             ping_function,
-            keep_alive_interval,
+            keep_alive_interval=15,
             sleep=1):
         self.sleep = sleep
         self.keep_alive_interval = keep_alive_interval
         self.last_message = time.time()
+        self.last_run = time.time()
         self.ping_function = ping_function
         self.running = False
         self._thread = None
+        self._lock = threading.Lock()
 
     def start(self):
+        self._lock.acquire()
+        if self._thread is not None:
+            return
+
         self.running = True
         self._thread = threading.Thread(
             target=self.run,
             name=THREAD_NAME)
+
         self._thread.daemon = True
+
         self._thread.start()
+        self._lock.release()
 
     def run(self):
         while self.running:
-            time.sleep(self.sleep)
+            time.sleep(0.1)
+            if time.time() - self.last_run < self.sleep:
+                continue
+
             time_without_messages = time.time() - self.last_message
+
             if self.keep_alive_interval < time_without_messages:
                 self.ping_function()
+            self.last_run = time.time()
 
     def stop(self):
-        self.running = False
         is_same_thread = threading.current_thread().name == THREAD_NAME
+        self.running = False
 
         if self._thread is not None\
                 and not is_same_thread\
                 and self._thread.is_alive():
+
             self._thread.join()
             self._thread = None
 

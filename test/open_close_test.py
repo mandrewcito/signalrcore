@@ -96,7 +96,7 @@ class TestOpenCloseWebsocketMethods(BaseTestCase):
         self._test(connection)
 
 
-class TestOpenCloseServerSentEventsMethods(TestOpenCloseWebsocketMethods):
+class TestOpenCloseSseMethods(TestOpenCloseWebsocketMethods):
     def setUp(self):
         pass
 

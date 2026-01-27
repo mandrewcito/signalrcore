@@ -4,8 +4,8 @@ from typing import Callable, Union
 
 from ...helpers import Helpers
 from ...helpers import RequestHelpers
-from ..sockets.base_socket_client import BaseSocketClient
-
+from ..sockets.base_socket_client import BaseSocketClient, WINDOW_SIZE
+from ..sockets.errors import NoHeaderException
 THREAD_NAME = "Signalrcore SSE client"
 
 
@@ -37,6 +37,8 @@ class SSEClient(BaseSocketClient):
             on_error=on_error,
             on_close=on_close
         )
+
+        self._buffer = b""
 
     def get_socket_headers(self):
         parsed_url = parse.urlparse(self.url)
@@ -75,5 +77,53 @@ class SSEClient(BaseSocketClient):
 
         self.logger.debug(f"SSE send response: {status_code} - {response}")
 
-    def prepare_data(self, data):
-        return data[1:].decode("utf-8").replace("\r\n", "")
+    def prepare_data(self, buffer):
+
+        if self.is_trace_enabled():
+            self.logger.debug(f"[TRACE] - [prepare data: input] {buffer}")
+
+        array = [x for x in buffer.splitlines() if b'{' in x]
+        data = b"".join(array)
+
+        decoded_str = data.decode("utf-8")
+
+        if self.is_trace_enabled():
+            self.logger.debug(
+                f"[TRACE] - [prepare data: output] {decoded_str}")
+
+        return decoded_str\
+            .replace("\r\n", "")\
+            .replace("data:", "")
+
+    def _recv_frame(self):
+        # HTTP chunked transfer encoding
+        # [n_bytes ....\r\n]
+        # [n_bytes msg]
+        # { ..... }
+        # Example:
+        # '6\r\ndata: \r\n3\r\n{}\x1e\r\n2\r\n\r\n\r\n2\r\n\r\n\r\n'
+        # sep = b"\n\n"
+        # sep_crlf = b"\r\n\r\n"
+
+        end_record = chr(0x1E).encode("utf-8")
+
+        while end_record not in self._buffer:
+            chunk = self.sock.recv(WINDOW_SIZE)
+
+            if not chunk:
+                raise NoHeaderException(
+                    "Connection closed during handshake")
+
+            self._buffer += chunk
+
+        if self.is_trace_enabled():
+            self.logger.debug(f"[TRACE] [BUFFER] - {self._buffer}")
+
+        try:
+            idx = self._buffer.index(end_record)
+            complete_buffer = self._buffer[0: idx]
+            self._buffer = self._buffer[idx + 1:]
+            return self.prepare_data(complete_buffer)
+        except Exception as ex:
+            self.logger.debug(ex)
+            return ""

@@ -1,11 +1,12 @@
 import base64
 import os
 import struct
+import ssl
 import urllib.parse as parse
 
 from typing import Optional, Callable, Union
 
-from ..sockets.errors import SocketClosedError
+from ..sockets.errors import SocketClosedError, NoHeaderException
 from ..sockets.base_socket_client import BaseSocketClient
 
 THREAD_NAME = "Signalrcore websocket client"
@@ -91,3 +92,42 @@ class WebSocketClient(BaseSocketClient):
             for i, b in enumerate(payload))
         frame = header + masking_key + masked_payload
         self.sock.sendall(frame)
+
+    def _recv_frame(self):
+        try:
+            header = self.sock.recv(2)
+        except ssl.SSLError as ex:
+            self.logger.error(ex)
+            header = None
+
+        if header is None or len(header) < 2:
+            raise NoHeaderException()
+
+        fin_opcode = header[0]
+        masked_len = header[1]
+
+        if self.logger:
+            self.logger.debug(
+                f"fin opcode: {fin_opcode}, masked len: {masked_len}")
+
+        if fin_opcode == 8:
+            raise SocketClosedError(header)
+        payload_len = masked_len & 0x7F
+        if payload_len == 126:
+            payload_len = struct.unpack(">H", self.sock.recv(2))[0]
+        elif payload_len == 127:
+            payload_len = struct.unpack(">Q", self.sock.recv(8))[0]
+
+        if masked_len & 0x80:
+            masking_key = self.sock.recv(4)
+            masked_data = self.sock.recv(payload_len)
+            data = bytes(
+                b ^ masking_key[i % 4]
+                for i, b in enumerate(masked_data))
+        else:
+            data = self.sock.recv(payload_len)
+
+        if self.is_trace_enabled:
+            self.logger.debug(f"[TRACE] - {data}")
+
+        return self.prepare_data(data)

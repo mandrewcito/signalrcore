@@ -155,6 +155,14 @@ class TestSendNoSslMethodMsgPack(TestSendMethodMsgPack):
     server_url = Urls.server_url_no_ssl
 
 
+class TestSendSseMethod(TestSendMethod):
+    server_url = Urls.server_url_http_ssl
+
+    def get_connection(self, msgpack=False):
+        return super().get_connection_sse(
+            reconnection=False)
+
+
 class TestSendErrorMethod(BaseTestCase):
     received = False
     message = None
@@ -199,3 +207,11 @@ class TestSendErrorMethodMsgPack(TestSendErrorMethod):
 class TestSendErrorNoSslMethodMsgPack(TestSendErrorNoSslMethod):
     def get_connection(self):
         return super().get_connection(msgpack=True)
+
+
+class TestSendSseErrorMethod(TestSendErrorMethod):
+    server_url = Urls.server_url_http_ssl
+
+    def get_connection(self, msgpack=False):
+        return super().get_connection_sse(
+            reconnection=False)

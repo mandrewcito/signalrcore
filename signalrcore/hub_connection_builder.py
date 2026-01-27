@@ -31,7 +31,7 @@ class HubConnectionBuilder(object):
         self.has_auth_configured = None
         self.protocol = None
         self.reconnection_handler = None
-        self.keep_alive_interval = None
+        self.keep_alive_interval = 15
         self.verify_ssl = True
         self.enable_trace = False  # socket trace
         self.skip_negotiation = False  # By default do not skip negotiation
