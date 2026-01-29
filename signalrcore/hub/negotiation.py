@@ -135,7 +135,9 @@ class NegotiationHandler(object):
         negotiate_response = NegotiateResponse.from_dict(data)
 
         self.logger.debug(
-            "Response status code {0}".format(status_code))
+            "Negotiate response status code {0}".format(status_code))
+        self.logger.debug(
+            "Negotiate response {0}".format(negotiate_response))
 
         if status_code != 200:
             raise HubError(status_code)\

@@ -17,7 +17,8 @@ Example - A `Close` message with an error
 ```json
 {
     "type": 7,
-    "error": "Connection closed because of an error!"
+    "error": "Connection closed because of an error!",
+    "allowReconnect":true
 }
 ```
 """
@@ -27,6 +28,8 @@ class CloseMessage(BaseHeadersMessage):
     def __init__(
             self,
             error,
+            allow_reconnect,
             **kwargs):
         super(CloseMessage, self).__init__(7, **kwargs)
         self.error = error
+        self.allow_reconnect = allow_reconnect

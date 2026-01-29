@@ -79,7 +79,7 @@ class SSEClient(BaseSocketClient):
             headers=headers,
             proxies=self.proxies,
             verify=self.verify_ssl,
-            data=msg_bytes + RECORD_SEPARATOR.encode("utf-8")
+            data=msg_bytes
         )
 
         status_code, data = response.status_code, response.json()
@@ -105,15 +105,6 @@ class SSEClient(BaseSocketClient):
             .replace("data:", "")
 
     def _recv_frame(self):
-        # HTTP chunked transfer encoding
-        # [n_bytes ....\r\n]
-        # [n_bytes msg]
-        # { ..... }
-        # Example:
-        # '6\r\ndata: \r\n3\r\n{}\x1e\r\n2\r\n\r\n\r\n2\r\n\r\n\r\n'
-        # sep = b"\n\n"
-        # sep_crlf = b"\r\n\r\n"
-
         end_record = RECORD_SEPARATOR.encode("utf-8")
 
         while end_record not in self._buffer:

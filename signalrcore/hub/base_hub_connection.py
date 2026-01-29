@@ -70,6 +70,7 @@ class BaseHubConnection(object):
             skip_negotiation=False,
             headers=None,
             verify_ssl=False,
+            protocol=None,
             proxies: dict = {},
             **kwargs):
         self.preferred_protocol = preferred_protocol
@@ -79,6 +80,7 @@ class BaseHubConnection(object):
         self.verify_ssl = verify_ssl
         self.proxies = proxies
         self.token = None
+        self._selected_protocol = protocol
 
         if headers is None:
             self.headers = dict()
@@ -118,7 +120,9 @@ class BaseHubConnection(object):
         self.protocol = ProtocolFactory.create(
                 self.preferred_transport,
                 self.preferred_protocol,
-                negotiate_response)
+                negotiate_response)\
+            if self._selected_protocol is None else\
+            self._selected_protocol
 
         self.transport = TransportFactory.create(
             negotiate_response,

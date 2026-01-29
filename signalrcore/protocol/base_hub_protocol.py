@@ -1,5 +1,5 @@
 import json
-
+from ..helpers import Helpers
 from ..types import HubProtocolEncoding
 from ..messages.handshake.request import HandshakeRequestMessage
 from ..messages.handshake.response import HandshakeResponseMessage
@@ -24,6 +24,7 @@ class BaseHubProtocol(object):
         self.version = version
         self.transfer_format = transfer_format
         self.record_separator = record_separator
+        self.logger = Helpers.get_logger()
 
     @staticmethod
     def get_message(dict_message):
@@ -49,13 +50,22 @@ class BaseHubProtocol(object):
         if message_type is MessageType.ping:
             return PingMessage()
         if message_type is MessageType.close:
+            dict_message["allow_reconnect"] =\
+                dict_message.get("allowReconnect", None)
             return CloseMessage(**dict_message)
 
     def decode_handshake(self, raw_message: str) -> HandshakeResponseMessage:
+        has_record_separator = self.record_separator in raw_message
+
         messages = raw_message.split(self.record_separator)
         messages = list(filter(lambda x: x != "", messages))
-        data = json.loads(messages[0])
-        idx = raw_message.index(self.record_separator)
+
+        data = json.loads(messages[0])\
+            if messages[0] != "{}" else {}
+
+        idx = raw_message.index(self.record_separator)\
+            if has_record_separator else -1
+
         return (
             HandshakeResponseMessage(data.get("error", None)),
             self.parse_messages(raw_message[idx + 1:])

@@ -5,8 +5,6 @@ from .transport.reconnection import \
 from .helpers import Helpers
 from .types import HttpTransportType, HubProtocolEncoding
 from .protocol.protocol_factory import BaseHubProtocol
-from .protocol.json_hub_protocol import JsonHubProtocol
-from .protocol.messagepack_protocol import MessagePackHubProtocol
 
 
 class HubConnectionBuilder(object):
@@ -32,6 +30,7 @@ class HubConnectionBuilder(object):
         self.negotiate_headers = None
         self.has_auth_configured = None
         self.protocol: BaseHubProtocol = None
+        self.preferred_protocol = None
         self.reconnection_handler = None
         self.keep_alive_interval = 15
         self.verify_ssl = True
@@ -162,8 +161,8 @@ class HubConnectionBuilder(object):
 
     def with_hub_protocol(self, protocol):
         """Changes transport protocol
-            from signalrcore.protocol.messagepack_protocol\
-                import MessagePackHubProtocol
+            from signalrcore.types\
+                import HubProtocolEncoding
 
             HubConnectionBuilder()\
             .with_url(self.server_url, options={"verify_ssl":False})\
@@ -172,30 +171,24 @@ class HubConnectionBuilder(object):
                 ...
             .build()
         Args:
-            protocol (types.HubProtocolEncoding):
-                protocol instance
+            protocol(
+                    MessagePackHubProtocol|
+                    JsonHubProtocol|
+                    HubProtocolEncoding):
+                protocol instance or HubProtocolEncoding
 
         Returns:
             HubConnectionBuilder: instance configured
         """
-        if type(protocol) is not HubProtocolEncoding:
-            import warnings
-            warnings.warn(
-                "Deprecation warning use type.HubProtocolEncoding",
-                DeprecationWarning,
-                stacklevel=2
-            )
-
-        if type(protocol) is MessagePackHubProtocol:
-            self.protocol = HubProtocolEncoding.binary
+        if issubclass(type(protocol), BaseHubProtocol):
+            self.protocol = protocol
+            return self
 
         if type(protocol) is HubProtocolEncoding:
-            self.protocol = protocol
+            self.preferred_protocol = protocol
+            return self
 
-        if type(protocol) is JsonHubProtocol:
-            self.protocol = HubProtocolEncoding.text
-
-        return self
+        raise TypeError(f"Wrong protocol type {type(protocol)}")
 
     def build(self):
         """Configures the connection hub
@@ -225,7 +218,8 @@ class HubConnectionBuilder(object):
                 headers=self.headers,
                 auth_function=auth_function,
                 url=self.hub_url,
-                preferred_protocol=self.protocol,
+                protocol=self.protocol,
+                preferred_protocol=self.preferred_protocol,
                 keep_alive_interval=self.keep_alive_interval,
                 reconnection_handler=self.reconnection_handler,
                 verify_ssl=self.verify_ssl,
@@ -236,7 +230,8 @@ class HubConnectionBuilder(object):
             if self.has_auth_configured else\
             BaseHubConnection(
                 url=self.hub_url,
-                preferred_protocol=self.protocol,
+                protocol=self.protocol,
+                preferred_protocol=self.preferred_protocol,
                 keep_alive_interval=self.keep_alive_interval,
                 reconnection_handler=self.reconnection_handler,
                 headers=self.headers,

@@ -8,7 +8,6 @@ from .sse_client import SSEClient
 from ..base_transport import TransportState
 from ..reconnection import ConnectionStateChecker
 from ...messages.ping_message import PingMessage
-from ...protocol.json_hub_protocol import JsonHubSseProtocol
 
 
 class SSETransport(BaseTransport):
@@ -28,7 +27,6 @@ class SSETransport(BaseTransport):
 
         self.manually_closing = False
         self.connection_alive = False
-        self.protocol = JsonHubSseProtocol()
 
     def connection_check(self):
         time_without_messages =\
