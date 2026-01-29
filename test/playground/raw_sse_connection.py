@@ -140,7 +140,7 @@ async def main():
     # 5. Read messages
     async for message in read_sse(reader):
         if message == b"{}":
-            print("🤝 Handshake OK")
+            print("Handshake OK")
             continue
 
         print("RAW:", message)

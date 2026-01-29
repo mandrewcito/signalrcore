@@ -21,6 +21,8 @@ Python signalr core client library, made by a guy born in Vilalba (Lugo).
 
 * [Wiki - This Doc](https://mandrewcito.github.io/signalrcore/)
 
+* [Aspnetcore SignalR docs](https://github.com/dotnet/aspnetcore/tree/main/src/SignalR/docs)
+
 # Development
 Software requirements:
 > - python > 3.8
