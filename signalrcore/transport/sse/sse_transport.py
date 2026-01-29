@@ -28,6 +28,7 @@ class SSETransport(BaseTransport):
 
         self.manually_closing = False
         self.connection_alive = False
+        self.protocol = JsonHubSseProtocol()
 
     def connection_check(self):
         time_without_messages =\
@@ -49,6 +50,7 @@ class SSETransport(BaseTransport):
             self.send(PingMessage())
 
     def start(self, reconnection: bool = False):
+
         if reconnection:
             self.negotiate()
             self._set_state(TransportState.reconnecting)
@@ -56,8 +58,6 @@ class SSETransport(BaseTransport):
             self._set_state(TransportState.connecting)
 
         self.logger.debug("start url:" + self.url)
-
-        self.protocol = JsonHubSseProtocol()
 
         self._client = SSEClient(
             url=self.url,

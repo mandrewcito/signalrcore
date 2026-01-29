@@ -6,6 +6,8 @@ from ...helpers import Helpers
 from ...helpers import RequestHelpers
 from ..sockets.base_socket_client import BaseSocketClient, WINDOW_SIZE
 from ..sockets.errors import NoHeaderException
+from ...types import RECORD_SEPARATOR
+
 THREAD_NAME = "Signalrcore SSE client"
 
 
@@ -67,15 +69,22 @@ class SSEClient(BaseSocketClient):
 
         headers.update(self.headers)
 
-        status_code, response = RequestHelpers.post(
+        msg_bytes =\
+            message\
+            if type(message) is bytes else\
+            message.encode("utf-8")
+
+        response = RequestHelpers.post(
             Helpers.websocket_to_http(self.url),
-            headers,
-            self.proxies,
-            self.verify_ssl,
-            message if type(message) is bytes else message.encode("utf-8")
+            headers=headers,
+            proxies=self.proxies,
+            verify=self.verify_ssl,
+            data=msg_bytes + RECORD_SEPARATOR.encode("utf-8")
         )
 
-        self.logger.debug(f"SSE send response: {status_code} - {response}")
+        status_code, data = response.status_code, response.json()
+
+        self.logger.debug(f"SSE send response: {status_code} - {data}")
 
     def prepare_data(self, buffer):
 
@@ -105,7 +114,7 @@ class SSEClient(BaseSocketClient):
         # sep = b"\n\n"
         # sep_crlf = b"\r\n\r\n"
 
-        end_record = chr(0x1E).encode("utf-8")
+        end_record = RECORD_SEPARATOR.encode("utf-8")
 
         while end_record not in self._buffer:
             chunk = self.sock.recv(WINDOW_SIZE)

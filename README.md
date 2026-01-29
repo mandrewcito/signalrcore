@@ -216,11 +216,38 @@ HubConnectionBuilder()\
 
 ## Configure another transport layer
 
+### Websockets
+
+Will be used as transport layer by default, you do not need to specify it.
+
+```python
+HubConnectionBuilder()\
+    .with_url(server_http_url, options={
+        ...
+        "transport": HttpTransportType.web_sockets
+        })\
+    .configure_logging(logging.ERROR)\
+    .build()
+```
+
+### Server sent events
+
 ```python
 HubConnectionBuilder()\
     .with_url(server_http_url, options={
         ...
         "transport": HttpTransportType.server_sent_events
+        })\
+    .configure_logging(logging.ERROR)\
+    .build()
+```
+### Long polling
+
+```python
+HubConnectionBuilder()\
+    .with_url(server_http_url, options={
+        ...
+        "transport": HttpTransportType.long_polling
         })\
     .configure_logging(logging.ERROR)\
     .build()

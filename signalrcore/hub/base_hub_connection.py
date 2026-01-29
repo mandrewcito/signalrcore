@@ -12,9 +12,10 @@ from ..subject import Subject
 from ..messages.invocation_message import InvocationMessage
 from collections import defaultdict
 from ..protocol.base_hub_protocol import BaseHubProtocol
+from ..protocol.protocol_factory import ProtocolFactory
 from ..transport.transport_factory import TransportFactory
 from .negotiation import NegotiateResponse, NegotiationHandler
-from ..types import HttpTransportType
+from ..types import HttpTransportType, HubProtocolEncoding
 
 
 class InvocationResult(object):
@@ -52,29 +53,30 @@ class HubCallbacks(object):
 
 
 class BaseHubConnection(object):
-    transport: BaseTransport = None
     url: str
-    protocol: BaseHubProtocol
     headers: dict
     token: str
     verify_ssl: bool
-    preferred_transport: Optional[HttpTransportType]
+    protocol: BaseHubProtocol = None
+    transport: BaseTransport = None
+    preferred_transport: Optional[HttpTransportType] = None
+    preferred_protocol: Optional[HubProtocolEncoding] = None
 
     def __init__(
             self,
             url: str,
-            protocol: BaseHubProtocol,
+            preferred_protocol: Optional[HubProtocolEncoding] = None,
             preferred_transport: Optional[HttpTransportType] = None,
             skip_negotiation=False,
             headers=None,
             verify_ssl=False,
             proxies: dict = {},
             **kwargs):
+        self.preferred_protocol = preferred_protocol
         self.preferred_transport = preferred_transport
         self.kwargs = kwargs
         self.url = url
         self.verify_ssl = verify_ssl
-        self.protocol = protocol
         self.proxies = proxies
         self.token = None
 
@@ -96,9 +98,12 @@ class BaseHubConnection(object):
             self.proxies,
             self.verify_ssl
         )
+
         (url, headers, response) = handler.negotiate()
+
         self.url = url
         self.headers = copy.deepcopy(headers)
+
         return response
 
     def start(self) -> None:
@@ -107,19 +112,22 @@ class BaseHubConnection(object):
             return False
 
         self.logger.debug("Connection started")
-        available_transports = None
 
-        response = self.negotiate()
-        available_transports = response.available_transports
+        negotiate_response = self.negotiate()
+
+        self.protocol = ProtocolFactory.create(
+                self.preferred_transport,
+                self.preferred_protocol,
+                negotiate_response)
 
         self.transport = TransportFactory.create(
-            available_transports,
+            negotiate_response,
             self.preferred_transport,
             url=self.url,
             protocol=self.protocol,
             headers=self.headers,
             token=self.token,
-            connection_id=response.connection_id,
+            connection_id=negotiate_response.get_id(),
             verify_ssl=self.verify_ssl,
             proxies=self.proxies,
             on_close=self._callbacks.on_close,

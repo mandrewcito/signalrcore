@@ -8,6 +8,7 @@ from ..messages.message_type import MessageType
 from ..messages.handshake.response import HandshakeResponseMessage
 from ..messages.ping_message import PingMessage
 from ..helpers import Helpers
+from ..types import HubProtocolEncoding, RECORD_SEPARATOR
 
 
 class MyEncoder(JSONEncoder):
@@ -26,8 +27,12 @@ class MyEncoder(JSONEncoder):
 
 
 class JsonHubProtocol(BaseHubProtocol):
-    def __init__(self):
-        super(JsonHubProtocol, self).__init__("json", 1, "Text", chr(0x1E))
+    def __init__(self, version: int = 1):
+        super(JsonHubProtocol, self).__init__(
+            "json",
+            version,
+            HubProtocolEncoding.text,
+            RECORD_SEPARATOR)
         self.encoder = MyEncoder()
 
     def parse_messages(self, raw):
@@ -57,10 +62,9 @@ class JsonHubProtocol(BaseHubProtocol):
 
 class JsonHubSseProtocol(BaseHubProtocol):
     # records appear wrapped with b'\n[content]\r\n' so we unwrap
-    def __init__(self):
+    def __init__(self, version: int = 1):
         super(JsonHubSseProtocol, self).__init__(
-            "json", 1, "Text", chr(0x1E))
-        self.socket_record_separator = chr(0x1E)
+            "json", version, HubProtocolEncoding.text, RECORD_SEPARATOR)
         self.encoder = MyEncoder()
         self.logger = Helpers.get_logger()
 
@@ -117,4 +121,4 @@ class JsonHubSseProtocol(BaseHubProtocol):
     def encode(self, message):
         Helpers.get_logger()\
             .debug(self.encoder.encode(message))
-        return self.encoder.encode(message).encode("utf-8") + b"\x1e"
+        return self.encoder.encode(message).encode("utf-8")

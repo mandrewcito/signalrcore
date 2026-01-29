@@ -51,6 +51,16 @@ class NegotiateResponse:
     url: str
     available_transports: List[AvailableTransport]
 
+    def get_id(self) -> str:
+        if self.negotiate_version == 0:
+            return self.connection_id
+
+        if self.negotiate_version == 1:
+            return self.access_token
+
+        raise ValueError(
+            f"Negotiate version invalid {self.negotiate_version}")
+
     @classmethod
     def from_dict(cls, data: dict) -> "NegotiateResponse":
         if not isinstance(data, dict):  # pragma: no cover
@@ -114,11 +124,13 @@ class NegotiationHandler(object):
 
         self.logger.debug("Negotiate url:{0}".format(negotiate_url))
 
-        status_code, data = RequestHelpers.post(
+        response = RequestHelpers.post(
             negotiate_url,
             headers=headers,
             proxies=self.proxies,
-            verify_ssl=self.verify_ssl)
+            verify=self.verify_ssl)
+
+        status_code, data = response.status_code, response.json()
 
         negotiate_response = NegotiateResponse.from_dict(data)
 

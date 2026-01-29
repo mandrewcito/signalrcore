@@ -1,5 +1,6 @@
 import json
 
+from ..types import HubProtocolEncoding
 from ..messages.handshake.request import HandshakeRequestMessage
 from ..messages.handshake.response import HandshakeResponseMessage
 from ..messages.invocation_message import InvocationMessage  # 1
@@ -13,7 +14,12 @@ from ..messages.message_type import MessageType
 
 
 class BaseHubProtocol(object):
-    def __init__(self, protocol, version, transfer_format, record_separator):
+    def __init__(
+            self,
+            protocol,
+            version,
+            transfer_format: HubProtocolEncoding,
+            record_separator):
         self.protocol = protocol
         self.version = version
         self.transfer_format = transfer_format

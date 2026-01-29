@@ -5,24 +5,94 @@ import logging
 import urllib
 import urllib.parse as parse
 import urllib.request
-from typing import Tuple
+
+from typing import Callable, List, Dict, TypeVar, Union
+
+T = TypeVar("T")
+K = TypeVar("K")
+
+
+class HTTPResponse(object):
+    def __init__(
+            self,
+            context,
+            request,
+            response):
+        self._context = context
+        self._request = request
+        self._response = response
+
+        self.status_code = response.getcode()
+        self.content = response.read()
+
+    def json(self) -> Union[dict, None]:
+        response_body = self.content.decode('utf-8')
+        return json.loads(response_body)\
+            if len(response_body) > 0 else None
 
 
 class RequestHelpers:
+    @staticmethod
+    def update_querystring(url: str, params: dict = {}) -> str:
+        parsed = parse.urlparse(url)
+
+        qs = parse.parse_qs(parsed.query)
+        qs.update(params)
+
+        new_query = parse.urlencode(qs, doseq=True)
+
+        return parse.urlunparse(parsed._replace(query=new_query))
+
+    @staticmethod
+    def get(
+            url: str,
+            headers: dict = {},
+            proxies: dict = {},
+            verify: bool = False,
+            params: dict = {}) -> HTTPResponse:
+        return RequestHelpers.request(
+            url,
+            "GET",
+            headers=headers,
+            proxies=proxies,
+            verify=verify,
+            params=params
+        )
+
     @staticmethod
     def post(
             url: str,
             headers: dict = {},
             proxies: dict = {},
-            verify_ssl: bool = False,
-            payload: bytes = None) -> Tuple[int, dict]:
+            verify: bool = False,
+            params: dict = {},
+            data: bytes = None) -> HTTPResponse:
         return RequestHelpers.request(
             url,
             "POST",
             headers=headers,
             proxies=proxies,
-            verify_ssl=verify_ssl,
-            payload=payload
+            verify=verify,
+            params=params,
+            data=data
+        )
+
+    @staticmethod
+    def delete(
+            url: str,
+            headers: dict = {},
+            proxies: dict = {},
+            verify: bool = False,
+            params: dict = {},
+            data: bytes = None) -> HTTPResponse:
+        return RequestHelpers.request(
+            url,
+            "DELETE",
+            headers=headers,
+            proxies=proxies,
+            verify=verify,
+            params=params,
+            data=data
         )
 
     @staticmethod
@@ -31,8 +101,9 @@ class RequestHelpers:
             method: str,
             headers: dict = None,
             proxies: dict = {},
-            verify_ssl: bool = False,
-            payload: bytes = None) -> Tuple[int, dict]:
+            verify: bool = False,
+            params: dict = {},
+            data: bytes = None) -> HTTPResponse:
 
         context = ssl.create_default_context()
         request_headers = {}
@@ -43,10 +114,10 @@ class RequestHelpers:
 
         request_headers = copy.deepcopy(headers)
 
-        if payload is not None:
-            request_headers.update({"Content-Length": str(len(payload))})
+        if data is not None:
+            request_headers.update({"Content-Length": str(len(data))})
 
-        if not verify_ssl:
+        if not verify:
             context.check_hostname = False
             context.verify_mode = ssl.CERT_NONE
 
@@ -56,11 +127,13 @@ class RequestHelpers:
             proxy_handler = urllib.request.ProxyHandler(proxies)
             # pragma: no cover
 
+        updated_url = RequestHelpers.update_querystring(url, params)
+
         req = urllib.request.Request(
-                url,
+                updated_url,
                 method=method,
                 headers=request_headers,
-                data=payload)
+                data=data)
 
         opener = urllib.request.build_opener(proxy_handler)\
             if proxy_handler is not None else\
@@ -70,16 +143,11 @@ class RequestHelpers:
                 req,
                 context=context) as response:
 
-            status_code = response.getcode()
-            response_bytes = response.read()
-            response_body = response_bytes.decode('utf-8')
-
-            try:
-                json_data = json.loads(response_body)
-            except json.JSONDecodeError:  # pragma: no cover
-                json_data = None  # pragma: no cover
-
-            return status_code, json_data
+            return HTTPResponse(
+                context=context,
+                request=req,
+                response=response
+                )
 
 
 class Helpers:
@@ -210,3 +278,14 @@ class Helpers:
             proxy_info = parse.urlparse(proxies.get("http"))
 
         return proxy_info
+
+
+class ListHelpers:
+    @staticmethod
+    def list_to_dict(
+            elements: List[T],
+            key: Callable[[T], K]) -> Dict[T, K]:
+        return {
+            key(e): e
+            for e in elements
+        }

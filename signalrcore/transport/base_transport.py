@@ -1,6 +1,5 @@
 import enum
 from typing import Callable, Dict, Optional
-from ..protocol.json_hub_protocol import JsonHubProtocol
 from ..helpers import Helpers
 from ..transport.base_reconnection import BaseReconnection
 from ..hub.negotiation import NegotiateResponse, NegotiationHandler
@@ -27,7 +26,7 @@ class BaseTransport(object):
             on_open: Callable = None,
             on_close: Callable = None,
             on_reconnect: Callable = None,
-            protocol=JsonHubProtocol(),
+            protocol=None,
             reconnection_handler: BaseReconnection = None,
             on_message: Callable = None):
         self.url = url
@@ -106,6 +105,6 @@ class BaseTransport(object):
         )
 
         self.url, self.headers, response = handler.negotiate()
-        self.connection_id = response.connection_id
+        self.connection_id = response.get_id()
 
         return response
