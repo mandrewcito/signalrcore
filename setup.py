@@ -5,14 +5,13 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="signalrcore",
-    version="0.9.71",
+    version="1.00.00a",
     author="mandrewcito",
     author_email="signalrcore@mandrewcito.dev",
-    description="A Python SignalR Core client(json and messagepack),"
-    "with invocation auth and two way streaming."
+    description="Python SignalR Core full client (transports and encodings)."
     "Compatible with azure / serverless functions."
     "Also with automatic reconnect and manually reconnect.",
-    keywords="signalr core client 3.1",
+    keywords="signalr core client 3.1+",
     long_description=long_description,
     long_description_content_type="text/markdown",
     license_file="LICENSE",
