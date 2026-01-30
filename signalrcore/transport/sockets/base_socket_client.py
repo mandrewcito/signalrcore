@@ -6,6 +6,7 @@ from ...helpers import Helpers
 from .utils import WINDOW_SIZE, create_ssl_context
 from .errors import SocketHandshakeError, \
     NoHeaderException, SocketClosedError
+from ...types import DEFAULT_ENCODING
 
 
 class BaseSocketClient(object):
@@ -92,7 +93,7 @@ class BaseSocketClient(object):
             request_headers.append(f"{k}: {v}")
 
         request = "\r\n".join(request_headers) + "\r\n\r\n"
-        req = request.encode("utf-8")
+        req = request.encode(DEFAULT_ENCODING)
 
         if self.is_trace_enabled():
             self.logger.debug(f"[TRACE] - {req}")

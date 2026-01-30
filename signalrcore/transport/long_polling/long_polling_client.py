@@ -13,8 +13,10 @@
 
 import time
 import threading
+from urllib.error import URLError
 from typing import Callable, Union
 from ...helpers import RequestHelpers, Helpers
+from ...types import DEFAULT_ENCODING, RECORD_SEPARATOR
 
 
 class LongPollingBaseClient(object):
@@ -22,6 +24,7 @@ class LongPollingBaseClient(object):
             self,
             thread_name: str,
             url: str,
+            receive_header: str,
             connection_id: str = None,
             headers: dict = dict(),
             proxies: dict = dict(),
@@ -43,17 +46,46 @@ class LongPollingBaseClient(object):
         self.on_open = on_open
         self.on_error = on_error
         self.on_close = on_close
+        self._receive_headers = {
+            "Accept": receive_header
+        }
 
         self._thread: threading.Thread = None
         self.logger = Helpers.get_logger()
         self._lock = threading.Lock()
         self._running = False
 
-    def send(self):  # pragma: no cover
-        raise NotImplementedError()
+        self._buffer = b""
+        self._byte_separator = RECORD_SEPARATOR.encode(DEFAULT_ENCODING)
+        self._n_poll = 0
 
-    def _recv_frame(self) -> Union[str, bytes, None]:  # pragma: no cover
-        raise NotImplementedError()
+    def send(
+            self,
+            message: Union[str, bytes],
+            headers: dict = None):
+
+        headers = {
+            "Content-Type": "application/octet-stream",
+        } if headers is None else headers
+
+        headers.update(self.headers)
+
+        msg_bytes =\
+            message\
+            if type(message) is bytes else\
+            message.encode(DEFAULT_ENCODING)
+
+        response = RequestHelpers.post(
+            Helpers.websocket_to_http(self.url),
+            headers=headers,
+            proxies=self.proxies,
+            verify=self.verify_ssl,
+            data=msg_bytes
+        )
+
+        status_code, data = response.status_code, response.json()
+
+        self.logger.debug(f"Long Polling send response: {status_code} - {data}")
 
     def connect(self):
         self._running = True
@@ -70,17 +102,72 @@ class LongPollingBaseClient(object):
             self._thread.join()
             self._thread = None
 
+    def _recv_frame(self) -> Union[str, bytes, None]:
+        data = None
+
+        try:
+            response = RequestHelpers.get(
+                url=Helpers.websocket_to_http(self.url),
+                headers=self._receive_headers,
+                params={
+                    "id": self.connection_id
+                },
+                verify=self.verify_ssl
+            )
+
+            status_code, data = response.status_code, response.content
+
+            if status_code == 404:
+                raise OSError(response.content.decode(DEFAULT_ENCODING))
+
+        except Exception as err:
+            if self.enable_trace:
+                self.logger.debug(f"[TRACE] {err}")
+        finally:
+            if self.enable_trace:
+                self.logger.debug(f"[TRACE] {data}")
+        return data
+
+    def _append(self, frame: bytes) -> Union[bytes, None]:
+        """
+            Appends a frame to the current buffer
+        Args:
+            frame (str, bytes): frame received
+
+        Returns:
+            Union[str, bytes, None]: message or messages
+                that are complete on the buffer
+        """
+        self._buffer += frame
+        has_record_separator = self._byte_separator in self._buffer
+
+        if not has_record_separator:
+            return None
+
+        idx = self._buffer.index(self._byte_separator)
+        complete_buffer = self._buffer[0: idx]
+        self._buffer = self._buffer[idx + 1:]
+        return complete_buffer
+
+    def prepare_data(self, data: bytes) -> Union[bytes, str]:
+        return data
+
     def run(self):
         self.on_open()
         try:
-            while self.running:
-                message = self._recv_frame()
+            while self._running:
 
-                if message is not None:
-                    self.on_message(self, message)
+                frame = self._recv_frame()
+
+                if frame is not None:
+                    complete_buffer = self._append(frame)
+
+                    if complete_buffer is not None:
+                        message = self.prepare_data(complete_buffer)
+                        self.on_message(self, message)
 
         except (OSError, Exception) as e:
-            self.running = False
+            self._running = False
 
             if self.logger:
                 self.logger.error(f"Receive error: {e}")
@@ -131,11 +218,16 @@ class LongPollingTextClient(LongPollingBaseClient):
     def __init__(self, **kwargs):
         super(LongPollingTextClient, self).__init__(
             "Signalrcore long polling text client",
+            receive_header="Text",
             **kwargs)
+
+    def prepare_data(self, data):
+        return data.decode(DEFAULT_ENCODING)
 
 
 class LongPollingBinaryClient(LongPollingBaseClient):
     def __init__(self, **kwargs):
         super(LongPollingTextClient, self).__init__(
             "Signalrcore long polling binary client",
+            receive_header="binary",
             **kwargs)

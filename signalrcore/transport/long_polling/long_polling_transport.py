@@ -12,8 +12,10 @@ class LongPollingTransport(BaseTransport):
 
     def __init__(
             self,
+            keep_alive_interval=15,
             **kwargs):
         super(LongPollingTransport, self).__init__(**kwargs)
+        self.keep_alive_interval = keep_alive_interval
 
         self._client_cls = LongPollingBinaryClient\
             if self.is_binary else LongPollingTextClient

@@ -6,7 +6,7 @@ from ...helpers import Helpers
 from ...helpers import RequestHelpers
 from ..sockets.base_socket_client import BaseSocketClient, WINDOW_SIZE
 from ..sockets.errors import NoHeaderException
-from ...types import RECORD_SEPARATOR
+from ...types import RECORD_SEPARATOR, DEFAULT_ENCODING
 
 THREAD_NAME = "Signalrcore SSE client"
 
@@ -72,7 +72,7 @@ class SSEClient(BaseSocketClient):
         msg_bytes =\
             message\
             if type(message) is bytes else\
-            message.encode("utf-8")
+            message.encode(DEFAULT_ENCODING)
 
         response = RequestHelpers.post(
             Helpers.websocket_to_http(self.url),
@@ -94,7 +94,7 @@ class SSEClient(BaseSocketClient):
         array = [x for x in buffer.splitlines() if b'{' in x]
         data = b"".join(array)
 
-        decoded_str = data.decode("utf-8")
+        decoded_str = data.decode(DEFAULT_ENCODING)
 
         if self.is_trace_enabled():
             self.logger.debug(
@@ -105,7 +105,7 @@ class SSEClient(BaseSocketClient):
             .replace("data:", "")
 
     def _recv_frame(self):
-        end_record = RECORD_SEPARATOR.encode("utf-8")
+        end_record = RECORD_SEPARATOR.encode(DEFAULT_ENCODING)
 
         while end_record not in self._buffer:
             chunk = self.sock.recv(WINDOW_SIZE)

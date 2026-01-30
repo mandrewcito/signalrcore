@@ -13,3 +13,4 @@ class HubProtocolEncoding(enum.Enum):
 
 
 RECORD_SEPARATOR = chr(0x1E)
+DEFAULT_ENCODING = "utf-8"

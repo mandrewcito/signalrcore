@@ -8,6 +8,7 @@ from typing import Optional, Callable, Union
 
 from ..sockets.errors import SocketClosedError, NoHeaderException
 from ..sockets.base_socket_client import BaseSocketClient
+from ...types import DEFAULT_ENCODING
 
 THREAD_NAME = "Signalrcore websocket client"
 
@@ -45,7 +46,7 @@ class WebSocketClient(BaseSocketClient):
     def get_socket_headers(self):
         parsed_url = parse.urlparse(self.url)
 
-        key = base64.b64encode(os.urandom(16)).decode("utf-8")
+        key = base64.b64encode(os.urandom(16)).decode(DEFAULT_ENCODING)
         relative_reference = parsed_url.path
 
         if parsed_url.query:
@@ -63,7 +64,7 @@ class WebSocketClient(BaseSocketClient):
     def prepare_data(self, data):
         if self.is_binary:
             return data
-        return data.decode("utf-8")
+        return data.decode(DEFAULT_ENCODING)
 
     def send(
             self,
@@ -74,7 +75,7 @@ class WebSocketClient(BaseSocketClient):
             raise SocketClosedError()
 
         # Text or binary opcode (no fragmentation)
-        payload = message.encode("utf-8")\
+        payload = message.encode(DEFAULT_ENCODING)\
             if type(message) is str else message
         header = bytes([0x80 | opcode])
         length = len(payload)
