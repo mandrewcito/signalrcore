@@ -200,7 +200,7 @@ class LongPollingBaseClient(object):
 
             status_code,  data = response.status_code, response.json()
 
-            if status_code != 200:
+            if status_code not in [200, 202]:
                 self.logger.error(
                     f"Error removing connection from the server {data}")
 
