@@ -132,9 +132,12 @@ class SSEClient(BaseSocketClient):
 
     def dispose(self):
         if self.sock is not None:
-            self.sock.setsockopt(
-                socket.SOL_SOCKET,
-                socket.SO_LINGER,
-                struct.pack('ii', 1, 0)
-                )
+            try:
+                self.sock.setsockopt(
+                    socket.SOL_SOCKET,
+                    socket.SO_LINGER,
+                    struct.pack('ii', 1, 0)
+                    )
+            except Exception as ex:
+                self.logger.error(ex)
         return super().dispose()
