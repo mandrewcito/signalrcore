@@ -1,3 +1,5 @@
+import socket
+import struct
 import urllib.parse as parse
 
 from typing import Callable, Union
@@ -127,3 +129,12 @@ class SSEClient(BaseSocketClient):
         except Exception as ex:
             self.logger.debug(ex)
             return ""
+
+    def dispose(self):
+        if self.sock is not None:
+            self.sock.setsockopt(
+                socket.SOL_SOCKET,
+                socket.SO_LINGER,
+                struct.pack('ii', 1, 0)
+                )
+        return super().dispose()
