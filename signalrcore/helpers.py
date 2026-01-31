@@ -49,14 +49,16 @@ class RequestHelpers:
             headers: dict = {},
             proxies: dict = {},
             verify: bool = False,
-            params: dict = {}) -> HTTPResponse:
+            params: dict = {},
+            timeout: float = None) -> HTTPResponse:
         return RequestHelpers.request(
             url,
             "GET",
             headers=headers,
             proxies=proxies,
             verify=verify,
-            params=params
+            params=params,
+            timeout=timeout
         )
 
     @staticmethod
@@ -66,7 +68,8 @@ class RequestHelpers:
             proxies: dict = {},
             verify: bool = False,
             params: dict = {},
-            data: bytes = None) -> HTTPResponse:
+            data: bytes = None,
+            timeout: float = None) -> HTTPResponse:
         return RequestHelpers.request(
             url,
             "POST",
@@ -74,7 +77,8 @@ class RequestHelpers:
             proxies=proxies,
             verify=verify,
             params=params,
-            data=data
+            data=data,
+            timeout=timeout
         )
 
     @staticmethod
@@ -84,7 +88,8 @@ class RequestHelpers:
             proxies: dict = {},
             verify: bool = False,
             params: dict = {},
-            data: bytes = None) -> HTTPResponse:
+            data: bytes = None,
+            timeout: float = None) -> HTTPResponse:
         return RequestHelpers.request(
             url,
             "DELETE",
@@ -92,7 +97,8 @@ class RequestHelpers:
             proxies=proxies,
             verify=verify,
             params=params,
-            data=data
+            data=data,
+            timeout=timeout
         )
 
     @staticmethod
@@ -103,7 +109,8 @@ class RequestHelpers:
             proxies: dict = {},
             verify: bool = False,
             params: dict = {},
-            data: bytes = None) -> HTTPResponse:
+            data: bytes = None,
+            timeout: float = None) -> HTTPResponse:
 
         context = ssl.create_default_context()
         request_headers = {}
@@ -141,7 +148,8 @@ class RequestHelpers:
 
         with opener(
                 req,
-                context=context) as response:
+                context=context,
+                timeout=timeout) as response:
 
             return HTTPResponse(
                 context=context,

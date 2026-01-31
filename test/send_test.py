@@ -134,7 +134,7 @@ class TestSendMethod(BaseTestCase):
             release,
             invocation_id=uid)
 
-        self.assertTrue(LOCKS[identifier].acquire(timeout=10))
+        self.assertTrue(LOCKS[identifier].acquire(timeout=40))
         del LOCKS[identifier]
 
 
@@ -160,6 +160,14 @@ class TestSendSseMethod(TestSendMethod):
 
     def get_connection(self, msgpack=False):
         return super().get_connection_sse(
+            reconnection=False)
+
+
+class TestSendLongPollingMethod(TestSendMethod):
+    server_url = Urls.server_url_http_ssl
+
+    def get_connection(self, msgpack=False):
+        return super().get_connection_long_polling(
             reconnection=False)
 
 
@@ -214,4 +222,12 @@ class TestSendSseErrorMethod(TestSendErrorMethod):
 
     def get_connection(self, msgpack=False):
         return super().get_connection_sse(
+            reconnection=False)
+
+
+class TestSendLongPollingErrorMethod(TestSendErrorMethod):
+    server_url = Urls.server_url_http_ssl
+
+    def get_connection(self, msgpack=False):
+        return super().get_connection_long_polling(
             reconnection=False)

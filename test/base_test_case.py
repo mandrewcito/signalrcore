@@ -57,9 +57,15 @@ class BaseTestCase(InternalTestCase):
     server_url = Urls.server_url_ssl
 
     def get_connection(self, msgpack=False):
+        is_debug = "vscode" in sys.argv[0] and "pytest" in sys.argv[0]
+
+        enable_trace = is_debug
+        log_level = logging.DEBUG\
+            if is_debug else logging.ERROR
+
         builder = HubConnectionBuilder()\
             .with_url(self.server_url, options={"verify_ssl": False})\
-            .configure_logging(logging.ERROR)\
+            .configure_logging(log_level, socket_trace=enable_trace)\
             .with_automatic_reconnect({
                 "type": "raw",
                 "keep_alive_interval": 10,
@@ -86,6 +92,34 @@ class BaseTestCase(InternalTestCase):
             .with_url(self.server_url, options={
                 "verify_ssl": False,
                 "transport": HttpTransportType.server_sent_events
+                })\
+            .configure_logging(log_level, socket_trace=enable_trace)
+
+        if reconnection:
+            builder\
+                .with_automatic_reconnect({
+                    "type": "raw",
+                    "keep_alive_interval": 10,
+                    "reconnect_interval": 5,
+                    "max_attempts": 5
+                })
+
+        hub = builder.build()
+        hub.on_open(self.on_open)
+        hub.on_close(self.on_close)
+        return hub
+
+    def get_connection_long_polling(self, reconnection=False, msgpack=False):
+        is_debug = "vscode" in sys.argv[0] and "pytest" in sys.argv[0]
+
+        enable_trace = is_debug
+        log_level = logging.DEBUG\
+            if is_debug else logging.ERROR
+
+        builder = HubConnectionBuilder()\
+            .with_url(self.server_url, options={
+                "verify_ssl": False,
+                "transport": HttpTransportType.long_polling
                 })\
             .configure_logging(log_level, socket_trace=enable_trace)
 

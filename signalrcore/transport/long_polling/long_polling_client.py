@@ -1,22 +1,11 @@
-# Request:
-# Post negotiate
-# GET ENDPOINT with id
-# Depending on accept header -> json or bytes
-
-# Response
-# !!! can be fragmented into multiple requests !!!
-
-# 204 -> another client with the same id has connected, connection closed
-# 200, content-length: 0 -> no data, you can retry
-# 400 -> missing ID
-# 404 -> No ID on server side (failed negotiation??)
 
 import time
 import threading
-from urllib.error import URLError
+
 from typing import Callable, Union
 from ...helpers import RequestHelpers, Helpers
 from ...types import DEFAULT_ENCODING, RECORD_SEPARATOR
+from urllib.error import HTTPError
 
 
 class LongPollingBaseClient(object):
@@ -57,7 +46,11 @@ class LongPollingBaseClient(object):
 
         self._buffer = b""
         self._byte_separator = RECORD_SEPARATOR.encode(DEFAULT_ENCODING)
-        self._n_poll = 0
+
+    def is_connection_closed(self) -> bool:
+        return not self._running\
+            or self._thread is None\
+            or not self._thread.is_alive()
 
     def send(
             self,
@@ -85,7 +78,8 @@ class LongPollingBaseClient(object):
 
         status_code, data = response.status_code, response.json()
 
-        self.logger.debug(f"Long Polling send response: {status_code} - {data}")
+        self.logger.debug(
+            f"Long Polling send response: {status_code} - {data}")
 
     def connect(self):
         self._running = True
@@ -112,14 +106,24 @@ class LongPollingBaseClient(object):
                 params={
                     "id": self.connection_id
                 },
-                verify=self.verify_ssl
+                verify=self.verify_ssl,
+                timeout=None
             )
 
             status_code, data = response.status_code, response.content
 
-            if status_code == 404:
-                raise OSError(response.content.decode(DEFAULT_ENCODING))
+            if status_code == 200 or status_code == 204:
+                # 204 -> another client with the same
+                #   id has connected, connection closed
+                # 200, content-length: 0 -> no data, you can retry
+                return data
 
+            if status_code == 404 or status_code == 400:
+                # 400 -> missing ID
+                # 404 -> No ID on server side (failed negotiation??)
+                raise OSError(response.content.decode(DEFAULT_ENCODING))
+        except TimeoutError:
+            return None
         except Exception as err:
             if self.enable_trace:
                 self.logger.debug(f"[TRACE] {err}")
@@ -185,7 +189,7 @@ class LongPollingBaseClient(object):
 
             # Remove connection from the server
             response = RequestHelpers.delete(
-                self.url,
+                Helpers.websocket_to_http(self.url),
                 self.headers,
                 self.proxies,
                 self.verify_ssl,
@@ -201,14 +205,15 @@ class LongPollingBaseClient(object):
                     f"Error removing connection from the server {data}")
 
             self.dispose()
-
-            self.on_close()
-
+        except HTTPError as ex:
+            if ex.status != 404:
+                self.logger.error(ex)
         except Exception as ex:
             self.logger.error(ex)
         finally:
             self._lock.release()
             self.is_closing = False
+            self.on_close()
 
         self.logger.debug(
             f"Long polling closed connection {time.time() - start}")
