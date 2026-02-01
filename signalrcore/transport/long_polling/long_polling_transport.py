@@ -144,7 +144,7 @@ class LongPollingTransport(BaseTransport):
     def on_message(self, app, raw_message):
         self.logger.debug("Message received {0}".format(raw_message))
 
-        if not self.handshake_received:
+        if not self.manually_closing and not self.handshake_received:
             messages = self.evaluate_handshake(raw_message)
             self._set_state(TransportState.connected)
 

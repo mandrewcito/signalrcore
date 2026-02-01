@@ -134,6 +134,10 @@ class TestSendMethod(BaseTestCase):
             release,
             invocation_id=uid)
 
+        self.connection.send(
+            "SendMessage",
+            [self.username, "no callback message"])
+
         self.assertTrue(LOCKS[identifier].acquire(timeout=40))
         del LOCKS[identifier]
 
