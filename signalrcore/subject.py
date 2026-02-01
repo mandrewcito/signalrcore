@@ -21,7 +21,8 @@ class Subject(object):
         self.connection = None
         self.target = None
         self.invocation_id = str(uuid.uuid4())
-        self.lock = threading.RLock()
+        self.lock = threading.Lock()
+        self._timeout = 10
 
     def check(self):
         """Ensures that invocation streaming object is correct
@@ -33,7 +34,7 @@ class Subject(object):
                 or self.target is None\
                 or self.invocation_id is None:
             raise ValueError(
-                "subject must be passed as an agument to a send function. "
+                "subject must be passed as an argument to a send function. "
                 + "hub_connection.send([method],[subject]")
 
     def next(self, item: Any):
@@ -43,26 +44,32 @@ class Subject(object):
             item (any): Item that will be streamed
         """
         self.check()
-        with self.lock:
-            self.connection.transport.send(StreamItemMessage(
+        assert self.lock.acquire(timeout=self._timeout), \
+            "Next raised exception"
+        self.connection.transport.send(StreamItemMessage(
                 self.invocation_id,
                 item))
+        self.lock.release()
 
     def start(self):
         """Starts streaming
         """
         self.check()
-        with self.lock:
-            self.connection.transport.send(
+        assert self.lock.acquire(timeout=self._timeout), \
+            "Start raised exception"
+        self.connection.transport.send(
                 InvocationClientStreamMessage(
                     [self.invocation_id],
                     self.target,
                     []))
+        self.lock.release()
 
     def complete(self):
         """Finish streaming
         """
         self.check()
-        with self.lock:
-            self.connection.transport.send(CompletionClientStreamMessage(
+        assert self.lock.acquire(timeout=self._timeout), \
+            "Complete raised exception"
+        self.connection.transport.send(CompletionClientStreamMessage(
                 self.invocation_id))
+        self.lock.release()

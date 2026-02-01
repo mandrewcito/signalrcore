@@ -179,10 +179,13 @@ class LongPollingBaseClient(object):
             self.on_error(e)
 
     def close(self):
+        if not self._running:
+            return
+
         self.logger.debug("Long polling closing connection")
         start = time.time()
         try:
-            self._lock.acquire()
+            self._lock.acquire(timeout=10)
 
             self.is_closing = True
             self._running = False

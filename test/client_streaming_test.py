@@ -6,13 +6,16 @@ class TestClientStreamMethod(BaseTestCase):
 
     def test_stream(self):
         self.complete = False
-        self.items = list(range(0, 10))
+        items = list(range(0, 10))
         subject = Subject()
         self.connection.send("UploadStream", subject)
-        while (len(self.items) > 0):
-            subject.next(str(self.items.pop()))
+
+        while (len(items) > 0):
+            subject.next(str(items.pop()))
+
         subject.complete()
-        self.assertTrue(len(self.items) == 0)
+
+        self.assertTrue(len(items) == 0)
 
 
 class TestClientStreamMethodMsgPack(TestClientStreamMethod):

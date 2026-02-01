@@ -37,14 +37,25 @@ class InternalTestCase(unittest.TestCase):
     def setUp(self):
         self.connection = self.get_connection()
         self.connection.start()
+
         t0 = time.time()
+
         while not self.connected:
             time.sleep(0.1)
             if time.time() - t0 > 20:
-                raise ValueError("TIMEOUT ")
+                raise TimeoutError("TIMEOUT ")
 
     def tearDown(self):
         self.connection.stop()
+
+        t0 = time.time()
+
+        while self.connected:
+            time.sleep(0.1)
+            if time.time() - t0 > 20:
+                raise TimeoutError("TIMEOUT Closing connection")
+
+        del self.connection
 
     def on_open(self):
         self.connected = True

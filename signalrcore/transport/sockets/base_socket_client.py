@@ -126,25 +126,27 @@ class BaseSocketClient(object):
         self.recv_thread.start()
 
     def close(self):
-        try:
-            self.is_closing = True
-            self.running = False
+        if not self.running:
+            return
 
-            self.logger.debug("SSE closing socket")
+        self.is_closing = True
+        self.running = False
+
+        try:
+            self.logger.debug("Base socket client: closing socket")
 
             self.dispose()
 
-            self.on_close()
-
-            self.logger.debug("SSE closed successfully")
+            self.logger.debug("Base socket client: closed successfully")
         except Exception as ex:  # pragma: no cover
             self.logger.error(ex)  # pragma: no cover
             self.on_error(ex)  # pragma: no cover
         finally:
+            self.on_close()
             self.is_closing = False
 
     def dispose(self):
-        if self.sock:
+        if self.sock is not None:
             self.sock.close()
 
         is_same_thread = threading.current_thread().name == self.thread_name

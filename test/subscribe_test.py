@@ -8,7 +8,6 @@ class TestSendMethod(BaseTestCase):
         def fake_callback(_):
             pass
 
-        self.connection = self.get_connection()
         self.connection.on("ReceiveMessage", fake_callback)
 
         self.assertEqual(len(self.connection.handlers), 1)
