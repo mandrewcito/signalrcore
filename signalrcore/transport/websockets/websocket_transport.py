@@ -32,7 +32,6 @@ class WebsocketTransport(BaseTransport):
     def stop(self):
         self.manually_closing = True
         self.dispose()
-        self._set_state(TransportState.disconnected)
         self.handshake_received = False
 
     def is_trace_enabled(self) -> bool:
@@ -106,7 +105,8 @@ class WebsocketTransport(BaseTransport):
         # raise HubError(error)
 
     def on_socket_close(self):
-        if self.reconnection_handler is not None\
+        if not self.manually_closing and\
+                self.reconnection_handler is not None\
                 and not self.is_reconnecting():
             self.handle_reconnect()
             return

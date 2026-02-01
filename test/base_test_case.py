@@ -5,6 +5,8 @@ import sys
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from signalrcore.protocol.messagepack_protocol import MessagePackHubProtocol
 from signalrcore.types import HttpTransportType
+from signalrcore.helpers import Helpers
+CONNECTION_TIMEOUT = 20
 
 
 class Urls:
@@ -30,6 +32,7 @@ class Urls:
 class InternalTestCase(unittest.TestCase):
     connection = None
     connected = False
+    logger = Helpers.get_logger()
 
     def get_connection(self):
         raise NotImplementedError()
@@ -42,8 +45,8 @@ class InternalTestCase(unittest.TestCase):
 
         while not self.connected:
             time.sleep(0.1)
-            if time.time() - t0 > 20:
-                raise TimeoutError("TIMEOUT ")
+            if time.time() - t0 > CONNECTION_TIMEOUT:
+                raise TimeoutError("TIMEOUT Opening connection")
 
     def tearDown(self):
         self.connection.stop()
@@ -52,7 +55,7 @@ class InternalTestCase(unittest.TestCase):
 
         while self.connected:
             time.sleep(0.1)
-            if time.time() - t0 > 20:
+            if time.time() - t0 > CONNECTION_TIMEOUT:
                 raise TimeoutError("TIMEOUT Closing connection")
 
         del self.connection

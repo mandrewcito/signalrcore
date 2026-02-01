@@ -1,4 +1,5 @@
 import enum
+import threading
 from typing import Callable, Dict, Optional
 from ..helpers import Helpers
 from ..transport.base_reconnection import BaseReconnection
@@ -50,6 +51,7 @@ class BaseTransport(object):
 
         self.state = TransportState.disconnected
         self.reconnection_handler = reconnection_handler
+        self._lock = threading.Lock()
 
     def _set_state(self, new_state: TransportState):
         """Internal helper to change state and call appropriate callbacks."""
@@ -65,14 +67,16 @@ class BaseTransport(object):
         was_connecting = old_state == TransportState.connecting
         was_connected = old_state == TransportState.connected
         was_reconnecting = old_state == TransportState.reconnecting
-
-        if was_connecting and self.is_connected():
-            self._on_open()
-        elif (was_connected or was_reconnecting)\
-                and self.is_disconnected():
-            self._on_close()
-        elif was_reconnecting and self.is_connected():
-            self._on_reconnect()
+        try:
+            if was_connecting and self.is_connected():
+                self._on_open()
+            elif (was_connected or was_reconnecting)\
+                    and self.is_disconnected():
+                self._on_close()
+            elif was_reconnecting and self.is_connected():
+                self._on_reconnect()
+        except Exception as ex:
+            raise ex
 
     def is_connected(self):
         return self.state == TransportState.connected

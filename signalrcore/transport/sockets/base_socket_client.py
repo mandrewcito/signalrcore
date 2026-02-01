@@ -142,8 +142,8 @@ class BaseSocketClient(object):
             self.logger.error(ex)  # pragma: no cover
             self.on_error(ex)  # pragma: no cover
         finally:
-            self.on_close()
             self.is_closing = False
+            self.on_close()
 
     def dispose(self):
         if self.sock is not None:

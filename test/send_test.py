@@ -3,7 +3,7 @@ import uuid
 import threading
 
 from signalrcore.hub.errors import HubConnectionError
-from test.base_test_case import BaseTestCase, Urls
+from test.base_test_case import BaseTestCase, Urls, CONNECTION_TIMEOUT
 
 LOCKS = {}
 
@@ -18,8 +18,8 @@ class TestSendException(BaseTestCase):
         t0 = time.time()
         while not self.connected:
             time.sleep(0.1)
-            if time.time() - t0 > 20:
-                raise TimeoutError("TIMEOUT ")
+            if time.time() - t0 > CONNECTION_TIMEOUT:
+                raise TimeoutError("TIMEOUT Opening connection")
 
     def test_send_exception(self):
         identifier = str(uuid.uuid4())
@@ -54,8 +54,8 @@ class TestSendExceptionMsgPack(TestSendException):
         t0 = time.time()
         while not self.connected:
             time.sleep(0.1)
-            if time.time() - t0 > 20:
-                raise TimeoutError("TIMEOUT ")
+            if time.time() - t0 > CONNECTION_TIMEOUT:
+                raise TimeoutError("TIMEOUT Opening connection ")
 
 
 class TestSendWarning(BaseTestCase):
@@ -65,8 +65,8 @@ class TestSendWarning(BaseTestCase):
         t0 = time.time()
         while not self.connected:
             time.sleep(0.1)
-            if time.time() - t0 > 20:
-                raise TimeoutError("TIMEOUT ")
+            if time.time() - t0 > CONNECTION_TIMEOUT:
+                raise TimeoutError("TIMEOUT Opening connection ")
 
     def test_send_warning(self):
         identifier = str(uuid.uuid4())
@@ -89,8 +89,8 @@ class TestSendWarningMsgPack(TestSendWarning):
         t0 = time.time()
         while not self.connected:
             time.sleep(0.1)
-            if time.time() - t0 > 20:
-                raise TimeoutError("TIMEOUT ")
+            if time.time() - t0 > CONNECTION_TIMEOUT:
+                raise TimeoutError("TIMEOUT Opening connection ")
 
 
 class TestSendMethod(BaseTestCase):
@@ -104,8 +104,8 @@ class TestSendMethod(BaseTestCase):
         t0 = time.time()
         while not self.connected:
             time.sleep(0.1)
-            if time.time() - t0 > 20:
-                raise TimeoutError("TIMEOUT ")
+            if time.time() - t0 > CONNECTION_TIMEOUT:
+                raise TimeoutError("TIMEOUT Opening connection ")
 
     def receive_message(self, args):
         self.assertEqual(args[1], self.message)
@@ -128,8 +128,8 @@ class TestSendMethod(BaseTestCase):
         t0 = time.time()
         while not self.received:
             time.sleep(0.1)
-            if time.time() - t0 > 20:
-                raise TimeoutError("TIMEOUT ")
+            if time.time() - t0 > CONNECTION_TIMEOUT * 2:
+                raise TimeoutError("TIMEOUT Receiving message ")
 
         self.assertTrue(self.received)
 
@@ -174,8 +174,8 @@ class TestSendMethodMsgPack(TestSendMethod):
         t0 = time.time()
         while not self.connected:
             time.sleep(0.1)
-            if time.time() - t0 > 20:
-                raise TimeoutError("TIMEOUT ")
+            if time.time() - t0 > CONNECTION_TIMEOUT:
+                raise TimeoutError("TIMEOUT Opening connection ")
 
 
 class TestSendNoSslMethodMsgPack(TestSendMethodMsgPack):

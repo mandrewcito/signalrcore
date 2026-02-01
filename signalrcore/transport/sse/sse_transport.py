@@ -80,6 +80,8 @@ class SSETransport(BaseTransport):
             self._client.close()
 
     def stop(self):
+        if self.manually_closing or self.is_disconnected():
+            return
         self.manually_closing = True
         self.handshake_received = False
         self.dispose()
