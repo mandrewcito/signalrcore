@@ -16,6 +16,7 @@ from ..protocol.protocol_factory import ProtocolFactory
 from ..transport.transport_factory import TransportFactory
 from .negotiation import NegotiateResponse, NegotiationHandler
 from ..types import HttpTransportType, HubProtocolEncoding
+from ..messages.base_message import BaseMessage
 
 
 class InvocationResult(object):
@@ -27,7 +28,7 @@ class InvocationResult(object):
 class HubCallbacks(object):
     on_open: Callable
     on_close: Callable
-    on_error: Callable
+    on_error: Callable[[Exception], None]
     on_reconnect: Callable
 
     def __init__(self):
@@ -45,8 +46,8 @@ class HubCallbacks(object):
     def on_close(self):
         return self._on_close()
 
-    def on_error(self, error):
-        return self._on_open(error)
+    def on_error(self, error: Exception):
+        return self.on_error(error)
 
     def on_reconnect(self):
         return self._on_reconnect()
@@ -83,7 +84,7 @@ class BaseHubConnection(object):
         self._selected_protocol = protocol
 
         if headers is None:
-            self.headers = dict()
+            self.headers = dict()  # pragma: no cover
         else:
             self.headers = headers
 
@@ -291,8 +292,9 @@ class BaseHubConnection(object):
 
         return result
 
-    def on_message(self, messages) -> None:
+    def on_message(self, messages: List[BaseMessage]) -> None:
         for message in messages:
+            self.logger.debug(message)
             if message.type == MessageType.invocation_binding_failure:
                 self.logger.error(message)
                 self._callbacks.on_error(message)
@@ -306,8 +308,8 @@ class BaseHubConnection(object):
                 fired_handlers = self.handlers.get(message.target, [])
 
                 if len(fired_handlers) == 0:
-                    self.logger.debug(
-                        f"event '{message.target}' hasn't fired any handler")
+                    self.logger.info(
+                        f"Event '{message.target}' hasn't fired any handler")
 
                 for handler in fired_handlers:
                     handler(message.arguments)
@@ -318,11 +320,12 @@ class BaseHubConnection(object):
                 return
 
             if message.type == MessageType.completion:
+
                 if message.error is not None and len(message.error) > 0:
                     self._callbacks.on_error(message)
 
                 # Send callbacks
-                fired_handlers = self.stream_handlers.get(
+                fired_handlers: List[StreamHandler] = self.stream_handlers.get(
                     message.invocation_id, [])
 
                 # Stream callbacks

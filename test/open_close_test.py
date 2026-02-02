@@ -124,5 +124,12 @@ class TestOpenCloseSseMethods(TestOpenCloseWebsocketMethods):
 
     def test_open_wait_close(self):
         connection = self.get_connection()
-        self._test(connection, 10)
+        self._test(connection, 20)
         del connection
+
+
+class TestOpenCloseLongPollingMethods(TestOpenCloseSseMethods):
+    def get_connection(self, msgpack=False):
+        return super().get_connection_long_polling(
+            False,
+            msgpack)

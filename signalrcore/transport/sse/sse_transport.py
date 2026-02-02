@@ -8,6 +8,7 @@ from .sse_client import SSEClient
 from ..base_transport import TransportState
 from ..reconnection import ConnectionStateChecker
 from ...messages.ping_message import PingMessage
+from ..sockets.errors import SocketClosedError
 
 
 class SSETransport(BaseTransport):
@@ -75,7 +76,7 @@ class SSETransport(BaseTransport):
         return True
 
     def dispose(self):
-        if self.is_connected():
+        if not self.is_disconnected():
             self.connection_checker.stop()
             self._client.close()
 
@@ -105,20 +106,27 @@ class SSETransport(BaseTransport):
         Raises:
             HubError: [description]
         """
+        if self.manually_closing and type(error) is SocketClosedError:
+            return
+
         self.logger.debug("-- SSE error --")
         self.logger.error(traceback.format_exc(10, True))
         self.logger.error("{0} {1}".format(self, error))
         self.logger.error("{0} {1}".format(error, type(error)))
+
         self._set_state(TransportState.disconnected)
-        # raise HubError(error)
 
     def on_client_close(self):
-        if self.reconnection_handler is not None\
-                and not self.is_reconnecting()\
-                and not self.manually_closing:
-            self.handle_reconnect()
+        did_i_reconnect = self.reconnection_handler is not None \
+            and (
+                not self.manually_closing
+                and not self.reconnection_handler.reconnecting
+                )
+
+        if not did_i_reconnect or self.manually_closing:
+            self._set_state(TransportState.disconnected)
             return
-        self._set_state(TransportState.disconnected)
+        self.handle_reconnect()
 
     def on_client_open(self):
         self.on_open()
@@ -175,22 +183,24 @@ class SSETransport(BaseTransport):
         except Exception as ex:  # pragma: no cover
             raise ex  # pragma: no cover
 
-    def handle_reconnect(self):
+    def handle_reconnect(self) -> bool:
         if self.is_reconnecting() or self.manually_closing:
-            return  # pragma: no cover
+            return False
 
         if self.reconnection_handler is None:
-            return
+            return False
 
-        self.reconnection_handler.reconnecting = True
-        self._set_state(TransportState.reconnecting)
         try:
+            self.reconnection_handler.reconnecting = True
+            self._set_state(TransportState.reconnecting)
             self._client.dispose()
             self.start(reconnection=True)
+            return True
         except Exception as ex:
             self.logger.error(ex)
             sleep_time = self.reconnection_handler.next()
             self.deferred_reconnect(sleep_time)
+        return True
 
     def deferred_reconnect(self, sleep_time):
         time.sleep(sleep_time)

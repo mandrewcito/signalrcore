@@ -1,4 +1,5 @@
 import socket
+import time
 import struct
 import urllib.parse as parse
 
@@ -7,7 +8,6 @@ from typing import Callable, Union
 from ...helpers import Helpers
 from ...helpers import RequestHelpers
 from ..sockets.base_socket_client import BaseSocketClient, WINDOW_SIZE
-from ..sockets.errors import NoHeaderException
 from ...types import RECORD_SEPARATOR, DEFAULT_ENCODING
 
 THREAD_NAME = "Signalrcore SSE client"
@@ -113,8 +113,8 @@ class SSEClient(BaseSocketClient):
             chunk = self.sock.recv(WINDOW_SIZE)
 
             if not chunk:
-                raise NoHeaderException(
-                    "Connection closed during handshake")
+                time.sleep(1)
+                continue
 
             self._buffer += chunk
 
@@ -138,6 +138,6 @@ class SSEClient(BaseSocketClient):
                     socket.SO_LINGER,
                     struct.pack('ii', 1, 0)
                     )
+                return super().dispose()
             except Exception as ex:
                 self.logger.error(ex)
-        return super().dispose()

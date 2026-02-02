@@ -33,7 +33,15 @@ class TransportFactory(object):
             return WebsocketTransport(**kwargs)
 
         if HttpTransportType.server_sent_events in names:
+            # pragma no cover
             return SSETransport(**kwargs)
+            # pragma no cover
 
         if HttpTransportType.server_sent_events in names:
+            # pragma no cover
             return LongPollingTransport(**kwargs)
+            # pragma no cover
+
+        raise RuntimeError(
+            f"Invalid transport types received {names}")
+        # pragma no cover

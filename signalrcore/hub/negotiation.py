@@ -18,7 +18,6 @@ class AvailableTransport:
     @classmethod
     def from_dict(cls, data: dict) -> "AvailableTransport":
         if not isinstance(data, dict):
-            # pragma: no cover
             raise NegotiateValidationError(
                 "availableTransports item must be an object")
 
@@ -27,7 +26,6 @@ class AvailableTransport:
         transfer_formats = data.get("transferFormats")
 
         if not isinstance(transfer_formats, list) or not transfer_formats:
-            # pragma: no cover
             raise NegotiateValidationError(
                 f"transferFormats for {transport} must be a non-empty list"
             )
@@ -63,26 +61,22 @@ class NegotiateResponse:
 
     @classmethod
     def from_dict(cls, data: dict) -> "NegotiateResponse":
-        if not isinstance(data, dict):  # pragma: no cover
-            # pragma: no cover
+        if not isinstance(data, dict):
             raise NegotiateValidationError(
                 "Negotiate response must be a JSON object")
 
         version = data.get("negotiateVersion")
-        if not isinstance(version, int):  # pragma: no cover
-            # pragma: no cover
+        if not isinstance(version, int):
             raise NegotiateValidationError(
                 "negotiateVersion must be an integer")
 
         connection_id = data.get("connectionId")
         if not isinstance(connection_id, str) or not connection_id:
-            # pragma: no cover
             raise NegotiateValidationError(
                 "connectionId must be a non-empty string")
 
         transports = data.get("availableTransports")
         if not isinstance(transports, list) or not transports:
-            # pragma: no cover
             raise NegotiateValidationError(
                 "availableTransports must be a non-empty list")
 
