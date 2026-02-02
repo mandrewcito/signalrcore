@@ -58,7 +58,7 @@ class NegotiationTests(unittest.TestCase):
             "negotiateVersion": 0,
             "connectionId": "12",
             "availableTransports": [{
-                "transport": "patata",
+                "transport": "foo",
                 "transferFormats": "f"
             }]
         }
