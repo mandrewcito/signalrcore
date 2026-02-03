@@ -31,10 +31,21 @@ jobs:
         python -m pip install --upgrade pip
         pip install .[dev]
         pip install codecov
-    - name: Wait for services
+    - name: Wait for services (azure func)
       run: |
         for i in {1..30}; do
           if curl -f http://localhost:7071/api/index; then
+            echo "Service ready"
+            exit 0
+          fi
+          sleep 2
+        done
+        echo "Service not ready"
+        exit 1
+    - name: Wait for services (SignalR server)
+      run: |
+        for i in {1..30}; do
+          if curl -f http://localhost:5000; then
             echo "Service ready"
             exit 0
           fi
