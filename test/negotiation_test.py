@@ -1,7 +1,7 @@
 import unittest
 from signalrcore.hub.negotiation\
     import NegotiateResponse, NegotiateValidationError, \
-        AzureResponse
+    AzureResponse
 
 
 class AzureNegotiationTests(unittest.TestCase):
