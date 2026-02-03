@@ -2,6 +2,7 @@ import unittest
 import logging
 import time
 import sys
+
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from signalrcore.protocol.messagepack_protocol import MessagePackHubProtocol
 from signalrcore.types import HttpTransportType
@@ -21,6 +22,8 @@ class Urls:
 
     login_url_ssl = "https://localhost:5001/users/authenticate"
     login_url_no_ssl = "http://localhost:5000/users/authenticate"
+
+    azure_url_ssl = "http://localhost:7071/api/"
 
     @staticmethod
     def ws_to_http(url: str) -> str:

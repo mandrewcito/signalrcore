@@ -11,9 +11,12 @@ def input_with_default(input_text, default_value):
     return default_value if value is None or value.strip() == "" else value
 
 
+AZURE_DEFAULT_URL = "http://localhost:7071/api/"
+
 server_url = input_with_default(
     'Enter your server url(default: {0}): ',
-    "localhost:7071/api")
+    AZURE_DEFAULT_URL)
+
 username = input_with_default(
     'Enter your username (default: {0}): ', "mandrewcito")
 
@@ -25,7 +28,7 @@ handler.setFormatter(formatter)
 
 
 hub_connection = HubConnectionBuilder() \
-        .with_url("ws://"+server_url, options={
+        .with_url(server_url, options={
             "verify_ssl": False,
             "skip_negotiation": False,
             "headers": {
@@ -49,7 +52,7 @@ while message != "exit()":
     if message is not None and message != "" and message != "exit()":
         # hub_connection.send("sendMessage", [username, message])
         requests.post(
-            "http://localhost:7071/api/messages",
+            f"{server_url}messages",
             json={"sender": username, "text": message})
 
 hub_connection.stop()
