@@ -35,7 +35,7 @@ class InternalTestCase(unittest.TestCase):
     logger = Helpers.get_logger()
 
     def get_connection(self):
-        raise NotImplementedError()
+        raise NotImplementedError()  # pragma: no cover
 
     def setUp(self):
         self.connection = self.get_connection()
@@ -47,6 +47,7 @@ class InternalTestCase(unittest.TestCase):
             time.sleep(0.1)
             if time.time() - t0 > CONNECTION_TIMEOUT:
                 raise TimeoutError("TIMEOUT Opening connection")
+                # pragma: no cover
 
     def tearDown(self):
         self.connection.stop()
@@ -57,7 +58,7 @@ class InternalTestCase(unittest.TestCase):
             time.sleep(0.1)
             if time.time() - t0 > CONNECTION_TIMEOUT:
                 raise TimeoutError("TIMEOUT Closing connection")
-
+                # pragma: no cover
         del self.connection
 
     def on_open(self):
@@ -117,6 +118,7 @@ class BaseTestCase(InternalTestCase):
                     "reconnect_interval": 5,
                     "max_attempts": 5
                 })
+            # pragma: no cover
 
         hub = builder.build()
         hub.on_open(self.on_open)
