@@ -34,7 +34,7 @@ jobs:
     - name: Wait for services
       run: |
         for i in {1..30}; do
-          if curl -f http://localhost:7071/api/negotiate; then
+          if curl -f http://localhost:7071/api/index; then
             echo "Service ready"
             exit 0
           fi
