@@ -18,7 +18,7 @@ jobs:
     - run: git clone https://github.com/mandrewcito/signalrcore-containertestservers containers
     - name: run SignalR server and Azure function
       env:
-        SIGNALRCORE_AZURE_CONNECTION_STRING: $SIGNALRCORE_AZURE_CONNECTION_STRING
+        SIGNALRCORE_AZURE_CONNECTION_STRING: ${{ secrets.SIGNALRCORE_AZURE_CONNECTION_STRING }}
       run: |
         docker compose -f containers/docker-compose.yml up -d
     - uses: actions/checkout@v2
@@ -34,7 +34,7 @@ jobs:
     - name: Wait for services (azure func)
       run: |
         for i in {1..30}; do
-          if curl -f http://localhost:7071/api/index; then
+          if curl -f http://localhost:7071/api/health; then
             echo "Service ready"
             exit 0
           fi
