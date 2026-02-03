@@ -1,3 +1,6 @@
+import socket
+import time
+import struct
 import urllib.parse as parse
 
 from typing import Callable, Union
@@ -5,7 +8,8 @@ from typing import Callable, Union
 from ...helpers import Helpers
 from ...helpers import RequestHelpers
 from ..sockets.base_socket_client import BaseSocketClient, WINDOW_SIZE
-from ..sockets.errors import NoHeaderException
+from ...types import RECORD_SEPARATOR, DEFAULT_ENCODING
+
 THREAD_NAME = "Signalrcore SSE client"
 
 
@@ -67,15 +71,22 @@ class SSEClient(BaseSocketClient):
 
         headers.update(self.headers)
 
-        status_code, response = RequestHelpers.post(
+        msg_bytes =\
+            message\
+            if type(message) is bytes else\
+            message.encode(DEFAULT_ENCODING)
+
+        response = RequestHelpers.post(
             Helpers.websocket_to_http(self.url),
-            headers,
-            self.proxies,
-            self.verify_ssl,
-            message if type(message) is bytes else message.encode("utf-8")
+            headers=headers,
+            proxies=self.proxies,
+            verify=self.verify_ssl,
+            data=msg_bytes
         )
 
-        self.logger.debug(f"SSE send response: {status_code} - {response}")
+        status_code, data = response.status_code, response.json()
+
+        self.logger.debug(f"SSE send response: {status_code} - {data}")
 
     def prepare_data(self, buffer):
 
@@ -85,7 +96,7 @@ class SSEClient(BaseSocketClient):
         array = [x for x in buffer.splitlines() if b'{' in x]
         data = b"".join(array)
 
-        decoded_str = data.decode("utf-8")
+        decoded_str = data.decode(DEFAULT_ENCODING)
 
         if self.is_trace_enabled():
             self.logger.debug(
@@ -96,23 +107,14 @@ class SSEClient(BaseSocketClient):
             .replace("data:", "")
 
     def _recv_frame(self):
-        # HTTP chunked transfer encoding
-        # [n_bytes ....\r\n]
-        # [n_bytes msg]
-        # { ..... }
-        # Example:
-        # '6\r\ndata: \r\n3\r\n{}\x1e\r\n2\r\n\r\n\r\n2\r\n\r\n\r\n'
-        # sep = b"\n\n"
-        # sep_crlf = b"\r\n\r\n"
-
-        end_record = chr(0x1E).encode("utf-8")
+        end_record = RECORD_SEPARATOR.encode(DEFAULT_ENCODING)
 
         while end_record not in self._buffer:
             chunk = self.sock.recv(WINDOW_SIZE)
 
             if not chunk:
-                raise NoHeaderException(
-                    "Connection closed during handshake")
+                time.sleep(1)
+                continue
 
             self._buffer += chunk
 
@@ -127,3 +129,15 @@ class SSEClient(BaseSocketClient):
         except Exception as ex:
             self.logger.debug(ex)
             return ""
+
+    def dispose(self):
+        if self.sock is not None:
+            try:
+                self.sock.setsockopt(
+                    socket.SOL_SOCKET,
+                    socket.SO_LINGER,
+                    struct.pack('ii', 1, 0)
+                    )
+                return super().dispose()
+            except Exception as ex:
+                self.logger.error(ex)

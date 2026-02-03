@@ -18,7 +18,6 @@ class AvailableTransport:
     @classmethod
     def from_dict(cls, data: dict) -> "AvailableTransport":
         if not isinstance(data, dict):
-            # pragma: no cover
             raise NegotiateValidationError(
                 "availableTransports item must be an object")
 
@@ -27,7 +26,6 @@ class AvailableTransport:
         transfer_formats = data.get("transferFormats")
 
         if not isinstance(transfer_formats, list) or not transfer_formats:
-            # pragma: no cover
             raise NegotiateValidationError(
                 f"transferFormats for {transport} must be a non-empty list"
             )
@@ -51,28 +49,34 @@ class NegotiateResponse:
     url: str
     available_transports: List[AvailableTransport]
 
+    def get_id(self) -> str:
+        if self.negotiate_version == 0:
+            return self.connection_id
+
+        if self.negotiate_version == 1:
+            return self.access_token
+
+        raise ValueError(
+            f"Negotiate version invalid {self.negotiate_version}")
+
     @classmethod
     def from_dict(cls, data: dict) -> "NegotiateResponse":
-        if not isinstance(data, dict):  # pragma: no cover
-            # pragma: no cover
+        if not isinstance(data, dict):
             raise NegotiateValidationError(
                 "Negotiate response must be a JSON object")
 
         version = data.get("negotiateVersion")
-        if not isinstance(version, int):  # pragma: no cover
-            # pragma: no cover
+        if not isinstance(version, int):
             raise NegotiateValidationError(
                 "negotiateVersion must be an integer")
 
         connection_id = data.get("connectionId")
         if not isinstance(connection_id, str) or not connection_id:
-            # pragma: no cover
             raise NegotiateValidationError(
                 "connectionId must be a non-empty string")
 
         transports = data.get("availableTransports")
         if not isinstance(transports, list) or not transports:
-            # pragma: no cover
             raise NegotiateValidationError(
                 "availableTransports must be a non-empty list")
 
@@ -114,16 +118,20 @@ class NegotiationHandler(object):
 
         self.logger.debug("Negotiate url:{0}".format(negotiate_url))
 
-        status_code, data = RequestHelpers.post(
+        response = RequestHelpers.post(
             negotiate_url,
             headers=headers,
             proxies=self.proxies,
-            verify_ssl=self.verify_ssl)
+            verify=self.verify_ssl)
+
+        status_code, data = response.status_code, response.json()
 
         negotiate_response = NegotiateResponse.from_dict(data)
 
         self.logger.debug(
-            "Response status code {0}".format(status_code))
+            "Negotiate response status code {0}".format(status_code))
+        self.logger.debug(
+            "Negotiate response {0}".format(negotiate_response))
 
         if status_code != 200:
             raise HubError(status_code)\

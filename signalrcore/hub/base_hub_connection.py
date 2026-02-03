@@ -12,9 +12,11 @@ from ..subject import Subject
 from ..messages.invocation_message import InvocationMessage
 from collections import defaultdict
 from ..protocol.base_hub_protocol import BaseHubProtocol
+from ..protocol.protocol_factory import ProtocolFactory
 from ..transport.transport_factory import TransportFactory
 from .negotiation import NegotiateResponse, NegotiationHandler
-from ..types import HttpTransportType
+from ..types import HttpTransportType, HubProtocolEncoding
+from ..messages.base_message import BaseMessage
 
 
 class InvocationResult(object):
@@ -26,7 +28,7 @@ class InvocationResult(object):
 class HubCallbacks(object):
     on_open: Callable
     on_close: Callable
-    on_error: Callable
+    on_error: Callable[[Exception], None]
     on_reconnect: Callable
 
     def __init__(self):
@@ -44,42 +46,45 @@ class HubCallbacks(object):
     def on_close(self):
         return self._on_close()
 
-    def on_error(self, error):
-        return self._on_open(error)
+    def on_error(self, error: Exception):
+        return self.on_error(error)
 
     def on_reconnect(self):
         return self._on_reconnect()
 
 
 class BaseHubConnection(object):
-    transport: BaseTransport = None
     url: str
-    protocol: BaseHubProtocol
     headers: dict
     token: str
     verify_ssl: bool
-    preferred_transport: Optional[HttpTransportType]
+    protocol: BaseHubProtocol = None
+    transport: BaseTransport = None
+    preferred_transport: Optional[HttpTransportType] = None
+    preferred_protocol: Optional[HubProtocolEncoding] = None
 
     def __init__(
             self,
             url: str,
-            protocol: BaseHubProtocol,
+            preferred_protocol: Optional[HubProtocolEncoding] = None,
             preferred_transport: Optional[HttpTransportType] = None,
             skip_negotiation=False,
             headers=None,
             verify_ssl=False,
+            protocol=None,
             proxies: dict = {},
             **kwargs):
+        self.preferred_protocol = preferred_protocol
         self.preferred_transport = preferred_transport
         self.kwargs = kwargs
         self.url = url
         self.verify_ssl = verify_ssl
-        self.protocol = protocol
         self.proxies = proxies
         self.token = None
+        self._selected_protocol = protocol
 
         if headers is None:
-            self.headers = dict()
+            self.headers = dict()  # pragma: no cover
         else:
             self.headers = headers
 
@@ -96,9 +101,12 @@ class BaseHubConnection(object):
             self.proxies,
             self.verify_ssl
         )
+
         (url, headers, response) = handler.negotiate()
+
         self.url = url
         self.headers = copy.deepcopy(headers)
+
         return response
 
     def start(self) -> None:
@@ -107,19 +115,24 @@ class BaseHubConnection(object):
             return False
 
         self.logger.debug("Connection started")
-        available_transports = None
 
-        response = self.negotiate()
-        available_transports = response.available_transports
+        negotiate_response = self.negotiate()
+
+        self.protocol = ProtocolFactory.create(
+                self.preferred_transport,
+                self.preferred_protocol,
+                negotiate_response)\
+            if self._selected_protocol is None else\
+            self._selected_protocol
 
         self.transport = TransportFactory.create(
-            available_transports,
+            negotiate_response,
             self.preferred_transport,
             url=self.url,
             protocol=self.protocol,
             headers=self.headers,
             token=self.token,
-            connection_id=response.connection_id,
+            connection_id=negotiate_response.get_id(),
             verify_ssl=self.verify_ssl,
             proxies=self.proxies,
             on_close=self._callbacks.on_close,
@@ -279,8 +292,9 @@ class BaseHubConnection(object):
 
         return result
 
-    def on_message(self, messages) -> None:
+    def on_message(self, messages: List[BaseMessage]) -> None:
         for message in messages:
+            self.logger.debug(message)
             if message.type == MessageType.invocation_binding_failure:
                 self.logger.error(message)
                 self._callbacks.on_error(message)
@@ -294,8 +308,8 @@ class BaseHubConnection(object):
                 fired_handlers = self.handlers.get(message.target, [])
 
                 if len(fired_handlers) == 0:
-                    self.logger.debug(
-                        f"event '{message.target}' hasn't fired any handler")
+                    self.logger.info(
+                        f"Event '{message.target}' hasn't fired any handler")
 
                 for handler in fired_handlers:
                     handler(message.arguments)
@@ -306,11 +320,12 @@ class BaseHubConnection(object):
                 return
 
             if message.type == MessageType.completion:
+
                 if message.error is not None and len(message.error) > 0:
                     self._callbacks.on_error(message)
 
                 # Send callbacks
-                fired_handlers = self.stream_handlers.get(
+                fired_handlers: List[StreamHandler] = self.stream_handlers.get(
                     message.invocation_id, [])
 
                 # Stream callbacks

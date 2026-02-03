@@ -6,6 +6,7 @@ from ...helpers import Helpers
 from .utils import WINDOW_SIZE, create_ssl_context
 from .errors import SocketHandshakeError, \
     NoHeaderException, SocketClosedError
+from ...types import DEFAULT_ENCODING, CRLF, CRLF_CRLF
 
 
 class BaseSocketClient(object):
@@ -45,6 +46,7 @@ class BaseSocketClient(object):
         self.running: bool = False
         self.is_closing: bool = False
         self.recv_thread: threading.Thread = None
+        self._lock = threading.Lock()
 
     def is_trace_enabled(self):
         return self.enable_trace
@@ -91,8 +93,8 @@ class BaseSocketClient(object):
         for k, v in self.headers.items():
             request_headers.append(f"{k}: {v}")
 
-        request = "\r\n".join(request_headers) + "\r\n\r\n"
-        req = request.encode("utf-8")
+        request = CRLF.join(request_headers) + CRLF_CRLF
+        req = request.encode(DEFAULT_ENCODING)
 
         if self.is_trace_enabled():
             self.logger.debug(f"[TRACE] - {req}")
@@ -101,7 +103,7 @@ class BaseSocketClient(object):
 
         # Read handshake response
         response = b""
-        while b"\r\n\r\n" not in response:
+        while CRLF_CRLF.encode(DEFAULT_ENCODING) not in response:
             chunk = self.sock.recv(WINDOW_SIZE)
 
             if not chunk:
@@ -125,25 +127,27 @@ class BaseSocketClient(object):
         self.recv_thread.start()
 
     def close(self):
-        try:
-            self.is_closing = True
-            self.running = False
+        if not self.running or self.is_closing:
+            return
 
-            self.logger.debug("SSE closing socket")
+        self.is_closing = True
+        self.running = False
+
+        try:
+            self.logger.debug("Base socket client: closing socket")
 
             self.dispose()
 
-            self.on_close()
-
-            self.logger.debug("SSE closed successfully")
+            self.logger.debug("Base socket client: closed successfully")
         except Exception as ex:  # pragma: no cover
             self.logger.error(ex)  # pragma: no cover
             self.on_error(ex)  # pragma: no cover
         finally:
             self.is_closing = False
+            self.on_close()
 
     def dispose(self):
-        if self.sock:
+        if self.sock is not None:
             self.sock.close()
 
         is_same_thread = threading.current_thread().name == self.thread_name
@@ -182,8 +186,7 @@ class BaseSocketClient(object):
             if (has_closed_fd or has_no_content) and self.is_closing:
                 return
 
-            if self.logger:
-                self.logger.error(f"Receive error: {e}")
+            self.logger.error(f"Receive error: {e}")
 
             self.on_error(e)
 

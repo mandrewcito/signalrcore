@@ -1,8 +1,9 @@
 import enum
+import threading
 from typing import Callable, Dict, Optional
-from ..protocol.json_hub_protocol import JsonHubProtocol
 from ..helpers import Helpers
 from ..transport.base_reconnection import BaseReconnection
+from ..protocol.base_hub_protocol import BaseHubProtocol
 from ..hub.negotiation import NegotiateResponse, NegotiationHandler
 
 
@@ -27,7 +28,7 @@ class BaseTransport(object):
             on_open: Callable = None,
             on_close: Callable = None,
             on_reconnect: Callable = None,
-            protocol=JsonHubProtocol(),
+            protocol: BaseHubProtocol = None,
             reconnection_handler: BaseReconnection = None,
             on_message: Callable = None):
         self.url = url
@@ -40,15 +41,17 @@ class BaseTransport(object):
         self.connection_id = connection_id
         self.proxies = proxies
         self.protocol = protocol
-        self._on_message = on_message
-        self.reconnection_handler = reconnection_handler
+
         self.logger = Helpers.get_logger()
+
+        self._on_message = on_message
         self._on_open = on_open
         self._on_close = on_close
         self._on_reconnect = on_reconnect
 
         self.state = TransportState.disconnected
         self.reconnection_handler = reconnection_handler
+        self._lock = threading.Lock()
 
     def _set_state(self, new_state: TransportState):
         """Internal helper to change state and call appropriate callbacks."""
@@ -64,14 +67,16 @@ class BaseTransport(object):
         was_connecting = old_state == TransportState.connecting
         was_connected = old_state == TransportState.connected
         was_reconnecting = old_state == TransportState.reconnecting
-
-        if was_connecting and self.is_connected():
-            self._on_open()
-        elif (was_connected or was_reconnecting)\
-                and self.is_disconnected():
-            self._on_close()
-        elif was_reconnecting and self.is_connected():
-            self._on_reconnect()
+        try:
+            if was_connecting and self.is_connected():
+                self._on_open()
+            elif (was_connected or was_reconnecting)\
+                    and self.is_disconnected():
+                self._on_close()
+            elif was_reconnecting and self.is_connected():
+                self._on_reconnect()
+        except Exception as ex:
+            raise ex
 
     def is_connected(self):
         return self.state == TransportState.connected
@@ -98,6 +103,14 @@ class BaseTransport(object):
         raise NotImplementedError()
 
     def negotiate(self) -> NegotiateResponse:
+        """Negotiates connection with the signalR server, updates:
+            - url
+            - headers
+            - connection_id
+
+        Returns:
+            NegotiateResponse: server negotiate response
+        """
         handler = NegotiationHandler(
             self.url,
             self.headers,
@@ -106,6 +119,6 @@ class BaseTransport(object):
         )
 
         self.url, self.headers, response = handler.negotiate()
-        self.connection_id = response.connection_id
+        self.connection_id = response.get_id()
 
         return response

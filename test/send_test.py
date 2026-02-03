@@ -3,7 +3,7 @@ import uuid
 import threading
 
 from signalrcore.hub.errors import HubConnectionError
-from test.base_test_case import BaseTestCase, Urls
+from test.base_test_case import BaseTestCase, Urls, CONNECTION_TIMEOUT
 
 LOCKS = {}
 
@@ -15,8 +15,11 @@ class TestSendException(BaseTestCase):
     def setUp(self):
         self.connection = self.get_connection()
         self.connection.start()
+        t0 = time.time()
         while not self.connected:
             time.sleep(0.1)
+            if time.time() - t0 > CONNECTION_TIMEOUT:
+                raise TimeoutError("TIMEOUT Opening connection")
 
     def test_send_exception(self):
         identifier = str(uuid.uuid4())
@@ -48,16 +51,22 @@ class TestSendExceptionMsgPack(TestSendException):
     def setUp(self):
         self.connection = self.get_connection(msgpack=True)
         self.connection.start()
+        t0 = time.time()
         while not self.connected:
             time.sleep(0.1)
+            if time.time() - t0 > CONNECTION_TIMEOUT:
+                raise TimeoutError("TIMEOUT Opening connection ")
 
 
 class TestSendWarning(BaseTestCase):
     def setUp(self):
         self.connection = self.get_connection()
         self.connection.start()
+        t0 = time.time()
         while not self.connected:
             time.sleep(0.1)
+            if time.time() - t0 > CONNECTION_TIMEOUT:
+                raise TimeoutError("TIMEOUT Opening connection ")
 
     def test_send_warning(self):
         identifier = str(uuid.uuid4())
@@ -77,8 +86,11 @@ class TestSendWarningMsgPack(TestSendWarning):
     def setUp(self):
         self.connection = super().get_connection(msgpack=True)
         self.connection.start()
+        t0 = time.time()
         while not self.connected:
             time.sleep(0.1)
+            if time.time() - t0 > CONNECTION_TIMEOUT:
+                raise TimeoutError("TIMEOUT Opening connection ")
 
 
 class TestSendMethod(BaseTestCase):
@@ -89,8 +101,11 @@ class TestSendMethod(BaseTestCase):
         self.connection = self.get_connection()
         self.connection.on("ReceiveMessage", self.receive_message)
         self.connection.start()
+        t0 = time.time()
         while not self.connected:
             time.sleep(0.1)
+            if time.time() - t0 > CONNECTION_TIMEOUT:
+                raise TimeoutError("TIMEOUT Opening connection ")
 
     def receive_message(self, args):
         self.assertEqual(args[1], self.message)
@@ -109,8 +124,13 @@ class TestSendMethod(BaseTestCase):
         self.username = "mandrewcito"
         self.received = False
         self.connection.send("SendMessage", [self.username, self.message])
+
+        t0 = time.time()
         while not self.received:
             time.sleep(0.1)
+            if time.time() - t0 > CONNECTION_TIMEOUT * 2:
+                raise TimeoutError("TIMEOUT Receiving message ")
+
         self.assertTrue(self.received)
 
     def test_send_with_callback(self):
@@ -134,7 +154,11 @@ class TestSendMethod(BaseTestCase):
             release,
             invocation_id=uid)
 
-        self.assertTrue(LOCKS[identifier].acquire(timeout=10))
+        self.connection.send(
+            "SendMessage",
+            [self.username, "no callback message"])
+
+        self.assertTrue(LOCKS[identifier].acquire(timeout=40))
         del LOCKS[identifier]
 
 
@@ -147,8 +171,11 @@ class TestSendMethodMsgPack(TestSendMethod):
         self.connection = super().get_connection(msgpack=True)
         self.connection.on("ReceiveMessage", super().receive_message)
         self.connection.start()
+        t0 = time.time()
         while not self.connected:
             time.sleep(0.1)
+            if time.time() - t0 > CONNECTION_TIMEOUT:
+                raise TimeoutError("TIMEOUT Opening connection ")
 
 
 class TestSendNoSslMethodMsgPack(TestSendMethodMsgPack):
@@ -160,6 +187,14 @@ class TestSendSseMethod(TestSendMethod):
 
     def get_connection(self, msgpack=False):
         return super().get_connection_sse(
+            reconnection=False)
+
+
+class TestSendLongPollingMethod(TestSendMethod):
+    server_url = Urls.server_url_http_ssl
+
+    def get_connection(self, msgpack=False):
+        return super().get_connection_long_polling(
             reconnection=False)
 
 
@@ -214,4 +249,12 @@ class TestSendSseErrorMethod(TestSendErrorMethod):
 
     def get_connection(self, msgpack=False):
         return super().get_connection_sse(
+            reconnection=False)
+
+
+class TestSendLongPollingErrorMethod(TestSendErrorMethod):
+    server_url = Urls.server_url_http_ssl
+
+    def get_connection(self, msgpack=False):
+        return super().get_connection_long_polling(
             reconnection=False)

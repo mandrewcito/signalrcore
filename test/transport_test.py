@@ -36,6 +36,16 @@ class TesTransportSelection(BaseTestCase):
             .build()
         self._test_run(connection)
 
+    def test_long_polling(self):
+        connection = HubConnectionBuilder()\
+            .with_url(Urls.ws_to_http(self.server_url), options={
+                "verify_ssl": False,
+                "transport": HttpTransportType.long_polling
+                })\
+            .configure_logging(logging.ERROR)\
+            .build()
+        self._test_run(connection)
+
     def _test_run(self, connection):
         identifier = str(uuid.uuid4())
         LOCKS[identifier] = threading.Lock()

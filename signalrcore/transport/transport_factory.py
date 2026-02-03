@@ -1,23 +1,29 @@
 from .base_transport import BaseTransport
 from .websockets.websocket_transport import WebsocketTransport
 from .sse.sse_transport import SSETransport
-from ..hub.negotiation import AvailableTransport
-from typing import List, Optional
+from .long_polling.long_polling_transport import LongPollingTransport
+from ..hub.negotiation import NegotiateResponse
+from typing import Optional
 from ..types import HttpTransportType
 
 
 TRANSPORTS = {
     HttpTransportType.web_sockets: WebsocketTransport,
-    HttpTransportType.server_sent_events: SSETransport
+    HttpTransportType.server_sent_events: SSETransport,
+    HttpTransportType.long_polling: LongPollingTransport
 }
 
 
 class TransportFactory(object):
     def create(
-            available_transports: List[AvailableTransport],
+            negotiate_response: NegotiateResponse,
             preferred_transport: Optional[HttpTransportType],
             **kwargs) -> BaseTransport:
-        names = list(map(lambda x: x.transport, available_transports))
+
+        names = list(
+            map(
+                lambda x: x.transport,
+                negotiate_response.available_transports))
 
         if preferred_transport in names:
             return TRANSPORTS.get(preferred_transport)(**kwargs)
@@ -27,4 +33,15 @@ class TransportFactory(object):
             return WebsocketTransport(**kwargs)
 
         if HttpTransportType.server_sent_events in names:
+            # pragma no cover
             return SSETransport(**kwargs)
+            # pragma no cover
+
+        if HttpTransportType.server_sent_events in names:
+            # pragma no cover
+            return LongPollingTransport(**kwargs)
+            # pragma no cover
+
+        raise RuntimeError(
+            f"Invalid transport types received {names}")
+        # pragma no cover

@@ -3,8 +3,8 @@ from .hub.auth_hub_connection import AuthHubConnection
 from .transport.reconnection import \
     IntervalReconnectionHandler, RawReconnectionHandler, ReconnectionType
 from .helpers import Helpers
-from .protocol.json_hub_protocol import JsonHubProtocol
-from .types import HttpTransportType
+from .types import HttpTransportType, HubProtocolEncoding
+from .protocol.protocol_factory import BaseHubProtocol
 
 
 class HubConnectionBuilder(object):
@@ -29,7 +29,8 @@ class HubConnectionBuilder(object):
         self.headers = dict()
         self.negotiate_headers = None
         self.has_auth_configured = None
-        self.protocol = None
+        self.protocol: BaseHubProtocol = None
+        self.preferred_protocol = None
         self.reconnection_handler = None
         self.keep_alive_interval = 15
         self.verify_ssl = True
@@ -37,6 +38,7 @@ class HubConnectionBuilder(object):
         self.skip_negotiation = False  # By default do not skip negotiation
         self.running = False
         self.proxies = dict()
+        self.logger = Helpers.get_logger()
 
     def with_url(
             self,
@@ -106,7 +108,6 @@ class HubConnectionBuilder(object):
             if "transport" in options.keys():
                 transport = options.get("transport")
                 if type(transport) is not HttpTransportType:
-                    # pragma: no cover
                     raise TypeError(
                         f"transport types:  {HttpTransportType}")
                 self.transport = transport
@@ -159,24 +160,34 @@ class HubConnectionBuilder(object):
 
     def with_hub_protocol(self, protocol):
         """Changes transport protocol
-            from signalrcore.protocol.messagepack_protocol\
-                import MessagePackHubProtocol
+            from signalrcore.types\
+                import HubProtocolEncoding
 
             HubConnectionBuilder()\
             .with_url(self.server_url, options={"verify_ssl":False})\
                 ...
-            .with_hub_protocol(MessagePackHubProtocol())\
+            .with_hub_protocol(HubProtocolEncoding.binary)\
                 ...
             .build()
         Args:
-            protocol (JsonHubProtocol|MessagePackHubProtocol):
-                protocol instance
+            protocol(
+                    MessagePackHubProtocol|
+                    JsonHubProtocol|
+                    HubProtocolEncoding):
+                protocol instance or HubProtocolEncoding
 
         Returns:
             HubConnectionBuilder: instance configured
         """
-        self.protocol = protocol
-        return self
+        if issubclass(type(protocol), BaseHubProtocol):
+            self.protocol = protocol
+            return self
+
+        if type(protocol) is HubProtocolEncoding:
+            self.preferred_protocol = protocol
+            return self
+
+        raise TypeError(f"Wrong protocol type {type(protocol)}")
 
     def build(self):
         """Configures the connection hub
@@ -188,8 +199,6 @@ class HubConnectionBuilder(object):
         Returns:
             [HubConnectionBuilder]: [self object for fluent interface purposes]
         """
-        if self.protocol is None:
-            self.protocol = JsonHubProtocol()
 
         if "headers" in self.options.keys()\
                 and type(self.options["headers"]) is dict:
@@ -209,6 +218,7 @@ class HubConnectionBuilder(object):
                 auth_function=auth_function,
                 url=self.hub_url,
                 protocol=self.protocol,
+                preferred_protocol=self.preferred_protocol,
                 keep_alive_interval=self.keep_alive_interval,
                 reconnection_handler=self.reconnection_handler,
                 verify_ssl=self.verify_ssl,
@@ -220,6 +230,7 @@ class HubConnectionBuilder(object):
             BaseHubConnection(
                 url=self.hub_url,
                 protocol=self.protocol,
+                preferred_protocol=self.preferred_protocol,
                 keep_alive_interval=self.keep_alive_interval,
                 reconnection_handler=self.reconnection_handler,
                 headers=self.headers,

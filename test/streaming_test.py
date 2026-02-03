@@ -118,3 +118,15 @@ class TestSseSslStreamMethod(TestSendMethod):
 
 class TestSseNoSslStreamMethod(TestSseSslStreamMethod):
     server_url = Urls.server_url_http_no_ssl
+
+
+class TestLongPollingSslStreamMethod(TestSseSslStreamMethod):
+    server_url = Urls.server_url_http_ssl
+
+    def get_connection(self, msgpack=False):
+        return super().get_connection_long_polling(
+            reconnection=False)
+
+
+class TestLongPollingSslStreamMethod(TestLongPollingSslStreamMethod):
+    server_url = Urls.server_url_http_no_ssl

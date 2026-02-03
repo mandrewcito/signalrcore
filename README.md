@@ -21,6 +21,8 @@ Python signalr core client library, made by a guy born in Vilalba (Lugo).
 
 * [Wiki - This Doc](https://mandrewcito.github.io/signalrcore/)
 
+* [Aspnetcore SignalR docs](https://github.com/dotnet/aspnetcore/tree/main/src/SignalR/docs)
+
 # Development
 Software requirements:
 > - python > 3.8
@@ -214,11 +216,38 @@ HubConnectionBuilder()\
 
 ## Configure another transport layer
 
+### Websockets
+
+Will be used as transport layer by default, you do not need to specify it.
+
+```python
+HubConnectionBuilder()\
+    .with_url(server_http_url, options={
+        ...
+        "transport": HttpTransportType.web_sockets
+        })\
+    .configure_logging(logging.ERROR)\
+    .build()
+```
+
+### Server sent events
+
 ```python
 HubConnectionBuilder()\
     .with_url(server_http_url, options={
         ...
         "transport": HttpTransportType.server_sent_events
+        })\
+    .configure_logging(logging.ERROR)\
+    .build()
+```
+### Long polling
+
+```python
+HubConnectionBuilder()\
+    .with_url(server_http_url, options={
+        ...
+        "transport": HttpTransportType.long_polling
         })\
     .configure_logging(logging.ERROR)\
     .build()

@@ -64,13 +64,13 @@ class TestOpenCloseWebsocketMethods(BaseTestCase):
         LOCKS[identifier] = threading.Lock()
 
         def release(msg):
-            print(msg)
+            self.logger.debug(msg)
             LOCKS[identifier].release()
 
         connection.on_open(lambda: release("open"))
         connection.on_close(lambda: release("close"))
 
-        self.assertTrue(LOCKS[identifier].acquire(timeout=1))
+        self.assertTrue(LOCKS[identifier].acquire(timeout=10))
 
         connection.start()
 
@@ -85,11 +85,10 @@ class TestOpenCloseWebsocketMethods(BaseTestCase):
         connection.stop()
 
         self.assertTrue(
-            LOCKS[identifier].acquire(timeout=20),
+            LOCKS[identifier].acquire(timeout=10),
             "on_close was not fired")
 
         del LOCKS[identifier]
-        del connection
 
     def test_open_close(self):
         connection = self.get_connection()
@@ -121,7 +120,16 @@ class TestOpenCloseSseMethods(TestOpenCloseWebsocketMethods):
     def test_open_close(self):
         connection = self.get_connection()
         self._test(connection)
+        del connection
 
     def test_open_wait_close(self):
         connection = self.get_connection()
-        self._test(connection, 20)
+        self._test(connection, 10)
+        del connection
+
+
+class TestOpenCloseLongPollingMethods(TestOpenCloseSseMethods):
+    def get_connection(self, msgpack=False):
+        return super().get_connection_long_polling(
+            False,
+            msgpack)

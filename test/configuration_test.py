@@ -2,6 +2,7 @@ import logging
 
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from signalrcore.protocol.messagepack_protocol import MessagePackHubProtocol
+from signalrcore.types import HubProtocolEncoding
 
 from test.base_test_case import BaseTestCase
 
@@ -32,6 +33,55 @@ class TestConfiguration(BaseTestCase):
                 .with_url(
                     self.server_url,
                     options=["ssl", True])
+
+    def test_bad_transport(self):
+        with self.assertRaises(TypeError):
+            self.connection = HubConnectionBuilder()\
+                .with_url(
+                    self.server_url,
+                    options={
+                        "transport": None
+                    })
+
+    def test_bad_proxies(self):
+        with self.assertRaises(ValueError):
+            self.connection = HubConnectionBuilder()\
+                .with_url(
+                    self.server_url,
+                    options={})\
+                .configure_proxies({
+                    "ff": 22
+                })
+
+    def test_proxies(self):
+        with self.assertRaises(ValueError):
+            self.connection = HubConnectionBuilder()\
+                .with_url(
+                    self.server_url,
+                    options={})\
+                .configure_proxies({
+                    "http": "192.173.4.5:34"
+                })
+
+    def test_bad_protocol(self):
+        with self.assertRaises(TypeError):
+            self.connection = HubConnectionBuilder()\
+                .with_url(
+                    self.server_url,
+                    options={})\
+                .with_hub_protocol({
+                    "ff": 22
+                })
+
+    def test_protocol(self):
+        connection = HubConnectionBuilder()\
+            .with_url(
+                self.server_url,
+                options={})\
+            .with_hub_protocol(
+                HubProtocolEncoding.binary
+            )
+        del connection
 
     def test_auth_configured(self):
         with self.assertRaises(TypeError):

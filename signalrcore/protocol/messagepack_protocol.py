@@ -12,6 +12,7 @@ from ..messages.cancel_invocation_message import CancelInvocationMessage  # 5
 from ..messages.ping_message import PingMessage  # 6
 from ..messages.close_message import CloseMessage  # 7
 from ..helpers import Helpers
+from ..types import HubProtocolEncoding, RECORD_SEPARATOR, DEFAULT_ENCODING
 
 
 class MessagePackHubProtocol(BaseHubProtocol):
@@ -28,9 +29,12 @@ class MessagePackHubProtocol(BaseHubProtocol):
         "stream_ids"
     ]
 
-    def __init__(self):
+    def __init__(self, version: int = 1):
         super(MessagePackHubProtocol, self).__init__(
-            "messagepack", 1, "Text", chr(0x1E))
+            "messagepack",
+            version,
+            HubProtocolEncoding.binary,
+            RECORD_SEPARATOR)
         self.logger = Helpers.get_logger()
 
     def parse_messages(self, raw):
@@ -70,7 +74,10 @@ class MessagePackHubProtocol(BaseHubProtocol):
             messages = self.parse_messages(
                 raw_message[raw_message.index(0x1E) + 1:])\
                 if has_various_messages else []
-            data = json.loads(handshake_data)
+            data = json.loads(
+                handshake_data.decode(DEFAULT_ENCODING)
+                if type(handshake_data) is bytes else
+                handshake_data)
             return HandshakeResponseMessage(data.get("error", None)), messages
         except Exception as ex:
             if type(raw_message) is str:
