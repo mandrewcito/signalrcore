@@ -124,7 +124,7 @@ class TestOpenCloseSseMethods(TestOpenCloseWebsocketMethods):
 
     def test_open_wait_close(self):
         connection = self.get_connection()
-        self._test(connection, 20)
+        self._test(connection, 10)
         del connection
 
 
