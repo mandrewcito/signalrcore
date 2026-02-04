@@ -11,10 +11,10 @@ LOCKS = {}
 
 
 class TestStartMethod(BaseTestCase):
-    def setUp(self):
+    def setUp(self):  # pragma: no cover
         pass
 
-    def tearDown(self):
+    def tearDown(self):  # pragma: no cover
         pass
 
     def test_start(self):
@@ -52,10 +52,10 @@ class TestStartMethod(BaseTestCase):
 
 
 class TestOpenCloseWebsocketMethods(BaseTestCase):
-    def setUp(self):
+    def setUp(self):  # pragma: no cover
         pass
 
-    def tearDown(self):
+    def tearDown(self):  # pragma: no cover
         pass
 
     def _test(self, connection, sleep_time: int = 1):
@@ -96,10 +96,10 @@ class TestOpenCloseWebsocketMethods(BaseTestCase):
 
 
 class TestOpenCloseSseMethods(TestOpenCloseWebsocketMethods):
-    def setUp(self):
+    def setUp(self):  # pragma: no cover
         pass
 
-    def tearDown(self):
+    def tearDown(self):  # pragma: no cover
         pass
 
     def get_connection(self, msgpack=False):

@@ -4,6 +4,12 @@ from signalrcore.transport.reconnection\
 
 
 class TestReconnectionHandlerMethods(BaseTestCase):
+    def setUp(self):  # pragma: no cover
+        pass
+
+    def tearDown(self):  # pragma: no cover
+        pass
+
     def test_raw_handler(self):
         handler = RawReconnectionHandler(5, 10)
         attempt = 0
@@ -20,9 +26,3 @@ class TestReconnectionHandlerMethods(BaseTestCase):
         for interval in intervals:
             self.assertEqual(handler.next(), interval)
         self.assertRaises(ValueError, handler.next)
-
-    def tearDown(self):
-        pass
-
-    def setUp(self):
-        pass

@@ -25,7 +25,7 @@ class TestSendAuthErrorMethod(BaseTestCase):
             return response.json()["token"]
         raise requests.exceptions.ConnectionError()
 
-    def setUp(self):
+    def setUp(self):  # pragma: no cover
         pass
 
     def test_send_json(self):

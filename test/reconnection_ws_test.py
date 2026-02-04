@@ -13,6 +13,12 @@ LOCKS: Dict[str, threading.Lock] = {}
 
 class TestWebsocketReconnectMethods(BaseTestCase):
 
+    def setUp(self):  # pragma: no cover
+        pass
+
+    def tearDown(self):  # pragma: no cover
+        pass
+
     def test_reconnect_interval_config(self):
         connection = HubConnectionBuilder()\
             .with_url(self.server_url, options={"verify_ssl": False})\
@@ -131,9 +137,3 @@ class TestWebsocketReconnectMethods(BaseTestCase):
             .build()
 
         self.reconnect_test(connection)
-
-    def tearDown(self):
-        pass
-
-    def setUp(self):
-        pass
