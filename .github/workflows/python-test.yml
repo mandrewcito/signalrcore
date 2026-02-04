@@ -27,7 +27,7 @@ jobs:
         pip install codecov
     - run: git clone https://github.com/mandrewcito/signalrcore-containertestservers containers
     - name: run SignalR server and Azure function
-      run: SIGNALRCORE_AZURE_CONNECTION_STRING="Endpoint=https://signalrcore-server-mandrewcito-test.service.signalr.net;AccessKey=${ACCESS_KEY};Version=1.0;" docker compose -f containers/docker-compose.yml up -d
+      run: SIGNALRCORE_AZURE_CONNECTION_STRING="Endpoint=https://signalrcore-server-mandrewcito-test.service.signalr.net;AccessKey=""${ACCESS_KEY}"";Version=1.0;" docker compose -f containers/docker-compose.yml up -d
       env:
         ACCESS_KEY: ${{ secrets.SIGNALRCORE_AZCS }}
     - name: Wait for services (azure func)

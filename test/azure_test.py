@@ -11,7 +11,7 @@ LOCKS = {}
 
 class TestAzure(BaseTestCase):
 
-    server_url = Urls.azure_url_ssl
+    server_url = Urls.azure_func_url_no_ssl
 
     def test_check_azure_url(self):
         self.assertIsNotNone(self.server_url)
