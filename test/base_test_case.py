@@ -80,12 +80,18 @@ class InternalTestCase(unittest.TestCase):
 class BaseTestCase(InternalTestCase):
     server_url = Urls.server_url_ssl
 
+    def is_debug(self) -> bool:
+        return "vscode" in sys.argv[0] and "pytest" in sys.argv[0]
+
+    def get_log_level(self):
+        return logging.DEBUG\
+            if self.is_debug() else logging.ERROR
+
     def get_connection(self, msgpack=False):
         is_debug = "vscode" in sys.argv[0] and "pytest" in sys.argv[0]
 
         enable_trace = is_debug
-        log_level = logging.DEBUG\
-            if is_debug else logging.ERROR
+        log_level = self.get_log_level()
 
         builder = HubConnectionBuilder()\
             .with_url(self.server_url, options={"verify_ssl": False})\
@@ -106,18 +112,14 @@ class BaseTestCase(InternalTestCase):
         return hub
 
     def get_connection_sse(self, reconnection=False):
-        is_debug = "vscode" in sys.argv[0] and "pytest" in sys.argv[0]
-
-        enable_trace = is_debug
-        log_level = logging.DEBUG\
-            if is_debug else logging.ERROR
-
         builder = HubConnectionBuilder()\
             .with_url(self.server_url, options={
                 "verify_ssl": False,
                 "transport": HttpTransportType.server_sent_events
                 })\
-            .configure_logging(log_level, socket_trace=enable_trace)
+            .configure_logging(
+                self.get_log_level(),
+                socket_trace=self.is_debug())
 
         if reconnection:
             builder\
@@ -135,18 +137,14 @@ class BaseTestCase(InternalTestCase):
         return hub
 
     def get_connection_long_polling(self, reconnection=False, msgpack=False):
-        is_debug = "vscode" in sys.argv[0] and "pytest" in sys.argv[0]
-
-        enable_trace = is_debug
-        log_level = logging.DEBUG\
-            if is_debug else logging.ERROR
-
         builder = HubConnectionBuilder()\
             .with_url(self.server_url, options={
                 "verify_ssl": False,
                 "transport": HttpTransportType.long_polling
                 })\
-            .configure_logging(log_level, socket_trace=enable_trace)
+            .configure_logging(
+                self.get_log_level(),
+                socket_trace=self.is_debug())
 
         if reconnection:
             builder\

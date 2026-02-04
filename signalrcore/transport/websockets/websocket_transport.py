@@ -1,4 +1,3 @@
-import traceback
 import time
 from typing import Optional
 from ..reconnection import ConnectionStateChecker
@@ -22,20 +21,6 @@ class WebsocketTransport(BaseTransport):
             lambda: self.send(PingMessage()),
             keep_alive_interval
         )
-        self.manually_closing = False
-
-    def dispose(self):
-        if self.is_connected():
-            self.connection_checker.stop()
-            self._client.close()
-
-    def stop(self):
-        self.manually_closing = True
-        self.dispose()
-        self.handshake_received = False
-
-    def is_trace_enabled(self) -> bool:
-        return self._client.is_trace_enabled
 
     def start(self, reconnection: bool = False):
         if reconnection:
@@ -79,16 +64,6 @@ class WebsocketTransport(BaseTransport):
             self.stop()
         return messages
 
-    def on_open(self):
-        self.logger.debug("-- web socket open --")
-        msg = self.protocol.handshake_message()
-        self.handshake_received = False
-        self.send(msg)
-
-    def on_close(self):
-        self.logger.debug("-- web socket close --")
-        self._set_state(TransportState.disconnected)
-
     def on_socket_error(self, error: Exception):  # pragma: no cover
         """
         Args:
@@ -98,11 +73,7 @@ class WebsocketTransport(BaseTransport):
             HubError: [description]
         """
         self.logger.debug("-- web socket error --")
-        self.logger.error(traceback.format_exc(10, True))
-        self.logger.error("{0} {1}".format(self, error))
-        self.logger.error("{0} {1}".format(error, type(error)))
-        self._set_state(TransportState.disconnected)
-        # raise HubError(error)
+        super().on_socket_error(error)
 
     def on_socket_close(self):
         if not self.manually_closing and\
@@ -110,10 +81,11 @@ class WebsocketTransport(BaseTransport):
                 and not self.is_reconnecting():
             self.handle_reconnect()
             return
-        self.on_close()
+        self._set_state(TransportState.disconnected)
 
     def on_socket_open(self):
-        self.on_open()
+        self.logger.debug("-- web socket open --")
+        self.send_handshake()
 
     def on_message(self, app, raw_message):
         self.logger.debug("Message received {0}".format(raw_message))
@@ -152,28 +124,3 @@ class WebsocketTransport(BaseTransport):
             self.handle_reconnect()  # pragma: no cover
         except Exception as ex:  # pragma: no cover
             raise ex  # pragma: no cover
-
-    def handle_reconnect(self):
-        if self.is_reconnecting() or self.manually_closing:
-            return  # pragma: no cover
-
-        self.reconnection_handler.reconnecting = True
-        self._set_state(TransportState.reconnecting)
-        try:
-            self._client.dispose()
-            self.start(reconnection=True)
-        except Exception as ex:
-            self.logger.error(ex)
-            sleep_time = self.reconnection_handler.next()
-            self.deferred_reconnect(sleep_time)
-
-    def deferred_reconnect(self, sleep_time):
-        time.sleep(sleep_time)
-        try:
-            if not self.connection_alive:
-                if not self.connection_checker.running:
-                    self.send(PingMessage())
-        except Exception as ex:
-            self.logger.error(ex)
-            self.reconnection_handler.reconnecting = False
-            self.connection_alive = False

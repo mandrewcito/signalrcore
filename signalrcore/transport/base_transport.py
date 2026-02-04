@@ -1,10 +1,14 @@
 import enum
-import threading
+import traceback
+import time
 from typing import Callable, Dict, Optional
 from ..helpers import Helpers
 from ..transport.base_reconnection import BaseReconnection
 from ..protocol.base_hub_protocol import BaseHubProtocol
 from ..hub.negotiation import NegotiateResponse, NegotiationHandler
+from .base_client import BaseClient
+from ..messages.ping_message import PingMessage
+from .reconnection import ConnectionStateChecker
 
 
 class TransportState(enum.Enum):
@@ -15,6 +19,10 @@ class TransportState(enum.Enum):
 
 
 class BaseTransport(object):
+    _client: Optional[BaseClient]
+    connection_checker: ConnectionStateChecker
+    manually_closing: bool
+
     def __init__(
             self,
             url: str = None,
@@ -51,7 +59,7 @@ class BaseTransport(object):
 
         self.state = TransportState.disconnected
         self.reconnection_handler = reconnection_handler
-        self._lock = threading.Lock()
+        self.manually_closing = False
 
     def _set_state(self, new_state: TransportState):
         """Internal helper to change state and call appropriate callbacks."""
@@ -90,10 +98,10 @@ class BaseTransport(object):
     def is_disconnected(self):
         return self.state == TransportState.disconnected
 
-    def start(self):  # pragma: no cover
-        raise NotImplementedError()
+    def is_trace_enabled(self) -> bool:
+        return self._client.is_trace_enabled()
 
-    def stop(self):  # pragma: no cover
+    def start(self):  # pragma: no cover
         raise NotImplementedError()
 
     def is_running(self):
@@ -122,3 +130,63 @@ class BaseTransport(object):
         self.connection_id = response.get_id()
 
         return response
+
+    def dispose(self):
+        if not self.is_disconnected():
+            self.connection_checker.stop()
+            self._client.close()
+
+    def stop(self):
+        if self.manually_closing or self.is_disconnected():
+            return
+        self.manually_closing = True
+        self.handshake_received = False
+        self.dispose()
+
+    def on_socket_error(self, error: Exception):  # pragma: no cover
+        """
+        Args:
+            error (Exception): websocket error
+
+        Raises:
+            HubError: [description]
+        """
+        self.logger.error(traceback.format_exc(10, True))
+        self.logger.error("{0} {1}".format(self, error))
+        self.logger.error("{0} {1}".format(error, type(error)))
+        self._set_state(TransportState.disconnected)
+
+    def deferred_reconnect(self, sleep_time):
+        time.sleep(sleep_time)
+        try:
+            if not self.connection_alive:
+                if not self.connection_checker.running:
+                    self.send(PingMessage())
+        except Exception as ex:
+            self.logger.error(ex)
+            self.reconnection_handler.reconnecting = False
+            self.connection_alive = False
+
+    def handle_reconnect(self) -> bool:
+        if self.is_reconnecting() or self.manually_closing:
+            return False
+
+        if self.reconnection_handler is None:
+            return False
+        try:
+            self.reconnection_handler.reconnecting = True
+
+            self._set_state(TransportState.reconnecting)
+
+            self._client.dispose()
+            self.start(reconnection=True)
+        except Exception as ex:
+            self.logger.error(ex)
+            sleep_time = self.reconnection_handler.next()
+            self.deferred_reconnect(sleep_time)
+        return True
+
+    def send_handshake(self):
+        msg = self.protocol.handshake_message()
+        self.handshake_received = False
+        self.send(msg)

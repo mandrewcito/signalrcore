@@ -128,7 +128,7 @@ class WebSocketClient(BaseSocketClient):
         else:
             data = self.sock.recv(payload_len)
 
-        if self.is_trace_enabled:
+        if self.is_trace_enabled():
             self.logger.debug(f"[TRACE] - {data}")
 
         return self.prepare_data(data)

@@ -7,9 +7,10 @@ from .utils import WINDOW_SIZE, create_ssl_context
 from .errors import SocketHandshakeError, \
     NoHeaderException, SocketClosedError
 from ...types import DEFAULT_ENCODING, CRLF, CRLF_CRLF
+from ..base_client import BaseClient
 
 
-class BaseSocketClient(object):
+class BaseSocketClient(BaseClient):
     def __init__(
             self,
             thread_name: str,

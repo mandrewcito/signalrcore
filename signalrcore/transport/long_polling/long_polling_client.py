@@ -6,9 +6,10 @@ from typing import Callable, Union
 from ...helpers import RequestHelpers, Helpers
 from ...types import DEFAULT_ENCODING, RECORD_SEPARATOR
 from urllib.error import HTTPError
+from ..base_client import BaseClient
 
 
-class LongPollingBaseClient(object):
+class LongPollingBaseClient(BaseClient):
     def __init__(
             self,
             thread_name: str,
