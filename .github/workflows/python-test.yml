@@ -16,9 +16,14 @@ jobs:
 
     steps:
     - run: git clone https://github.com/mandrewcito/signalrcore-containertestservers containers
+    - name: Build env var
+      run: |
+        export SIGNALRCORE_AZURE_CONNECTION_STRING="Endpoint=https://signalrcore-server-mandrewcito-test.service.signalr.net;AccessKey=${ACCESSKEY};Version=1.0;"
+      env:
+        ACCESSKEY: ${{ secrets.SIGNALRCORE_AZCS }}
     - name: run SignalR server and Azure function
       env:
-        SIGNALRCORE_AZURE_CONNECTION_STRING: "Endpoint=https://signalrcore-server-mandrewcito-test.service.signalr.net;AccessKey=${{ secrets.SIGNALRCORE_AZCS }};Version=1.0;"
+        SIGNALRCORE_AZURE_CONNECTION_STRING: $SIGNALRCORE_AZURE_CONNECTION_STRING
       run: |
         docker compose -f containers/docker-compose.yml up -d
     - uses: actions/checkout@v2
