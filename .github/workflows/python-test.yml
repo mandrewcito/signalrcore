@@ -16,12 +16,6 @@ jobs:
 
     steps:
     - run: git clone https://github.com/mandrewcito/signalrcore-containertestservers containers
-    - name: run SignalR server and Azure function
-      env:
-        MYSECRET: ${{ secrets.SIGNALRCORE_AZCS }}
-      run: |
-        export SIGNALRCORE_AZURE_CONNECTION_STRING="Endpoint=https://signalrcore-server-mandrewcito-test.service.signalr.net;AccessKey=""$MYSECRET"";Version=1.0;"
-        docker compose -f containers/docker-compose.yml up -d
     - uses: actions/checkout@v2
     - name: Set up Python 3.8
       uses: actions/setup-python@v2
@@ -32,6 +26,12 @@ jobs:
         python -m pip install --upgrade pip
         pip install .[dev]
         pip install codecov
+    - name: run SignalR server and Azure function
+      env:
+        MYSECRET: ${{ secrets.SIGNALRCORE_AZCS }}
+      run: |
+        SIGNALRCORE_AZURE_CONNECTION_STRING="Endpoint=https://signalrcore-server-mandrewcito-test.service.signalr.net;AccessKey=""$MYSECRET"";Version=1.0;" &&
+        docker compose -f containers/docker-compose.yml up -d
     - name: Wait for services (azure func)
       run: |
         for i in {1..30}; do
