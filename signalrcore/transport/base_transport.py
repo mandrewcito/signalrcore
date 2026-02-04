@@ -101,9 +101,6 @@ class BaseTransport(object):
     def is_trace_enabled(self) -> bool:
         return self._client.is_trace_enabled()
 
-    def start(self):  # pragma: no cover
-        raise NotImplementedError()
-
     def is_running(self):
         return self.state != TransportState.disconnected
 
@@ -130,6 +127,24 @@ class BaseTransport(object):
         self.connection_id = response.get_id()
 
         return response
+
+    def create_client(self) -> BaseClient:  # pragma: no cover
+        raise NotImplementedError()
+
+    def start(self, reconnection: bool = False):
+        if reconnection:
+            self.negotiate()
+            self._set_state(TransportState.reconnecting)
+        else:
+            self._set_state(TransportState.connecting)
+
+        self.logger.debug("start url:" + self.url)
+
+        self._client = self.create_client()
+
+        self._client.connect()
+
+        return True
 
     def dispose(self):
         if not self.is_disconnected():
@@ -173,6 +188,10 @@ class BaseTransport(object):
 
         if self.reconnection_handler is None:
             return False
+
+        if not self._client.is_connection_closed():
+            return False
+
         try:
             self.reconnection_handler.reconnecting = True
 

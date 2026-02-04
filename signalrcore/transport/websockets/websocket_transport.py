@@ -16,22 +16,13 @@ class WebsocketTransport(BaseTransport):
             **kwargs):
         super(WebsocketTransport, self).__init__(**kwargs)
         self.handshake_received = False
-        self.connection_alive = False
         self.connection_checker = ConnectionStateChecker(
             lambda: self.send(PingMessage()),
             keep_alive_interval
         )
 
-    def start(self, reconnection: bool = False):
-        if reconnection:
-            self.negotiate()
-            self._set_state(TransportState.reconnecting)
-        else:
-            self._set_state(TransportState.connecting)
-
-        self.logger.debug("start url:" + self.url)
-
-        self._client = WebSocketClient(
+    def create_client(self) -> WebSocketClient:
+        return WebSocketClient(
             url=self.url,
             connection_id=self.connection_id,
             headers=self.headers,
@@ -41,12 +32,7 @@ class WebsocketTransport(BaseTransport):
             on_message=self.on_message,
             on_error=self.on_socket_error,
             on_close=self.on_socket_close,
-            on_open=self.on_socket_open
-            )
-
-        self._client.connect()
-
-        return True
+            on_open=self.on_socket_open)
 
     def evaluate_handshake(self, message):
         self.logger.debug("Evaluating handshake {0}".format(message))

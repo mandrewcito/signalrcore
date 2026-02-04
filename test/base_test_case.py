@@ -3,6 +3,7 @@ import unittest
 import logging
 import time
 import sys
+import uuid
 
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from signalrcore.protocol.messagepack_protocol import MessagePackHubProtocol
@@ -10,6 +11,7 @@ from signalrcore.types import HttpTransportType
 from signalrcore.helpers import Helpers
 
 CONNECTION_TIMEOUT = 20
+LOCK_TIMEOUT = 10
 
 HOST_SIGNALR_HTTP = os.getenv("HOST_SIGNALR_HTTP", "localhost:5000")
 HOST_SIGNALR_HTTPS = os.getenv("HOST_SIGNALR_HTTPS", "localhost:5001")
@@ -79,6 +81,9 @@ class InternalTestCase(unittest.TestCase):
 
 class BaseTestCase(InternalTestCase):
     server_url = Urls.server_url_ssl
+
+    def get_random_id(self) -> str:
+        return str(uuid.uuid4())
 
     def is_debug(self) -> bool:
         return "vscode" in sys.argv[0] and "pytest" in sys.argv[0]

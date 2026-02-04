@@ -43,24 +43,14 @@ class LongPollingTransport(BaseTransport):
             self._set_state(TransportState.disconnected)
             return
 
+        if not self._client.is_connection_closed():
+            self.send(PingMessage())
+
         # Connection closed
         self.handle_reconnect()  # pragma: no cover
 
-        if self.connection_alive:
-            self.send(PingMessage())
-
-    def start(self, reconnection: bool = False):
-
-        if reconnection:
-            self.negotiate()
-            self._set_state(TransportState.reconnecting)
-        else:
-            self._set_state(TransportState.connecting)
-
-        self.handshake_received = False
-        self.logger.debug("start url:" + self.url)
-
-        self._client = self._client_cls(
+    def create_client(self) -> LongPollingBaseClient:
+        return self._client_cls(
             url=self.url,
             connection_id=self.connection_id,
             headers=self.headers,
@@ -72,10 +62,6 @@ class LongPollingTransport(BaseTransport):
             on_close=self.on_client_close,
             on_error=self.on_client_error
         )
-
-        self._client.connect()
-
-        return True
 
     def on_client_error(self, error: Exception):  # pragma: no cover
         """

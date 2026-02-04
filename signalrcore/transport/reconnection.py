@@ -1,6 +1,7 @@
 import threading
 import time
 from enum import Enum
+from ..helpers import Helpers
 
 THREAD_NAME = "Signalrcore ConnectionStateChecker"
 
@@ -19,9 +20,11 @@ class ConnectionStateChecker(object):
         self.running = False
         self._thread = None
         self._lock = threading.Lock()
+        self.logger = Helpers.get_logger()
 
     def start(self):
-        self._lock.acquire()
+        assert self._lock.acquire(timeout=10)
+
         if self._thread is not None:
             return
 
@@ -50,13 +53,15 @@ class ConnectionStateChecker(object):
     def stop(self):
         is_same_thread = threading.current_thread().name == THREAD_NAME
         self.running = False
+        try:
+            if self._thread is not None\
+                    and not is_same_thread\
+                    and self._thread.is_alive():
 
-        if self._thread is not None\
-                and not is_same_thread\
-                and self._thread.is_alive():
-
-            self._thread.join()
-            self._thread = None
+                self._thread.join(timeout=10)
+                self._thread = None
+        except Exception as ex:
+            self.logger.error(ex)
 
 
 class ReconnectionType(Enum):

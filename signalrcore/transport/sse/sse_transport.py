@@ -47,17 +47,8 @@ class SSETransport(BaseTransport):
         if self.connection_alive:
             self.send(PingMessage())
 
-    def start(self, reconnection: bool = False):
-
-        if reconnection:
-            self.negotiate()
-            self._set_state(TransportState.reconnecting)
-        else:
-            self._set_state(TransportState.connecting)
-
-        self.logger.debug("start url:" + self.url)
-
-        self._client = SSEClient(
+    def create_client(self) -> SSEClient:
+        return SSEClient(
             url=self.url,
             connection_id=self.connection_id,
             headers=self.headers,
@@ -69,10 +60,6 @@ class SSETransport(BaseTransport):
             on_close=self.on_client_close,
             on_error=self.on_client_error
         )
-
-        self._client.connect()
-
-        return True
 
     def on_client_error(self, error: Exception):  # pragma: no cover
         """
