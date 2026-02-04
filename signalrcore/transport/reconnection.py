@@ -53,15 +53,12 @@ class ConnectionStateChecker(object):
     def stop(self):
         is_same_thread = threading.current_thread().name == THREAD_NAME
         self.running = False
-        try:
-            if self._thread is not None\
-                    and not is_same_thread\
-                    and self._thread.is_alive():
+        if self._thread is not None\
+                and not is_same_thread\
+                and self._thread.is_alive():
 
-                self._thread.join(timeout=10)
-                self._thread = None
-        except Exception as ex:
-            self.logger.error(ex)
+            self._thread.join(timeout=10)
+            self._thread = None
 
 
 class ReconnectionType(Enum):
