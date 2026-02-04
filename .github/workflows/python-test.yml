@@ -15,7 +15,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - run: git clone https://github.com/mandrewcito/signalrcore-containertestservers containers
     - uses: actions/checkout@v2
     - name: Set up Python 3.8
       uses: actions/setup-python@v2
@@ -26,6 +25,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install .[dev]
         pip install codecov
+    - run: git clone https://github.com/mandrewcito/signalrcore-containertestservers containers
     - name: run SignalR server and Azure function
       env:
         MYSECRET: ${{ secrets.SIGNALRCORE_AZCS }}
