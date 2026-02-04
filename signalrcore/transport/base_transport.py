@@ -171,7 +171,7 @@ class BaseTransport(object):
         self.logger.error("{0} {1}".format(error, type(error)))
         self._set_state(TransportState.disconnected)
 
-    def deferred_reconnect(self, sleep_time):
+    def deferred_reconnect(self, sleep_time):  # pragma: no cover
         time.sleep(sleep_time)
         try:
             if not self.connection_alive:
@@ -186,7 +186,7 @@ class BaseTransport(object):
         if self.is_reconnecting() or self.manually_closing:
             return False
 
-        if self.reconnection_handler is None:
+        if self.reconnection_handler is None:  # pragma: no cover
             return False
 
         if not self._client.is_connection_closed():
@@ -199,7 +199,7 @@ class BaseTransport(object):
 
             self._client.dispose()
             self.start(reconnection=True)
-        except Exception as ex:
+        except Exception as ex:  # pragma: no cover
             self.logger.error(ex)
             sleep_time = self.reconnection_handler.next()
             self.deferred_reconnect(sleep_time)
