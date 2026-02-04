@@ -47,7 +47,7 @@ class HubCallbacks(object):
         return self._on_close()
 
     def on_error(self, error: Exception):
-        return self.on_error(error)
+        return self._on_error(error)
 
     def on_reconnect(self):
         return self._on_reconnect()

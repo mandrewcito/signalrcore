@@ -35,16 +35,18 @@ class TestSendException(BaseTestCase):
         self.assertTrue(LOCKS[identifier].acquire(timeout=10))
 
         def on_error(err=None):
+            self.logger.debug(err)
             LOCKS[identifier].release()
 
         self.connection.on_error(on_error)
 
-        def on_message(_):
-            LOCKS[identifier].release()
-            self.assertTrue(LOCKS[identifier].acquire(timeout=10))
+        def on_message(_):  # pragma no cover
+            pass
 
         self.connection.on("ThrowExceptionCall", on_message)
         self.connection.send("ThrowException", ["msg"])
+
+        self.assertTrue(LOCKS[identifier].acquire(timeout=10))
 
 
 class TestSendExceptionMsgPack(TestSendException):
