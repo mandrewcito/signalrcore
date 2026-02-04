@@ -1,4 +1,4 @@
-
+import ssl
 import time
 import threading
 
@@ -18,7 +18,7 @@ class LongPollingBaseClient(BaseClient):
             connection_id: str = None,
             headers: dict = dict(),
             proxies: dict = dict(),
-            verify_ssl: bool = True,
+            ssl_context: ssl.SSLContext = None,
             enable_trace: bool = False,
             on_message: Callable = None,
             on_open: Callable = None,
@@ -30,7 +30,7 @@ class LongPollingBaseClient(BaseClient):
         self.connection_id = connection_id
         self.headers = headers
         self.proxies = proxies
-        self.verify_ssl = verify_ssl
+        self.ssl_context = ssl_context
         self.enable_trace = enable_trace
         self.on_message = on_message
         self.on_open = on_open
@@ -73,8 +73,8 @@ class LongPollingBaseClient(BaseClient):
             Helpers.websocket_to_http(self.url),
             headers=headers,
             proxies=self.proxies,
-            verify=self.verify_ssl,
-            data=msg_bytes
+            data=msg_bytes,
+            ssl_context=self.ssl_context
         )
 
         status_code, data = response.status_code, response.json()
@@ -107,8 +107,8 @@ class LongPollingBaseClient(BaseClient):
                 params={
                     "id": self.connection_id
                 },
-                verify=self.verify_ssl,
-                timeout=None
+                timeout=None,
+                ssl_context=self.ssl_context
             )
 
             status_code, data = response.status_code, response.content
@@ -196,11 +196,11 @@ class LongPollingBaseClient(BaseClient):
                 Helpers.websocket_to_http(self.url),
                 self.headers,
                 self.proxies,
-                self.verify_ssl,
                 {
                     "id": self.connection_id,
                 },
-                None)
+                None,
+                ssl_context=self.ssl_context)
 
             status_code,  data = response.status_code, response.json()
 

@@ -1,6 +1,7 @@
 import enum
 import traceback
 import time
+import ssl
 from typing import Callable, Dict, Optional
 from ..helpers import Helpers
 from ..transport.base_reconnection import BaseReconnection
@@ -31,7 +32,7 @@ class BaseTransport(object):
             token: Optional[str] = None,
             headers: Optional[Dict] = None,
             proxies: Optional[Dict] = None,
-            verify_ssl: bool = True,
+            ssl_context: ssl.SSLContext = ssl.create_default_context(),
             enable_trace: bool = False,
             on_open: Callable = None,
             on_close: Callable = None,
@@ -43,9 +44,8 @@ class BaseTransport(object):
         self.is_binary = is_binary
         self.headers = headers
         self.token = token
-        self.verify_ssl = verify_ssl
         self.enable_trace = enable_trace
-        self.verify_ssl = verify_ssl
+        self.ssl_context = ssl_context
         self.connection_id = connection_id
         self.proxies = proxies
         self.protocol = protocol
@@ -120,7 +120,7 @@ class BaseTransport(object):
             self.url,
             self.headers,
             self.proxies,
-            self.verify_ssl
+            self.ssl_context
         )
 
         self.url, self.headers, response = handler.negotiate()

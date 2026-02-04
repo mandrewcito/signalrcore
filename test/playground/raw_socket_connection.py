@@ -6,6 +6,7 @@ import json
 import logging
 sys.path.append("./")
 from signalrcore.transport.websockets.websocket_client import WebSocketClient  # noqa E402
+from signalrcore.transport.sockets.utils import create_ssl_context  # noqa E402s
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -30,7 +31,7 @@ app = WebSocketClient(
     enable_trace=False,
     headers={},
     proxies={},
-    verify_ssl=False,
+    ssl_context=create_ssl_context(False),
     on_open=on_open,
     on_error=on_error,
     on_close=on_close,
