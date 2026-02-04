@@ -30,8 +30,7 @@ jobs:
       env:
         ACCESS_KEY: ${{ secrets.SIGNALRCORE_AZCS }}
       run: |
-        SIGNALRCORE_AZURE_CONNECTION_STRING="Endpoint=https://signalrcore-server-mandrewcito-test.service.signalr.net;AccessKey=${ACCESS_KEY};Version=1.0;"
-        docker compose -f containers/docker-compose.yml up -d
+        SIGNALRCORE_AZURE_CONNECTION_STRING="Endpoint=https://signalrcore-server-mandrewcito-test.service.signalr.net;AccessKey=${ACCESS_KEY};Version=1.0;" docker compose -f containers/docker-compose.yml up -d
     - name: Wait for services (azure func)
       run: |
         for i in {1..30}; do
