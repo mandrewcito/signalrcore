@@ -1,7 +1,10 @@
 import unittest
+from urllib.error import URLError
+from .base_test_case import BaseTestCase
 from signalrcore.hub.negotiation\
     import NegotiateResponse, NegotiateValidationError, \
     AzureResponse
+from signalrcore.hub_connection_builder import HubConnectionBuilder
 
 
 class AzureNegotiationTests(unittest.TestCase):
@@ -156,3 +159,34 @@ class NegotiationTests(unittest.TestCase):
         self.assertEqual(
             token,
             data.get_id())
+
+
+class NegotiationErrorTest(BaseTestCase):
+    def tearDown(self):
+        pass
+
+    def setUp(self):
+        pass
+
+    def test_invalid_url(self):
+        builder = HubConnectionBuilder()\
+            .with_url(
+                "https://randomurl.org/",
+                options={
+                    "verify_ssl": False}
+                )\
+            .configure_logging(
+                self.get_log_level(),
+                socket_trace=self.is_debug())\
+            .with_automatic_reconnect({
+                "type": "raw",
+                "keep_alive_interval": 10,
+                "reconnect_interval": 5,
+                "max_attempts": 5
+            })
+
+        hub = builder.build()
+
+        self.assertRaises(
+            URLError,
+            hub.start)

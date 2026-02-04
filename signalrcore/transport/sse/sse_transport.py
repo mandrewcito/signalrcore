@@ -1,4 +1,3 @@
-import traceback
 import time
 
 from typing import Optional
@@ -48,17 +47,8 @@ class SSETransport(BaseTransport):
         if self.connection_alive:
             self.send(PingMessage())
 
-    def start(self, reconnection: bool = False):
-
-        if reconnection:
-            self.negotiate()
-            self._set_state(TransportState.reconnecting)
-        else:
-            self._set_state(TransportState.connecting)
-
-        self.logger.debug("start url:" + self.url)
-
-        self._client = SSEClient(
+    def create_client(self) -> SSEClient:
+        return SSEClient(
             url=self.url,
             connection_id=self.connection_id,
             headers=self.headers,
@@ -70,33 +60,6 @@ class SSETransport(BaseTransport):
             on_close=self.on_client_close,
             on_error=self.on_client_error
         )
-
-        self._client.connect()
-
-        return True
-
-    def dispose(self):
-        if not self.is_disconnected():
-            self.connection_checker.stop()
-            self._client.close()
-
-    def stop(self):
-        if self.manually_closing or self.is_disconnected():
-            return
-        self.manually_closing = True
-        self.handshake_received = False
-        self.dispose()
-
-    def on_open(self):
-        self.logger.debug("-- SSE open --")
-        msg = self.protocol.handshake_message()
-        self.handshake_received = False
-        self._client.send(
-            self.protocol.encode(msg))
-
-    def on_close(self):
-        self.logger.debug("-- SSE close --")
-        self._set_state(TransportState.disconnected)
 
     def on_client_error(self, error: Exception):  # pragma: no cover
         """
@@ -110,11 +73,7 @@ class SSETransport(BaseTransport):
             return
 
         self.logger.debug("-- SSE error --")
-        self.logger.error(traceback.format_exc(10, True))
-        self.logger.error("{0} {1}".format(self, error))
-        self.logger.error("{0} {1}".format(error, type(error)))
-
-        self._set_state(TransportState.disconnected)
+        super().on_socket_error(error)
 
     def on_client_close(self):
         did_i_reconnect = self.reconnection_handler is not None \
@@ -124,12 +83,14 @@ class SSETransport(BaseTransport):
                 )
 
         if not did_i_reconnect or self.manually_closing:
+            self.logger.debug("-- SSE close --")
             self._set_state(TransportState.disconnected)
             return
         self.handle_reconnect()
 
     def on_client_open(self):
-        self.on_open()
+        self.logger.debug("-- SSE open --")
+        self.send_handshake()
 
     def evaluate_handshake(self, message):
         self.logger.debug("Evaluating handshake {0}".format(message))
@@ -182,33 +143,3 @@ class SSETransport(BaseTransport):
             self.handle_reconnect()  # pragma: no cover
         except Exception as ex:  # pragma: no cover
             raise ex  # pragma: no cover
-
-    def handle_reconnect(self) -> bool:
-        if self.is_reconnecting() or self.manually_closing:
-            return False
-
-        if self.reconnection_handler is None:
-            return False
-
-        try:
-            self.reconnection_handler.reconnecting = True
-            self._set_state(TransportState.reconnecting)
-            self._client.dispose()
-            self.start(reconnection=True)
-            return True
-        except Exception as ex:
-            self.logger.error(ex)
-            sleep_time = self.reconnection_handler.next()
-            self.deferred_reconnect(sleep_time)
-        return True
-
-    def deferred_reconnect(self, sleep_time):
-        time.sleep(sleep_time)
-        try:
-            if not self.connection_alive:
-                if not self.connection_checker.running:
-                    self.send(PingMessage())
-        except Exception as ex:
-            self.logger.error(ex)
-            self.reconnection_handler.reconnecting = False
-            self.connection_alive = False

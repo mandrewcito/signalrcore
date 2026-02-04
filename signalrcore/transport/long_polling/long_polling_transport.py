@@ -1,5 +1,4 @@
 import time
-import traceback
 from typing import Optional
 from ..base_transport import BaseTransport, TransportState
 from .long_polling_client import\
@@ -44,24 +43,14 @@ class LongPollingTransport(BaseTransport):
             self._set_state(TransportState.disconnected)
             return
 
+        if not self._client.is_connection_closed():
+            self.send(PingMessage())
+
         # Connection closed
         self.handle_reconnect()  # pragma: no cover
 
-        if self.connection_alive:
-            self.send(PingMessage())
-
-    def start(self, reconnection: bool = False):
-
-        if reconnection:
-            self.negotiate()
-            self._set_state(TransportState.reconnecting)
-        else:
-            self._set_state(TransportState.connecting)
-
-        self.handshake_received = False
-        self.logger.debug("start url:" + self.url)
-
-        self._client = self._client_cls(
+    def create_client(self) -> LongPollingBaseClient:
+        return self._client_cls(
             url=self.url,
             connection_id=self.connection_id,
             headers=self.headers,
@@ -74,31 +63,6 @@ class LongPollingTransport(BaseTransport):
             on_error=self.on_client_error
         )
 
-        self._client.connect()
-
-        return True
-
-    def dispose(self):
-        if self.is_connected():
-            self.connection_checker.stop()
-            self._client.close()
-
-    def stop(self):
-        self.manually_closing = True
-        self.handshake_received = False
-        self.dispose()
-
-    def on_open(self):
-        self.logger.debug("-- Long Polling open --")
-        msg = self.protocol.handshake_message()
-        self.handshake_received = False
-        self._client.send(
-            self.protocol.encode(msg))
-
-    def on_close(self):
-        self.logger.debug("-- Long Polling close --")
-        self._set_state(TransportState.disconnected)
-
     def on_client_error(self, error: Exception):  # pragma: no cover
         """
         Args:
@@ -108,11 +72,7 @@ class LongPollingTransport(BaseTransport):
             HubError: [description]
         """
         self.logger.debug("-- Long Polling error --")
-        self.logger.error(traceback.format_exc(10, True))
-        self.logger.error("{0} {1}".format(self, error))
-        self.logger.error("{0} {1}".format(error, type(error)))
-        self._set_state(TransportState.disconnected)
-        # raise HubError(error)
+        super().on_socket_error(error)
 
     def on_client_close(self):
         if self.reconnection_handler is not None\
@@ -120,10 +80,13 @@ class LongPollingTransport(BaseTransport):
                 and not self.manually_closing:
             self.handle_reconnect()
             return
+
+        self.logger.debug("-- Long Polling close --")
         self._set_state(TransportState.disconnected)
 
     def on_client_open(self):
-        self.on_open()
+        self.logger.debug("-- Long Polling open --")
+        self.send_handshake()
 
     def evaluate_handshake(self, message):
 
@@ -172,31 +135,3 @@ class LongPollingTransport(BaseTransport):
             self.handle_reconnect()  # pragma: no cover
         except Exception as ex:  # pragma: no cover
             raise ex  # pragma: no cover
-
-    def handle_reconnect(self):
-        if self.is_reconnecting() or self.manually_closing:
-            return  # pragma: no cover
-
-        if self.reconnection_handler is None:
-            return
-
-        self.reconnection_handler.reconnecting = True
-        self._set_state(TransportState.reconnecting)
-        try:
-            self._client.dispose()
-            self.start(reconnection=True)
-        except Exception as ex:
-            self.logger.error(ex)
-            sleep_time = self.reconnection_handler.next()
-            self.deferred_reconnect(sleep_time)
-
-    def deferred_reconnect(self, sleep_time):
-        time.sleep(sleep_time)
-        try:
-            if not self.connection_alive:
-                if not self.connection_checker.running:
-                    self.send(PingMessage())
-        except Exception as ex:
-            self.logger.error(ex)
-            self.reconnection_handler.reconnecting = False
-            self.connection_alive = False
