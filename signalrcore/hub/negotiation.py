@@ -41,12 +41,10 @@ class AvailableTransport:
         )
 
 
-@dataclass(frozen=True)
-class NegotiateResponse:
+class BaseResponse(object):
     negotiate_version: int
     connection_id: str
     access_token: str
-    url: str
     available_transports: List[AvailableTransport]
 
     def get_id(self) -> str:
@@ -58,6 +56,62 @@ class NegotiateResponse:
 
         raise ValueError(
             f"Negotiate version invalid {self.negotiate_version}")
+
+
+@dataclass(frozen=True)
+class AzureResponse(BaseResponse):
+    negotiate_version = 1
+    connection_id = None
+    access_token: str
+    url: str
+    available_transports: List[AvailableTransport]
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "NegotiateResponse":
+        access_token = data.get("accessToken")
+        if not isinstance(access_token, str) or not access_token:
+            raise NegotiateValidationError(
+                "accessToken must be a non-empty string")
+
+        url = data.get("url")
+        if not isinstance(url, str) or not url:
+            raise NegotiateValidationError(
+                "url must be a non-empty string")
+        return cls(
+            access_token=access_token,
+            url=url,
+            available_transports=[
+                AvailableTransport(
+                    transfer_formats=[
+                        HubProtocolEncoding.binary,
+                        HubProtocolEncoding.text
+                    ],
+                    transport=HttpTransportType.web_sockets
+                ),
+                AvailableTransport(
+                    transfer_formats=[
+                        HubProtocolEncoding.text
+                    ],
+                    transport=HttpTransportType.server_sent_events
+                ),
+                AvailableTransport(
+                    transfer_formats=[
+                        HubProtocolEncoding.binary,
+                        HubProtocolEncoding.text
+                    ],
+                    transport=HttpTransportType.long_polling
+                )
+            ]
+        )
+
+
+@dataclass(frozen=True)
+class NegotiateResponse(BaseResponse):
+    negotiate_version: int
+    connection_id: str
+    access_token: str
+    url: str
+    available_transports: List[AvailableTransport]
 
     @classmethod
     def from_dict(cls, data: dict) -> "NegotiateResponse":
@@ -126,29 +180,37 @@ class NegotiationHandler(object):
 
         status_code, data = response.status_code, response.json()
 
-        negotiate_response = NegotiateResponse.from_dict(data)
-
         self.logger.debug(
             "Negotiate response status code {0}".format(status_code))
+
         self.logger.debug(
-            "Negotiate response {0}".format(negotiate_response))
+            "Negotiate response {0}".format(data))
 
         if status_code != 200:
             raise HubError(status_code)\
                 if status_code != 401 else UnAuthorizedHubError()
+
+        is_azure_response = 'url' in data.keys()\
+            and 'accessToken' in data.keys()
+
+        negotiate_response = AzureResponse.from_dict(data)\
+            if is_azure_response else NegotiateResponse.from_dict(data)
 
         if "connectionId" in data.keys():
             url = Helpers.encode_connection_id(
                 self.url, negotiate_response.connection_id)
 
         # Azure
-        if 'url' in data.keys() and 'accessToken' in data.keys():
-            Helpers.get_logger().debug(
+        if is_azure_response:
+            self.logger.debug(
                 "Azure url, reformat headers, token and url {0}".format(data))
+
             url = negotiate_response.url\
                 if negotiate_response.url.startswith("ws") else\
                 Helpers.http_to_websocket(negotiate_response.url)
+
             headers = {
                 "Authorization": "Bearer " + negotiate_response.access_token
                 }
+
         return url, headers, negotiate_response

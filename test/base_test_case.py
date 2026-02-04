@@ -1,26 +1,35 @@
+import os
 import unittest
 import logging
 import time
 import sys
+
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from signalrcore.protocol.messagepack_protocol import MessagePackHubProtocol
 from signalrcore.types import HttpTransportType
 from signalrcore.helpers import Helpers
+
 CONNECTION_TIMEOUT = 20
+
+HOST_SIGNALR_HTTP = os.getenv("HOST_SIGNALR_HTTP", "localhost:5000")
+HOST_SIGNALR_HTTPS = os.getenv("HOST_SIGNALR_HTTPS", "localhost:5001")
+HOST_AZURE_FUNC_HTTP = os.getenv("HOST_AZURE_FUNC_HTTP", "localhost:7071")
 
 
 class Urls:
-    server_url_no_ssl = "ws://localhost:5000/chatHub"
-    server_url_ssl = "wss://localhost:5001/chatHub"
+    server_url_no_ssl = f"ws://{HOST_SIGNALR_HTTP}/chatHub"
+    server_url_ssl = f"wss://{HOST_SIGNALR_HTTPS}/chatHub"
 
-    server_url_http_no_ssl = "http://localhost:5000/chatHub"
-    server_url_http_ssl = "https://localhost:5001/chatHub"
+    server_url_http_no_ssl = f"http://{HOST_SIGNALR_HTTP}/chatHub"
+    server_url_http_ssl = f"https://{HOST_SIGNALR_HTTPS}/chatHub"
 
-    server_url_no_ssl_auth = "ws://localhost:5000/authHub"
-    server_url_ssl_auth = "wss://localhost:5001/authHub"
+    server_url_no_ssl_auth = f"ws://{HOST_SIGNALR_HTTP}/authHub"
+    server_url_ssl_auth = f"wss://{HOST_SIGNALR_HTTPS}/authHub"
 
-    login_url_ssl = "https://localhost:5001/users/authenticate"
-    login_url_no_ssl = "http://localhost:5000/users/authenticate"
+    login_url_ssl = f"https://{HOST_SIGNALR_HTTPS}/users/authenticate"
+    login_url_no_ssl = f"http://{HOST_SIGNALR_HTTP}/users/authenticate"
+
+    azure_func_url_no_ssl = f"http://{HOST_AZURE_FUNC_HTTP}/api/"
 
     @staticmethod
     def ws_to_http(url: str) -> str:

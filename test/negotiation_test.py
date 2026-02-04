@@ -1,6 +1,43 @@
 import unittest
 from signalrcore.hub.negotiation\
-    import NegotiateResponse, NegotiateValidationError
+    import NegotiateResponse, NegotiateValidationError, \
+    AzureResponse
+
+
+class AzureNegotiationTests(unittest.TestCase):
+    def test_invalid_url(self):
+        false_obj = {
+            "url": 1,
+            "accessToken": "asdf"
+        }
+        self.assertRaises(
+            NegotiateValidationError,
+            lambda: AzureResponse.from_dict(false_obj)
+        )
+
+    def test_invalid_connection_access_token(self):
+        false_obj = {
+            "negotiateVersion": "https://adsfasdf.org/nego",
+            "accessToken": 3
+        }
+        self.assertRaises(
+            NegotiateValidationError,
+            lambda: AzureResponse.from_dict(false_obj)
+        )
+
+    def test_azure_negotiation(self):
+        token = "brand new access token"
+        obj = {
+            "url": "https://adsfasdf.org/nego",
+            "accessToken": token
+        }
+
+        data = AzureResponse.from_dict(obj)
+
+        self.assertEqual(
+            token,
+            data.get_id()
+        )
 
 
 class NegotiationTests(unittest.TestCase):
