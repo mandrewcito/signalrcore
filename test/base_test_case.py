@@ -92,14 +92,17 @@ class BaseTestCase(InternalTestCase):
         return logging.DEBUG\
             if self.is_debug() else logging.ERROR
 
-    def get_connection(self, msgpack=False):
+    def get_connection(self, msgpack=False, options=None):
         is_debug = "vscode" in sys.argv[0] and "pytest" in sys.argv[0]
 
         enable_trace = is_debug
         log_level = self.get_log_level()
 
+        if options is None:
+            options = {"verify_ssl": False}
+
         builder = HubConnectionBuilder()\
-            .with_url(self.server_url, options={"verify_ssl": False})\
+            .with_url(self.server_url, options=options)\
             .configure_logging(log_level, socket_trace=enable_trace)\
             .with_automatic_reconnect({
                 "type": "raw",
@@ -116,12 +119,16 @@ class BaseTestCase(InternalTestCase):
         hub.on_close(self.on_close)
         return hub
 
-    def get_connection_sse(self, reconnection=False):
+    def get_connection_sse(self, reconnection=False, options=None):
+        if options is None:
+            options = {"verify_ssl": False}
+
+        options.update({
+            "transport": HttpTransportType.server_sent_events
+        })
+
         builder = HubConnectionBuilder()\
-            .with_url(self.server_url, options={
-                "verify_ssl": False,
-                "transport": HttpTransportType.server_sent_events
-                })\
+            .with_url(self.server_url, options=options)\
             .configure_logging(
                 self.get_log_level(),
                 socket_trace=self.is_debug())
@@ -141,12 +148,20 @@ class BaseTestCase(InternalTestCase):
         hub.on_close(self.on_close)
         return hub
 
-    def get_connection_long_polling(self, reconnection=False, msgpack=False):
+    def get_connection_long_polling(
+            self,
+            reconnection=False,
+            msgpack=False,
+            options=None):
+        if options is None:
+            options = {"verify_ssl": False}
+
+        options.update({
+            "transport": HttpTransportType.long_polling
+        })
+
         builder = HubConnectionBuilder()\
-            .with_url(self.server_url, options={
-                "verify_ssl": False,
-                "transport": HttpTransportType.long_polling
-                })\
+            .with_url(self.server_url, options=options)\
             .configure_logging(
                 self.get_log_level(),
                 socket_trace=self.is_debug())

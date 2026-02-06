@@ -1,5 +1,6 @@
 import uuid
 import copy
+import ssl
 from typing import Callable, List, Union, Optional
 from signalrcore.messages.message_type import MessageType
 from signalrcore.messages.stream_invocation_message\
@@ -57,7 +58,7 @@ class BaseHubConnection(object):
     url: str
     headers: dict
     token: str
-    verify_ssl: bool
+    ssl_context: ssl.SSLContext
     protocol: BaseHubProtocol = None
     transport: BaseTransport = None
     preferred_transport: Optional[HttpTransportType] = None
@@ -70,7 +71,7 @@ class BaseHubConnection(object):
             preferred_transport: Optional[HttpTransportType] = None,
             skip_negotiation=False,
             headers=None,
-            verify_ssl=False,
+            ssl_context: ssl.SSLContext = ssl.create_default_context(),
             protocol=None,
             proxies: dict = {},
             **kwargs):
@@ -78,7 +79,7 @@ class BaseHubConnection(object):
         self.preferred_transport = preferred_transport
         self.kwargs = kwargs
         self.url = url
-        self.verify_ssl = verify_ssl
+        self.ssl_context = ssl_context
         self.proxies = proxies
         self.token = None
         self._selected_protocol = protocol
@@ -99,7 +100,7 @@ class BaseHubConnection(object):
             self.url,
             self.headers,
             self.proxies,
-            self.verify_ssl
+            self.ssl_context
         )
 
         (url, headers, response) = handler.negotiate()
@@ -133,7 +134,7 @@ class BaseHubConnection(object):
             headers=self.headers,
             token=self.token,
             connection_id=negotiate_response.get_id(),
-            verify_ssl=self.verify_ssl,
+            ssl_context=self.ssl_context,
             proxies=self.proxies,
             on_close=self._callbacks.on_close,
             on_open=self._callbacks.on_open,

@@ -1,5 +1,5 @@
 import logging
-
+import ssl
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from signalrcore.protocol.messagepack_protocol import MessagePackHubProtocol
 from signalrcore.types import HubProtocolEncoding
@@ -8,6 +8,11 @@ from test.base_test_case import BaseTestCase
 
 
 class TestConfiguration(BaseTestCase):
+    def setUp(self):  # pragma: no cover
+        pass
+
+    def tearDown(self):  # pragma: no cover
+        pass
 
     def test_bad_auth_function(self):
         with self.assertRaises(TypeError):
@@ -132,3 +137,23 @@ class TestConfiguration(BaseTestCase):
         hub.start()
         self.assertTrue(hub.transport.is_trace_enabled())
         hub.stop()
+
+    def test_verify_ssl_error(self):
+        self.assertRaises(
+            TypeError,
+            lambda: HubConnectionBuilder()
+            .with_url(self.server_url, options={"verify_ssl": 1}))
+
+    def test_verify_ssl_ssl_context_error(self):
+        self.assertRaises(
+            ValueError,
+            lambda: HubConnectionBuilder()
+            .with_url(self.server_url, options={
+                "verify_ssl": True,
+                "ssl_context": ssl.create_default_context()}))
+
+    def test_ssl_context_error(self):
+        self.assertRaises(
+            TypeError,
+            lambda: HubConnectionBuilder()
+            .with_url(self.server_url, options={"ssl_context": 1}))

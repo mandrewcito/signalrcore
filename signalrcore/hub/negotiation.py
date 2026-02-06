@@ -156,12 +156,12 @@ class NegotiationHandler(object):
             url,
             headers,
             proxies,
-            verify_ssl):
+            ssl_context):
         self.logger = Helpers.get_logger()
         self.url = url
         self.headers = headers
         self.proxies = proxies
-        self.verify_ssl = verify_ssl
+        self.ssl_context = ssl_context
 
     def negotiate(self) -> Tuple[str, dict, NegotiateResponse]:
         url = self.url
@@ -176,7 +176,7 @@ class NegotiationHandler(object):
             negotiate_url,
             headers=headers,
             proxies=self.proxies,
-            verify=self.verify_ssl)
+            ssl_context=self.ssl_context)
 
         status_code, data = response.status_code, response.json()
 

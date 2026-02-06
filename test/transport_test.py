@@ -11,10 +11,11 @@ LOCKS = {}
 
 
 class TesTransportSelection(BaseTestCase):
-    def setUp(self):
+
+    def setUp(self):  # pragma: no cover
         pass
 
-    def tearDown(self):
+    def tearDown(self):  # pragma: no cover
         pass
 
     def test_websockets(self):

@@ -162,10 +162,10 @@ class NegotiationTests(unittest.TestCase):
 
 
 class NegotiationErrorTest(BaseTestCase):
-    def tearDown(self):
+    def tearDown(self):  # pragma: no cover
         pass
 
-    def setUp(self):
+    def setUp(self):  # pragma: no cover
         pass
 
     def test_invalid_url(self):

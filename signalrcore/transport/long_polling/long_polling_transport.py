@@ -55,7 +55,7 @@ class LongPollingTransport(BaseTransport):
             connection_id=self.connection_id,
             headers=self.headers,
             proxies=self.proxies,
-            verify_ssl=self.verify_ssl,
+            ssl_context=self.ssl_context,
             enable_trace=self.enable_trace,
             on_message=self.on_message,
             on_open=self.on_client_open,

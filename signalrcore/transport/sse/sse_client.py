@@ -1,5 +1,6 @@
 import socket
 import time
+import ssl
 import struct
 import urllib.parse as parse
 
@@ -20,7 +21,7 @@ class SSEClient(BaseSocketClient):
             connection_id: str = None,
             headers: dict = dict(),
             proxies: dict = dict(),
-            verify_ssl: bool = True,
+            ssl_context: ssl.SSLContext = None,
             enable_trace: bool = False,
             on_message: Callable = None,
             on_open: Callable = None,
@@ -34,7 +35,7 @@ class SSEClient(BaseSocketClient):
             is_binary=False,
             headers=headers,
             proxies=proxies,
-            verify_ssl=verify_ssl,
+            ssl_context=ssl_context,
             enable_trace=enable_trace,
             on_message=on_message,
             on_open=on_open,
@@ -80,8 +81,8 @@ class SSEClient(BaseSocketClient):
             Helpers.websocket_to_http(self.url),
             headers=headers,
             proxies=self.proxies,
-            verify=self.verify_ssl,
-            data=msg_bytes
+            data=msg_bytes,
+            ssl_context=self.ssl_context
         )
 
         status_code, data = response.status_code, response.json()

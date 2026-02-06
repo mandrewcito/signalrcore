@@ -48,17 +48,17 @@ class RequestHelpers:
             url: str,
             headers: dict = {},
             proxies: dict = {},
-            verify: bool = False,
             params: dict = {},
-            timeout: float = None) -> HTTPResponse:
+            timeout: float = None,
+            ssl_context: ssl.SSLContext = None) -> HTTPResponse:
         return RequestHelpers.request(
             url,
             "GET",
             headers=headers,
             proxies=proxies,
-            verify=verify,
             params=params,
-            timeout=timeout
+            timeout=timeout,
+            ssl_context=ssl_context
         )
 
     @staticmethod
@@ -66,19 +66,19 @@ class RequestHelpers:
             url: str,
             headers: dict = {},
             proxies: dict = {},
-            verify: bool = False,
             params: dict = {},
             data: bytes = None,
-            timeout: float = None) -> HTTPResponse:
+            timeout: float = None,
+            ssl_context: ssl.SSLContext = None) -> HTTPResponse:
         return RequestHelpers.request(
             url,
             "POST",
             headers=headers,
             proxies=proxies,
-            verify=verify,
             params=params,
             data=data,
-            timeout=timeout
+            timeout=timeout,
+            ssl_context=ssl_context
         )
 
     @staticmethod
@@ -86,19 +86,19 @@ class RequestHelpers:
             url: str,
             headers: dict = {},
             proxies: dict = {},
-            verify: bool = False,
             params: dict = {},
             data: bytes = None,
-            timeout: float = None) -> HTTPResponse:
+            timeout: float = None,
+            ssl_context: ssl.SSLContext = None) -> HTTPResponse:
         return RequestHelpers.request(
             url,
             "DELETE",
             headers=headers,
             proxies=proxies,
-            verify=verify,
             params=params,
             data=data,
-            timeout=timeout
+            timeout=timeout,
+            ssl_context=ssl_context
         )
 
     @staticmethod
@@ -107,12 +107,11 @@ class RequestHelpers:
             method: str,
             headers: dict = None,
             proxies: dict = {},
-            verify: bool = False,
             params: dict = {},
             data: bytes = None,
-            timeout: float = None) -> HTTPResponse:
+            timeout: float = None,
+            ssl_context: ssl.SSLContext = None) -> HTTPResponse:
 
-        context = ssl.create_default_context()
         request_headers = {}
 
         if headers is None:
@@ -123,10 +122,6 @@ class RequestHelpers:
 
         if data is not None:
             request_headers.update({"Content-Length": str(len(data))})
-
-        if not verify:
-            context.check_hostname = False
-            context.verify_mode = ssl.CERT_NONE
 
         proxy_handler = None
 
@@ -148,11 +143,11 @@ class RequestHelpers:
 
         with opener(
                 req,
-                context=context,
+                context=ssl_context,
                 timeout=timeout) as response:
 
             return HTTPResponse(
-                context=context,
+                context=ssl_context,
                 request=req,
                 response=response
                 )

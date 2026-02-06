@@ -1,3 +1,4 @@
+import ssl
 from .hub.base_hub_connection import BaseHubConnection
 from .hub.auth_hub_connection import AuthHubConnection
 from .transport.reconnection import \
@@ -5,6 +6,7 @@ from .transport.reconnection import \
 from .helpers import Helpers
 from .types import HttpTransportType, HubProtocolEncoding
 from .protocol.protocol_factory import BaseHubProtocol
+from .transport.sockets.utils import create_ssl_context
 
 
 class HubConnectionBuilder(object):
@@ -33,7 +35,7 @@ class HubConnectionBuilder(object):
         self.preferred_protocol = None
         self.reconnection_handler = None
         self.keep_alive_interval = 15
-        self.verify_ssl = True
+        self.ssl_context = ssl.create_default_context()
         self.enable_trace = False  # socket trace
         self.skip_negotiation = False  # By default do not skip negotiation
         self.running = False
@@ -111,6 +113,25 @@ class HubConnectionBuilder(object):
                     raise TypeError(
                         f"transport types:  {HttpTransportType}")
                 self.transport = transport
+
+            if "verify_ssl" in options.keys()\
+                    and "ssl_context" in options.keys():
+                raise ValueError(
+                    "You must specify one of these two options, "
+                    "verify_ssl:bool or ssl_context: ssl.SSLContext")
+
+            if "verify_ssl" in options.keys():
+                value = options.get("verify_ssl", None)
+                if type(value) is not bool:
+                    raise TypeError("Verify ssl must be a bool")
+
+                self.ssl_context = create_ssl_context(value)
+
+            if "ssl_context" in options.keys():
+                value = options.get("ssl_context", None)
+                if type(value) is not ssl.SSLContext:
+                    raise TypeError("ssl_context must be a ssl.SSLContext")
+                self.ssl_context = value
 
         self.hub_url = hub_url
         self.hub = None
@@ -209,9 +230,6 @@ class HubConnectionBuilder(object):
             if auth_function is None or not callable(auth_function):
                 raise TypeError(
                     "access_token_factory is not function")
-        if "verify_ssl" in self.options.keys()\
-                and type(self.options["verify_ssl"]) is bool:
-            self.verify_ssl = self.options["verify_ssl"]
 
         return AuthHubConnection(
                 headers=self.headers,
@@ -221,7 +239,7 @@ class HubConnectionBuilder(object):
                 preferred_protocol=self.preferred_protocol,
                 keep_alive_interval=self.keep_alive_interval,
                 reconnection_handler=self.reconnection_handler,
-                verify_ssl=self.verify_ssl,
+                ssl_context=self.ssl_context,
                 proxies=self.proxies,
                 skip_negotiation=self.skip_negotiation,
                 enable_trace=self.enable_trace,
@@ -234,7 +252,7 @@ class HubConnectionBuilder(object):
                 keep_alive_interval=self.keep_alive_interval,
                 reconnection_handler=self.reconnection_handler,
                 headers=self.headers,
-                verify_ssl=self.verify_ssl,
+                ssl_context=self.ssl_context,
                 proxies=self.proxies,
                 skip_negotiation=self.skip_negotiation,
                 enable_trace=self.enable_trace,
