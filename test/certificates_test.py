@@ -6,15 +6,18 @@ from signalrcore.hub_connection_builder import HubConnectionBuilder
 
 LOCKS = {}
 
+MY_CA_FILE_PATH = "test/resources/certificates/ca.crt"
+
 
 class CustomSslContextWebSocketTests(BaseTestCase):
-    def get_connection(self, msgpack=False):
-        context = ssl._create_unverified_context()
-        return super().get_connection(False, options={
-            "ssl_context": context
-        })
+    def get_connection(self, msgpack=False, options=None):
+        if options is None:
+            options = {
+                "ssl_context": ssl._create_unverified_context()
+            }
+        return super().get_connection(msgpack, options=options)
 
-    def test_configure_default_cert_unverified(self):
+    def test_send_message(self):
         identifier = self.get_random_id()
         LOCKS[identifier] = threading.Lock()
         self.message = "new message {0}".format(identifier)
@@ -37,7 +40,7 @@ class CustomSslContextWebSocketTests(BaseTestCase):
 class CustomSslContextServerSentEventsTests(CustomSslContextWebSocketTests):
     def get_connection(self, msgpack=False):
         context = ssl._create_unverified_context()
-        return super().get_connection_sse(False, options={
+        return super().get_connection_sse(msgpack, options={
             "ssl_context": context
         })
 
@@ -46,11 +49,46 @@ class CustomSslContextLongPollingTests(CustomSslContextWebSocketTests):
     def get_connection(self, msgpack=False):
         context = ssl._create_unverified_context()
         return super().get_connection_long_polling(
-            False,
+            msgpack,
             False,
             options={
                 "ssl_context": context
                 })
+
+
+class CustomSslContextWebSocketWithCertTests(CustomSslContextWebSocketTests):
+    def get_connection(self, msgpack=False):
+        context = ssl.create_default_context(
+            cafile=MY_CA_FILE_PATH
+        )
+
+        return super().get_connection(msgpack, options={
+            "ssl_context": context
+        })
+
+
+class CustomSslContextServerSentEventsWithCertTests(
+        CustomSslContextWebSocketTests):
+    def get_connection(self, msgpack=False):
+        context = ssl.create_default_context(
+            cafile=MY_CA_FILE_PATH
+        )
+
+        return super().get_connection_sse(msgpack, options={
+            "ssl_context": context
+        })
+
+
+class CustomSslContextLongPollingWithCertTests(
+        CustomSslContextWebSocketTests):
+    def get_connection(self, msgpack=False):
+        context = ssl.create_default_context(
+            cafile=MY_CA_FILE_PATH
+        )
+
+        return super().get_connection_long_polling(msgpack, options={
+            "ssl_context": context
+        })
 
 
 class CustomSslContextErrorTests(BaseTestCase):

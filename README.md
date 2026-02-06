@@ -13,6 +13,15 @@
 
 Python signalr core client library, made by a guy born in Vilalba (Lugo).
 
+Features:
+* All kind of communications with the server (streaming, sending messages)
+* All transports implemented (sse, long polling and web sockets)
+* All encodings (text, binary - msgpack)
+* Authentication
+* Automatic reconnection with different strategies 
+* Custom certificates
+* ... 
+
 # Links 
 
 * [Dev to posts with library examples and implementation](https://dev.to/mandrewcito/singlar-core-python-client-58e7)
