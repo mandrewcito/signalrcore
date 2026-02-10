@@ -97,10 +97,9 @@ class TestConfiguration(BaseTestCase):
                             "verify_ssl": False,
                             "headers": {
                                 "mycustomheader": "mycustomheadervalue"
-                            }
+                            },
+                            "access_token_factory": ""
                         })
-            hub.has_auth_configured = True
-            hub.options["access_token_factory"] = ""
             _ = hub.build()
 
     def test_enable_trace(self):

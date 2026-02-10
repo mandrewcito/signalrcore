@@ -137,7 +137,7 @@ class HubConnectionBuilder(object):
                 value = options.get("headers", None)
                 if type(value) is not dict:
                     raise TypeError("headers must be a Dict[str, str]")
-                self.headers.update(self.options["headers"])
+                self.headers.update(value)
 
             if "access_token_factory" in options.keys():
                 auth_function = options.get("access_token_factory", None)
