@@ -133,6 +133,20 @@ class HubConnectionBuilder(object):
                     raise TypeError("ssl_context must be a ssl.SSLContext")
                 self.ssl_context = value
 
+            if "headers" in options.keys():
+                value = options.get("headers", None)
+                if type(value) is not dict:
+                    raise TypeError("headers must be a Dict[str, str]")
+                self.headers.update(self.options["headers"])
+
+            if "access_token_factory" in options.keys():
+                auth_function = options.get("access_token_factory", None)
+                if auth_function is None\
+                        or not callable(auth_function):
+                    raise TypeError(
+                        "access_token_factory is not function")
+                self.auth_function = auth_function
+
         self.hub_url = hub_url
         self.hub = None
         self.options = self.options if options is None else options
@@ -211,29 +225,14 @@ class HubConnectionBuilder(object):
         raise TypeError(f"Wrong protocol type {type(protocol)}")
 
     def build(self):
-        """Configures the connection hub
-
-        Raises:
-            TypeError: Checks parameters an raises TypeError
-                if one of them is wrong
+        """Creates the connection hub
 
         Returns:
-            [HubConnectionBuilder]: [self object for fluent interface purposes]
+            [BaseHubConnection]: [connection SignalR object]
         """
-
-        if "headers" in self.options.keys()\
-                and type(self.options["headers"]) is dict:
-            self.headers.update(self.options["headers"])
-
-        if self.has_auth_configured:
-            auth_function = self.options["access_token_factory"]
-            if auth_function is None or not callable(auth_function):
-                raise TypeError(
-                    "access_token_factory is not function")
-
         return AuthHubConnection(
                 headers=self.headers,
-                auth_function=auth_function,
+                auth_function=self.auth_function,
                 url=self.hub_url,
                 protocol=self.protocol,
                 preferred_protocol=self.preferred_protocol,

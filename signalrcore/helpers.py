@@ -7,6 +7,7 @@ import urllib.parse as parse
 import urllib.request
 
 from typing import Callable, List, Dict, TypeVar, Union
+from .types import DEFAULT_ENCODING
 
 T = TypeVar("T")
 K = TypeVar("K")
@@ -26,7 +27,7 @@ class HTTPResponse(object):
         self.content = response.read()
 
     def json(self) -> Union[dict, None]:
-        response_body = self.content.decode('utf-8')
+        response_body = self.content.decode(DEFAULT_ENCODING)
         return json.loads(response_body)\
             if len(response_body) > 0 else None
 

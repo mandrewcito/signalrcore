@@ -43,6 +43,7 @@ Software requirements:
 > Test environment has as a requirement a signalr core server, is available in [here](https://github.com/mandrewcito/signalrcore-containertestservers)
 
 Clone repos and install virtual environment:
+
 ```bash
 git clone https://github.com/mandrewcito/signalrcore-containertestservers
 cd signalrcore
@@ -222,8 +223,29 @@ HubConnectionBuilder()\
                 ...
             .build()
 ```
+## Configure custom ssl context
+You can add a custom ssl context to all requests and sockets
 
-## Configure another transport layer
+```python
+MY_CA_FILE_PATH = "ca.crt"
+context = ssl.create_default_context(
+    cafile=MY_CA_FILE_PATH
+)
+
+options = {
+    "ssl_context": context
+}
+
+builder = HubConnectionBuilder()\
+    .with_url(self.server_url, options=options)\
+    .configure_logging(
+        logging.INFO,
+        socket_trace=True)
+ 
+connection = builder.build()
+``` 
+
+More info about certificates [here](https://github.com/mandrewcito/signalrcore/blob/main/docs/articles/CustomClientCert.md)
 
 ### Websockets
 
