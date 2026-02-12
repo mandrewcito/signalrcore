@@ -9,7 +9,6 @@ from ...messages.completion_message import CompletionMessage
 class AIOBaseHubConnection(BaseHubConnection):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._loop = asyncio.get_running_loop()
 
     async def wait_until_state(
             self,
@@ -72,6 +71,6 @@ class AIOBaseHubConnection(BaseHubConnection):
     def on(
             self,
             event: str,
-            callback_function: Callable[[List[Any]], Awaitable[None]])\
+            callback_function: Callable[[List[Any]], None])\
             -> None:
         return super().on(event, callback_function)
