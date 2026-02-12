@@ -3,6 +3,7 @@ import time
 from typing import Awaitable, Any, List, Callable, Optional
 from ...hub.base_hub_connection import BaseHubConnection
 from ...transport.base_transport import TransportState
+from ...messages.completion_message import CompletionMessage
 
 
 class AIOBaseHubConnection(BaseHubConnection):
@@ -40,7 +41,7 @@ class AIOBaseHubConnection(BaseHubConnection):
             self,
             method: str,
             arguments: List[Any],
-            on_invocation: Optional[Callable[[List[Any]], Awaitable[None]]] = None,  # noqa: E501
+            on_invocation: Optional[Callable[[List[CompletionMessage]], Awaitable[None]]] = None,  # noqa: E501
             invocation_id: str = None) -> Awaitable:
 
         result = await asyncio.to_thread(
@@ -56,7 +57,7 @@ class AIOBaseHubConnection(BaseHubConnection):
             self,
             method: str,
             arguments: List[Any],
-            on_invocation: Optional[Callable[[List[Any]], Awaitable[None]]] = None,  # noqa: E501
+            on_invocation: Optional[Callable[[List[CompletionMessage]], Awaitable[None]]] = None,  # noqa: E501
             invocation_id: str = None):
 
         result = await asyncio.to_thread(

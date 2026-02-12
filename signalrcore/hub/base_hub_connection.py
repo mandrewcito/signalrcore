@@ -18,6 +18,7 @@ from ..transport.transport_factory import TransportFactory
 from .negotiation import NegotiateResponse, NegotiationHandler
 from ..types import HttpTransportType, HubProtocolEncoding
 from ..messages.base_message import BaseMessage
+from ..messages.completion_message import CompletionMessage
 
 
 class InvocationResult(object):
@@ -238,7 +239,7 @@ class BaseHubConnection(object):
             self,
             method: str,
             arguments: Union[List, Subject],
-            on_invocation: Optional[Callable] = None,
+            on_invocation: Optional[Callable[[List[CompletionMessage]], None]] = None,  # noqa: E501
             invocation_id: Optional[str] = None)\
             -> InvocationResult:
         """invokes a server function
@@ -293,6 +294,17 @@ class BaseHubConnection(object):
 
         return result
 
+    def __on_invocation_message(self, message: InvocationMessage):
+        message: InvocationMessage
+        fired_handlers = self.handlers.get(message.target, [])
+
+        if len(fired_handlers) == 0:
+            self.logger.info(
+                f"Event '{message.target}' hasn't fired any handler")
+
+        for handler in fired_handlers:
+            handler(message.arguments)
+
     def on_message(self, messages: List[BaseMessage]) -> None:
         for message in messages:
             self.logger.debug(message)
@@ -301,27 +313,22 @@ class BaseHubConnection(object):
                 self._callbacks.on_error(message)
                 continue
 
-            if message.type == MessageType.ping:
-                continue
-
             if message.type == MessageType.invocation:
-                message: InvocationMessage
-                fired_handlers = self.handlers.get(message.target, [])
+                self.__on_invocation_message(message)
+
+            if message.type == MessageType.stream_item:  # 2
+                fired_handlers = self.stream_handlers.get(
+                    message.invocation_id, [])
 
                 if len(fired_handlers) == 0:
-                    self.logger.info(
-                        f"Event '{message.target}' hasn't fired any handler")
+                    self.logger.warning(
+                        "id '{0}' hasn't fire any stream handler".format(
+                            message.invocation_id))
 
                 for handler in fired_handlers:
-                    handler(message.arguments)
+                    handler.next_callback(message.item)
 
-            if message.type == MessageType.close:
-                self.logger.info("Close message received from server")
-                self.transport.dispose()
-                return
-
-            if message.type == MessageType.completion:
-
+            if message.type == MessageType.completion:  # 3
                 if message.error is not None and len(message.error) > 0:
                     self._callbacks.on_error(message)
 
@@ -337,22 +344,11 @@ class BaseHubConnection(object):
                 if message.invocation_id in self.stream_handlers:
                     del self.stream_handlers[message.invocation_id]
 
-            if message.type == MessageType.stream_item:
-                fired_handlers = self.stream_handlers.get(
-                    message.invocation_id, [])
+            if message.type == MessageType.stream_invocation:  # 4
+                self.logger.debug("Ping message received from server")
+                continue
 
-                if len(fired_handlers) == 0:
-                    self.logger.warning(
-                        "id '{0}' hasn't fire any stream handler".format(
-                            message.invocation_id))
-
-                for handler in fired_handlers:
-                    handler.next_callback(message.item)
-
-            if message.type == MessageType.stream_invocation:
-                pass
-
-            if message.type == MessageType.cancel_invocation:
+            if message.type == MessageType.cancel_invocation:  # 5
                 fired_handlers = self.stream_handlers.get(
                     message.invocation_id, [])
 
@@ -367,6 +363,23 @@ class BaseHubConnection(object):
                 # unregister handler
                 if message.invocation_id in self.stream_handlers:
                     del self.stream_handlers[message.invocation_id]
+
+            if message.type == MessageType.ping:  # 6
+                self.logger.debug("Ping message received from server")
+                continue
+
+            if message.type == MessageType.close:  # 7
+                self.logger.info("Close message received from server")
+                self.transport.dispose()
+                return
+
+            if message.type == MessageType.ack:  # 8
+                self.logger.info("Ack message received from server")
+                continue
+
+            if message.type == MessageType.sequence:  # 9
+                self.logger.info("Sequence message received from server")
+                continue
 
     def stream(self, event, event_params) -> StreamHandler:
         """Starts server streaming
