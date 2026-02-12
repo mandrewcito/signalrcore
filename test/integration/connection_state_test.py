@@ -8,12 +8,17 @@ LOCKS = {}
 class ConnectionWebSocketStateTest(BaseTestCase):
     def test_delay_sending(self):
         identifier = self.get_random_id()
+        result = None
+
         LOCKS[identifier] = threading.Lock()
 
         time.sleep(CONNECTION_TIMEOUT)
 
         def release(completion_message):
             global LOCKS
+
+            while result is None:
+                time.sleep(1)
 
             self.logger.debug(f"{completion_message}")
 
@@ -29,7 +34,9 @@ class ConnectionWebSocketStateTest(BaseTestCase):
 
         time.sleep(CONNECTION_TIMEOUT)
 
+        result = None
         result = self.connection.send("SendMessage", ["user", "msg"], release)
+
         self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT * 2))
 
 
@@ -49,9 +56,9 @@ class ConnectionLongPollingStateTest(ConnectionWebSocketStateTest):
         time.sleep(CONNECTION_TIMEOUT)
 
         def release(args):
+            global LOCKS
             username, msg = args
             self.logger.debug(f"{username} {msg}")
-            global LOCKS
             LOCKS[identifier].release()
 
         self.connection.on("ReceiveMessage", release)
