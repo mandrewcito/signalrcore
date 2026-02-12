@@ -1,4 +1,3 @@
-from .base_message import BaseHeadersMessage
 """
 A `Close` message is a JSON object with the following properties
 
@@ -22,6 +21,7 @@ Example - A `Close` message with an error
 }
 ```
 """
+from .base_message import BaseHeadersMessage, MessageType
 
 
 class CloseMessage(BaseHeadersMessage):
@@ -30,6 +30,6 @@ class CloseMessage(BaseHeadersMessage):
             error,
             allow_reconnect,
             **kwargs):
-        super(CloseMessage, self).__init__(7, **kwargs)
+        super(CloseMessage, self).__init__(MessageType.close.value, **kwargs)
         self.error = error
         self.allow_reconnect = allow_reconnect

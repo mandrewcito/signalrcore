@@ -1,4 +1,3 @@
-from .base_message import BaseHeadersMessage, MessageType
 """
 
 An `Invocation` message is a JSON object with the following properties:
@@ -40,6 +39,7 @@ Example (Non-Blocking):
 ```
 
 """
+from .base_message import BaseHeadersMessage, MessageType
 
 
 class InvocationMessage(BaseHeadersMessage):

@@ -23,7 +23,7 @@ class AIOHubConnectionBuilder(HubConnectionBuilder):
                 proxies=self.proxies,
                 skip_negotiation=self.skip_negotiation,
                 enable_trace=self.enable_trace,
-                preferred_transport=self.transport)\
+                preferred_transport=self.preferred_transport)\
             if self.has_auth_configured else\
             AIOBaseHubConnection(
                 url=self.hub_url,
@@ -36,4 +36,4 @@ class AIOHubConnectionBuilder(HubConnectionBuilder):
                 proxies=self.proxies,
                 skip_negotiation=self.skip_negotiation,
                 enable_trace=self.enable_trace,
-                preferred_transport=self.transport)
+                preferred_transport=self.preferred_transport)

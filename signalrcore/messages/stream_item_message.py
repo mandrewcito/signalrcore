@@ -1,4 +1,3 @@
-from .base_message import BaseHeadersMessage
 """
 A `StreamItem` message is a JSON object with the following properties:
 
@@ -18,6 +17,7 @@ Example
 }
 ```
 """
+from .base_message import BaseHeadersMessage, MessageType
 
 
 class StreamItemMessage(BaseHeadersMessage):
@@ -26,6 +26,7 @@ class StreamItemMessage(BaseHeadersMessage):
             invocation_id,
             item,
             **kwargs):
-        super(StreamItemMessage, self).__init__(2, **kwargs)
+        super(StreamItemMessage, self).__init__(
+            MessageType.stream_item.value, **kwargs)
         self.invocation_id = invocation_id
         self.item = item

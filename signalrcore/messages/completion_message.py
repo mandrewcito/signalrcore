@@ -1,4 +1,3 @@
-from .base_message import BaseHeadersMessage
 """
 A `Completion` message is a JSON object with the following properties
 
@@ -55,12 +54,14 @@ Example - The following `Completion` message is a protocol error
 }
 ```
 """
+from .base_message import BaseHeadersMessage, MessageType
 
 
 class CompletionClientStreamMessage(BaseHeadersMessage):
     def __init__(
             self, invocation_id, **kwargs):
-        super(CompletionClientStreamMessage, self).__init__(3, **kwargs)
+        super(CompletionClientStreamMessage, self).__init__(
+            MessageType.completion.value, **kwargs)
         self.invocation_id = invocation_id
 
 
@@ -71,7 +72,8 @@ class CompletionMessage(BaseHeadersMessage):
             result,
             error,
             **kwargs):
-        super(CompletionMessage, self).__init__(3, **kwargs)
+        super(CompletionMessage, self).__init__(
+            MessageType.completion.value, **kwargs)
         self.invocation_id = invocation_id
         self.result = result
         self.error = error
