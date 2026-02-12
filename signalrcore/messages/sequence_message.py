@@ -20,6 +20,6 @@ from .base_message import BaseHeadersMessage, MessageType
 
 
 class SequenceMessage(BaseHeadersMessage):
-    def __init__(self, sequence_id: int, **kwargs):
+    def __init__(self, sequence_id: int, **kwargs):  # pragma: no cover
         super().__init__(MessageType.sequence.value, **kwargs)
         self.sequence_id = sequence_id

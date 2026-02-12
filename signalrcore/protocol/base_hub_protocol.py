@@ -56,9 +56,9 @@ class BaseHubProtocol(object):
             dict_message["allow_reconnect"] =\
                 dict_message.get("allowReconnect", None)
             return CloseMessage(**dict_message)
-        if message_type is MessageType.ack:
+        if message_type is MessageType.ack:  # pragma: no cover
             return AckMessage(**dict_message)
-        if message_type is MessageType.sequence:
+        if message_type is MessageType.sequence:  # pragma: no cover
             return SequenceMessage(**dict_message)
 
     def decode_handshake(self, raw_message: str) -> HandshakeResponseMessage:

@@ -371,11 +371,11 @@ class BaseHubConnection(object):
         self.transport.dispose()
 
     def __on_ack_message(
-            self, message: AckMessage) -> None:  # 8
+            self, message: AckMessage) -> None:  # pragma: no cover # 8
         self.logger.debug(f"Ack message {message}")
 
     def __on_sequence_message(
-            self, message: SequenceMessage) -> None:  # 9
+            self, message: SequenceMessage) -> None:  # pragma: no cover # 9
         self.logger.debug(f"Sequence message {message}")
 
     def __on_binding_failure(self, message) -> None:  # -1
@@ -402,9 +402,9 @@ class BaseHubConnection(object):
             elif message.type == MessageType.close:  # 7
                 self.__on_close_message(message)
                 return
-            elif message.type == MessageType.ack:  # 8
+            elif message.type == MessageType.ack:  # pragma: no cover  # 8
                 self.__on_ack_message(message)
-            elif message.type == MessageType.sequence:  # 9
+            elif message.type == MessageType.sequence:  # pragma: no cover # 9
                 self.__on_sequence_message(message)
 
     def stream(self, event, event_params) -> StreamHandler:

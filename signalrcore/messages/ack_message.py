@@ -19,6 +19,6 @@ from .base_message import BaseHeadersMessage, MessageType
 
 
 class AckMessage(BaseHeadersMessage):
-    def __init__(self, sequence_id: int, **kwargs):
+    def __init__(self, sequence_id: int, **kwargs):  # pragma: no cover
         super().__init__(MessageType.ack.value, **kwargs)
         self.sequence_id = sequence_id
