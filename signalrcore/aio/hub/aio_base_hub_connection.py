@@ -15,7 +15,7 @@ class AIOBaseHubConnection(BaseHubConnection):
             state: TransportState,
             timeout: float = None) -> Awaitable:
         t0 = time.time()
-        while self.transport.state != state:
+        while self.transport is None or self.transport.state != state:
             await asyncio.sleep(0.1)
             if timeout is not None and t0 + timeout < time.time():
                 raise TimeoutError()
@@ -23,12 +23,18 @@ class AIOBaseHubConnection(BaseHubConnection):
             f"Time elapsed until state change {time.time() - t0}s")
 
     async def start(self) -> Awaitable:
-        await asyncio.to_thread(super().start)
-        return await self.wait_until_state(TransportState.connected)
+        t1 = asyncio.to_thread(super().start)
+        t2 = self.wait_until_state(TransportState.connected)
+
+        result, _ = await asyncio.gather(t1, t2)
+
+        return result
 
     async def stop(self) -> Awaitable:
-        await asyncio.to_thread(super().stop)
-        return await self.wait_until_state(TransportState.disconnected)
+        t1 = asyncio.to_thread(super().stop)
+        t2 = self.wait_until_state(TransportState.disconnected)
+        result, _ = await asyncio.gather(t1, t2)
+        return result
 
     async def send(
             self,

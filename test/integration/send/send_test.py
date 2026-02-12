@@ -3,7 +3,7 @@ import uuid
 import threading
 
 from signalrcore.hub.errors import HubConnectionError
-from test.base_test_case import BaseTestCase, Urls, CONNECTION_TIMEOUT
+from ...base_test_case import BaseTestCase, Urls, CONNECTION_TIMEOUT
 
 LOCKS = {}
 
@@ -110,7 +110,9 @@ class TestSendMethod(BaseTestCase):
                 raise TimeoutError("TIMEOUT Opening connection ")
 
     def receive_message(self, args):
-        self.assertEqual(args[1], self.message)
+        user, message = args
+        self.assertEqual(user, self.username)
+        self.assertEqual(message, self.message)
         self.received = True
 
     def test_send_bad_args(self):

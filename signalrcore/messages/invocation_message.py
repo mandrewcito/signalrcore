@@ -1,4 +1,4 @@
-from .base_message import BaseHeadersMessage
+from .base_message import BaseHeadersMessage, MessageType
 """
 
 An `Invocation` message is a JSON object with the following properties:
@@ -47,8 +47,11 @@ class InvocationMessage(BaseHeadersMessage):
             self,
             invocation_id,
             target,
-            arguments, **kwargs):
-        super(InvocationMessage, self).__init__(1, **kwargs)
+            arguments,
+            **kwargs):
+        super(InvocationMessage, self).__init__(
+            MessageType.invocation.value,
+            **kwargs)
         self.invocation_id = invocation_id
         self.target = target
         self.arguments = arguments

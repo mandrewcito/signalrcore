@@ -1,7 +1,7 @@
 import threading
 import ssl
 from urllib.error import URLError
-from test.base_test_case import BaseTestCase, LOCK_TIMEOUT
+from ...base_test_case import BaseTestCase, LOCK_TIMEOUT
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 
 LOCKS = {}

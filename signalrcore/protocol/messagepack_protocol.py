@@ -11,6 +11,9 @@ from ..messages.stream_invocation_message import StreamInvocationMessage  # 4
 from ..messages.cancel_invocation_message import CancelInvocationMessage  # 5
 from ..messages.ping_message import PingMessage  # 6
 from ..messages.close_message import CloseMessage  # 7
+from ..messages.ack_message import AckMessage  # 8
+from ..messages.sequence_message import SequenceMessage  # 9
+
 from ..helpers import Helpers
 from ..types import HubProtocolEncoding, RECORD_SEPARATOR, DEFAULT_ENCODING
 
@@ -118,6 +121,8 @@ class MessagePackHubProtocol(BaseHubProtocol):
         # [5, Headers, InvocationId]
         # [6]
         # [7, Error, AllowReconnect?]
+        # [8, SequenceId]
+        # [9, SequenceId]
 
         if raw[0] == 1:  # InvocationMessage
             if len(raw[5]) > 0:
@@ -162,18 +167,29 @@ class MessagePackHubProtocol(BaseHubProtocol):
 
         elif raw[0] == 4:  # StreamInvocationMessage
             return StreamInvocationMessage(
-                headers=raw[1], invocation_id=raw[2],
-                target=raw[3], arguments=raw[4])  # stream_id missing?
+                headers=raw[1],
+                invocation_id=raw[2],
+                target=raw[3],
+                arguments=raw[4],
+                stream_ids=raw[5] if len(raw) > 5 else [])
 
         elif raw[0] == 5:  # CancelInvocationMessage
             return CancelInvocationMessage(
-                headers=raw[1], invocation_id=raw[2])
+                headers=raw[1],
+                invocation_id=raw[2])
 
         elif raw[0] == 6:  # PingMessageEncoding
             return PingMessage()
 
         elif raw[0] == 7:  # CloseMessageEncoding
-            return CloseMessage(error=raw[1])  # AllowReconnect is missing
+            return CloseMessage(
+                error=raw[1],
+                allow_reconnect=raw[2] if len(raw) > 2 else None)
+        elif raw[0] == 8:  # AckMessage
+            return AckMessage(sequence_id=raw[1])
+        elif raw[0] == 7:  # SequenceMessage
+            return SequenceMessage(sequence_id=raw[1])
+
         raise Exception("Unknown message type.")
 
     def _to_varint(self, value):

@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="signalrcore",
-    version="1.00.00a",
+    version="1.0.0a0",
     author="mandrewcito",
     author_email="signalrcore@mandrewcito.dev",
     description="Python SignalR Core full client (transports and encodings)."
@@ -16,10 +16,9 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     license_file="LICENSE",
     url="https://github.com/mandrewcito/signalrcore",
-    packages=setuptools.find_packages(),
+    packages=setuptools.find_packages(exclude=["test", "test.*"]),
     classifiers=[
         "Programming Language :: Python :: 3.8",
-        "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent"
     ],
     install_requires=[
@@ -31,7 +30,8 @@ setuptools.setup(
             'flake8',
             'coverage',
             'pytest',
-            'pytest-cov'
+            'pytest-cov',
+            'build'
         ]
     },
 )

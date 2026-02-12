@@ -5,7 +5,7 @@ import time
 
 from signalrcore.types import HttpTransportType
 from signalrcore.hub_connection_builder import HubConnectionBuilder
-from test.base_test_case import BaseTestCase
+from ..base_test_case import BaseTestCase
 
 LOCKS = {}
 

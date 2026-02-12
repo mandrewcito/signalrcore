@@ -1,6 +1,6 @@
 import unittest
 from urllib.error import URLError
-from .base_test_case import BaseTestCase
+from ..base_test_case import BaseTestCase
 from signalrcore.hub.negotiation\
     import NegotiateResponse, NegotiateValidationError, \
     AzureResponse

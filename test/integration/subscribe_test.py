@@ -1,4 +1,4 @@
-from test.base_test_case import BaseTestCase, Urls
+from ..base_test_case import BaseTestCase, Urls
 
 
 class TestSendMethod(BaseTestCase):

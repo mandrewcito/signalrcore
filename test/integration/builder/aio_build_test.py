@@ -2,7 +2,7 @@ import threading
 from typing import Dict
 from signalrcore.aio.aio_hub_connection_builder import AIOHubConnectionBuilder
 from signalrcore.transport.base_transport import TransportState
-from test.aio_base_test_case import AIOBaseTestCase
+from ...aio_base_test_case import AIOBaseTestCase
 
 LOCKS: Dict[str, threading.Lock] = {}
 

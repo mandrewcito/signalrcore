@@ -1,4 +1,6 @@
-"""High-level support for working with threads in asyncio"""
+"""This file intent is to make library with python3.8
+    compatibility with asyncio.
+    High-level support for working with threads in asyncio"""
 import asyncio
 import functools
 import contextvars
@@ -14,7 +16,8 @@ async def to_thread(func, /, *args, **kwargs):  # pragma: no cover
     allowing context variables from the main thread to be accessed in the
     separate thread.
 
-    Return a coroutine that can be awaited to get the eventual result of *func*.
+    Return a coroutine that can be awaited
+    to get the eventual result of *func*.
     """
     loop = events.get_running_loop()
     ctx = contextvars.copy_context()

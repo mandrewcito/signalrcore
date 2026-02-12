@@ -9,4 +9,6 @@ class MessageType(Enum):
     cancel_invocation = 5
     ping = 6
     close = 7
+    ack = 8
+    sequence = 9
     invocation_binding_failure = -1

@@ -1,6 +1,6 @@
 import time
 import threading
-from .base_test_case import BaseTestCase, LOCK_TIMEOUT
+from ..base_test_case import BaseTestCase, LOCK_TIMEOUT
 
 LOCKS = {}
 
@@ -11,7 +11,9 @@ class ConnectionWebSocketStateTest(BaseTestCase):
         LOCKS[identifier] = threading.Lock()
         time.sleep(20)
 
-        def release(msg=None):
+        def release(args):
+            username, msg = args
+            self.logger.debug(f"{username}: {msg}")
             global LOCKS
             LOCKS[identifier].release()
 
@@ -39,7 +41,9 @@ class ConnectionLongPollingStateTest(ConnectionWebSocketStateTest):
         LOCKS[identifier] = threading.Lock()
         time.sleep(20)
 
-        def release(msg=None):
+        def release(args):
+            username, msg = args
+            self.logger.debug(f"{username} {msg}")
             global LOCKS
             LOCKS[identifier].release()
 

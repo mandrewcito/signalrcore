@@ -305,7 +305,7 @@ class BaseHubConnection(object):
                 continue
 
             if message.type == MessageType.invocation:
-
+                message: InvocationMessage
                 fired_handlers = self.handlers.get(message.target, [])
 
                 if len(fired_handlers) == 0:

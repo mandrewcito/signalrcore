@@ -34,9 +34,10 @@ class StreamInvocationMessage(BaseHeadersMessage):
             invocation_id,
             target,
             arguments,
+            stream_ids=[],
             **kwargs):
         super(StreamInvocationMessage, self).__init__(4, **kwargs)
         self.invocation_id = invocation_id
         self.target = target
         self.arguments = arguments
-        self.stream_ids = []
+        self.stream_ids = stream_ids

@@ -4,7 +4,7 @@ import threading
 from typing import Dict
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from signalrcore.hub.errors import HubConnectionError
-from test.base_test_case import BaseTestCase
+from ...base_test_case import BaseTestCase
 from signalrcore.types import HttpTransportType
 
 LOCKS: Dict[str, threading.Lock] = {}

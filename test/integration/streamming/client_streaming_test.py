@@ -1,5 +1,5 @@
 from signalrcore.subject import Subject
-from test.base_test_case import BaseTestCase, Urls
+from ...base_test_case import BaseTestCase, Urls
 
 
 class TestClientStreamMethod(BaseTestCase):

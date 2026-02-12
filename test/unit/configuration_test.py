@@ -4,7 +4,7 @@ from signalrcore.hub_connection_builder import HubConnectionBuilder
 from signalrcore.protocol.messagepack_protocol import MessagePackHubProtocol
 from signalrcore.types import HubProtocolEncoding
 
-from test.base_test_case import BaseTestCase
+from ..base_test_case import BaseTestCase
 
 
 class TestConfiguration(BaseTestCase):
