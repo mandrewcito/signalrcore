@@ -40,6 +40,11 @@ class ConnectionWebSocketStateTest(BaseTestCase):
         self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT * 2))
 
 
+class ConnectionWebSocketMessagePackStateTest(ConnectionWebSocketStateTest):
+    def get_connection(self):
+        return super().get_connection(msgpack=True)
+
+
 class ConnectionSseStateTest(ConnectionWebSocketStateTest):
     def get_connection(self, msgpack=False):
         return super().get_connection_sse(reconnection=True)

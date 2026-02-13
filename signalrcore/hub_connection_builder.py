@@ -95,12 +95,6 @@ class HubConnectionBuilder(object):
             raise TypeError(
                 "options must be a dict {0}.".format(self.options))
 
-        if options is not None \
-                and "access_token_factory" in options.keys()\
-                and not callable(options["access_token_factory"]):
-            raise TypeError(
-                "access_token_factory must be a function without params")
-
         if options is not None:
             self.has_auth_configured = \
                 "access_token_factory" in options.keys()\

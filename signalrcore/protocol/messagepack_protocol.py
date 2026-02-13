@@ -190,7 +190,7 @@ class MessagePackHubProtocol(BaseHubProtocol):
         elif raw[0] == 7:  # pragma: no cover # SequenceMessage
             return SequenceMessage(sequence_id=raw[1])
 
-        raise Exception("Unknown message type.")
+        raise Exception("Unknown message type.")  # pragma: no cover
 
     def _to_varint(self, value):
         buffer = b''

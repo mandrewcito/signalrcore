@@ -27,6 +27,17 @@ class TestConfiguration(BaseTestCase):
                         }
                     })
 
+    def test_bad_headers(self):
+        with self.assertRaises(TypeError):
+            self.connection = HubConnectionBuilder()\
+                .with_url(
+                    self.server_url,
+                    options={
+                        "verify_ssl": False,
+                        "access_token_factory": 1234,
+                        "headers": [1, 2]
+                    })
+
     def test_bad_url(self):
         with self.assertRaises(ValueError):
             self.connection = HubConnectionBuilder()\

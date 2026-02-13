@@ -3,7 +3,8 @@ import uuid
 import threading
 
 from signalrcore.hub.errors import HubConnectionError
-from ...base_test_case import BaseTestCase, Urls, CONNECTION_TIMEOUT
+from ...base_test_case import BaseTestCase, Urls, CONNECTION_TIMEOUT, \
+    LOCK_TIMEOUT
 
 LOCKS = {}
 
@@ -122,6 +123,66 @@ class TestSendMethod(BaseTestCase):
         self.assertRaises(
             TypeError,
             lambda: self.connection.send("SendMessage", A()))
+
+    def test_send_too_few_args(self):
+        identifier = str(uuid.uuid4())
+        LOCKS[identifier] = threading.Lock()
+
+        self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT))
+
+        def on_error(error):
+            if result.invocation_id == error.invocation_id\
+                    and error.error is not None and len(error.error) > 0:
+                self.logger.debug(error.error)
+                LOCKS[identifier].release()
+
+        self.connection.on_error(on_error)
+        result = self.connection.send("SendMessage", ["s"])
+        self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT))
+
+        del LOCKS[identifier]
+
+    def test_send_too_many_args(self):
+        identifier = str(uuid.uuid4())
+        LOCKS[identifier] = threading.Lock()
+
+        self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT))
+
+        def on_error(error):
+            if result.invocation_id == error.invocation_id\
+                    and error.error is not None and len(error.error) > 0:
+                self.logger.debug(error.error)
+                LOCKS[identifier].release()
+
+        self.connection.on_error(on_error)
+
+        result = self.connection.send(
+            "SendMessage",
+            ["many", "bar", "foo", 213])
+
+        self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT))
+
+        del LOCKS[identifier]
+
+    def test_send_invalid_method(self):
+        identifier = str(uuid.uuid4())
+        LOCKS[identifier] = threading.Lock()
+
+        self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT))
+
+        def on_error(error):
+            if result.invocation_id == error.invocation_id\
+                    and error.error is not None and len(error.error) > 0:
+                self.logger.debug(error.error)
+                LOCKS[identifier].release()
+
+        self.connection.on_error(on_error)
+        result = self.connection.send(
+            "SendMessageRandomMethod",
+            ["many", "bar", "foo", 213])
+        self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT))
+
+        del LOCKS[identifier]
 
     def test_send(self):
         self.message = "new message {0}".format(uuid.uuid4())

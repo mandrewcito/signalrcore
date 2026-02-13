@@ -327,14 +327,15 @@ class BaseHubConnection(object):
     def __on_completion_message(self, message: CompletionMessage) -> None:  # 3
         if message.error is not None and len(message.error) > 0:
             self._callbacks.on_error(message)
+        else:
+            # Send callbacks
+            fired_handlers: List[StreamHandler] = self.stream_handlers.get(
+                message.invocation_id, [])
 
-        # Send callbacks
-        fired_handlers: List[StreamHandler] = self.stream_handlers.get(
-            message.invocation_id, [])
-
-        # Stream callbacks
-        for handler in fired_handlers:
-            handler.complete_callback(message)
+            # Stream callbacks
+            for handler in fired_handlers:
+                handler: StreamHandler
+                handler.complete_callback(message)
 
         # unregister handler
         if message.invocation_id in self.stream_handlers:
