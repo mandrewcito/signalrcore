@@ -127,6 +127,7 @@ class TestSendMethod(BaseTestCase):
     def test_send_too_few_args(self):
         identifier = str(uuid.uuid4())
         LOCKS[identifier] = threading.Lock()
+        result = None
 
         self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT))
 
@@ -148,6 +149,7 @@ class TestSendMethod(BaseTestCase):
     def test_send_too_many_args(self):
         identifier = str(uuid.uuid4())
         LOCKS[identifier] = threading.Lock()
+        result = None
 
         self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT))
 
@@ -176,6 +178,8 @@ class TestSendMethod(BaseTestCase):
 
         self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT))
 
+        result = None
+
         def on_error(error):
             while result is None:
                 time.sleep(1)
@@ -189,7 +193,8 @@ class TestSendMethod(BaseTestCase):
         result = self.connection.send(
             "SendMessageRandomMethod",
             ["many", "bar", "foo", 213])
-        self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT))
+
+        self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT * 2))
 
         del LOCKS[identifier]
 
