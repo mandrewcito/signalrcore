@@ -131,6 +131,9 @@ class TestSendMethod(BaseTestCase):
         self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT))
 
         def on_error(error):
+            while result is None:
+                time.sleep(1)
+
             if result.invocation_id == error.invocation_id\
                     and error.error is not None and len(error.error) > 0:
                 self.logger.debug(error.error)
@@ -149,6 +152,9 @@ class TestSendMethod(BaseTestCase):
         self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT))
 
         def on_error(error):
+            while result is None:
+                time.sleep(1)
+
             if result.invocation_id == error.invocation_id\
                     and error.error is not None and len(error.error) > 0:
                 self.logger.debug(error.error)
@@ -171,6 +177,9 @@ class TestSendMethod(BaseTestCase):
         self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT))
 
         def on_error(error):
+            while result is None:
+                time.sleep(1)
+
             if result.invocation_id == error.invocation_id\
                     and error.error is not None and len(error.error) > 0:
                 self.logger.debug(error.error)
