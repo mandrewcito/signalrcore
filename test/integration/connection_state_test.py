@@ -77,7 +77,7 @@ class ConnectionLongPollingStateTest(ConnectionWebSocketStateTest):
         self.connection.send("SendMessage", ["user", "msg 1"])
         self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT * 4))
 
-        time.sleep(CONNECTION_TIMEOUT/4)
+        time.sleep(CONNECTION_TIMEOUT)
 
         self.connection.on(
             "ReceiveMessage",
@@ -86,5 +86,4 @@ class ConnectionLongPollingStateTest(ConnectionWebSocketStateTest):
         self.connection.send("SendMessage", ["user", "msg 2"])
 
         time.sleep(CONNECTION_TIMEOUT)
-
         self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT * 4))

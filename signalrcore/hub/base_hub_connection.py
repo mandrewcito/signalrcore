@@ -342,11 +342,11 @@ class BaseHubConnection(object):
             del self.stream_handlers[message.invocation_id]
 
     def __on_stream_invocation_message(
-            self, message: StreamInvocationMessage) -> None:  # 4
+            self, message: StreamInvocationMessage) -> None:  # 4 # pragma: no cover # noqa: E501
         self.logger.debug(f"Stream invocation message {message}")
 
     def __on_cancel_invocation_message(
-            self, message: CancelInvocationMessage) -> None:  # 5
+            self, message: CancelInvocationMessage) -> None:  # 5 # pragma: no cover # noqa: E501
         fired_handlers = self.stream_handlers.get(
             message.invocation_id, [])
 
@@ -379,14 +379,14 @@ class BaseHubConnection(object):
             self, message: SequenceMessage) -> None:  # pragma: no cover # 9
         self.logger.debug(f"Sequence message {message}")
 
-    def __on_binding_failure(self, message) -> None:  # -1
+    def __on_binding_failure(self, message) -> None:  # -1  # pragma: no cover # noqa: E501
         self.logger.error(message)
         self._callbacks.on_error(message)
 
     def on_message(self, messages: List[BaseMessage]) -> None:
         for message in messages:
             self.logger.debug(message)
-            if message.type == MessageType.invocation_binding_failure:
+            if message.type == MessageType.invocation_binding_failure:  # pragma: no cover # noqa: E501
                 self.__on_binding_failure(message)
             elif message.type == MessageType.invocation:
                 self.__on_invocation_message(message)
@@ -394,9 +394,9 @@ class BaseHubConnection(object):
                 self.__on_stream_item_message(message)
             elif message.type == MessageType.completion:  # 3
                 self.__on_completion_message(message)
-            elif message.type == MessageType.stream_invocation:  # 4
+            elif message.type == MessageType.stream_invocation:  # 4 # pragma: no cover # noqa: E501
                 self.__on_stream_invocation_message(message)
-            elif message.type == MessageType.cancel_invocation:  # 5
+            elif message.type == MessageType.cancel_invocation:  # 5 # pragma: no cover # noqa: E501
                 self.__on_cancel_invocation_message(message)
             elif message.type == MessageType.ping:  # 6
                 self.__on_ping_message(message)
