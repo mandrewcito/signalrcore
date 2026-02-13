@@ -17,7 +17,7 @@ class AIOAuthHubConnection(AuthHubConnection):
         t0 = time.time()
         while self.transport is None or self.transport.state != state:
             await asyncio.sleep(0.1)
-            if timeout is not None and t0 + timeout < time.time():
+            if timeout is not None and t0 + timeout < time.time():  # pragma: no cover # noqa E501
                 raise TimeoutError()
         self.logger.info(
             f"Time elapsed until state change {time.time() - t0}s")

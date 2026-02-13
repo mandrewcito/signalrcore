@@ -58,7 +58,7 @@ class InternalTestCase(unittest.TestCase):
 
         while not self.connected:
             time.sleep(0.1)
-            if time.time() - t0 > CONNECTION_TIMEOUT:
+            if time.time() - t0 > CONNECTION_TIMEOUT:  # pragma: no cover
                 raise TimeoutError("TIMEOUT Opening connection")
                 # pragma: no cover
 
@@ -69,7 +69,7 @@ class InternalTestCase(unittest.TestCase):
 
         while self.connected:
             time.sleep(0.1)
-            if time.time() - t0 > CONNECTION_TIMEOUT:
+            if time.time() - t0 > CONNECTION_TIMEOUT:  # pragma: no cover
                 raise TimeoutError("TIMEOUT Closing connection")
                 # pragma: no cover
         del self.connection

@@ -19,7 +19,7 @@ class TestSendException(BaseTestCase):
         t0 = time.time()
         while not self.connected:
             time.sleep(0.1)
-            if time.time() - t0 > CONNECTION_TIMEOUT:
+            if time.time() - t0 > CONNECTION_TIMEOUT:  # pragma: no cover
                 raise TimeoutError("TIMEOUT Opening connection")
 
     def test_send_exception(self):
@@ -57,7 +57,7 @@ class TestSendExceptionMsgPack(TestSendException):
         t0 = time.time()
         while not self.connected:
             time.sleep(0.1)
-            if time.time() - t0 > CONNECTION_TIMEOUT:
+            if time.time() - t0 > CONNECTION_TIMEOUT:  # pragma: no cover
                 raise TimeoutError("TIMEOUT Opening connection ")
 
 
@@ -68,7 +68,7 @@ class TestSendWarning(BaseTestCase):
         t0 = time.time()
         while not self.connected:
             time.sleep(0.1)
-            if time.time() - t0 > CONNECTION_TIMEOUT:
+            if time.time() - t0 > CONNECTION_TIMEOUT:  # pragma: no cover
                 raise TimeoutError("TIMEOUT Opening connection ")
 
     def test_send_warning(self):
@@ -92,7 +92,7 @@ class TestSendWarningMsgPack(TestSendWarning):
         t0 = time.time()
         while not self.connected:
             time.sleep(0.1)
-            if time.time() - t0 > CONNECTION_TIMEOUT:
+            if time.time() - t0 > CONNECTION_TIMEOUT:  # pragma: no cover
                 raise TimeoutError("TIMEOUT Opening connection ")
 
 
@@ -107,7 +107,7 @@ class TestSendMethod(BaseTestCase):
         t0 = time.time()
         while not self.connected:
             time.sleep(0.1)
-            if time.time() - t0 > CONNECTION_TIMEOUT:
+            if time.time() - t0 > CONNECTION_TIMEOUT:  # pragma: no cover
                 raise TimeoutError("TIMEOUT Opening connection ")
 
     def receive_message(self, args):
@@ -202,7 +202,7 @@ class TestSendMethod(BaseTestCase):
         t0 = time.time()
         while not self.received:
             time.sleep(0.1)
-            if time.time() - t0 > CONNECTION_TIMEOUT * 2:
+            if time.time() - t0 > CONNECTION_TIMEOUT * 2:  # pragma: no cover
                 raise TimeoutError("TIMEOUT Receiving message ")
 
         self.assertTrue(self.received)
@@ -248,7 +248,7 @@ class TestSendMethodMsgPack(TestSendMethod):
         t0 = time.time()
         while not self.connected:
             time.sleep(0.1)
-            if time.time() - t0 > CONNECTION_TIMEOUT:
+            if time.time() - t0 > CONNECTION_TIMEOUT:  # pragma: no cover
                 raise TimeoutError("TIMEOUT Opening connection ")
 
 
