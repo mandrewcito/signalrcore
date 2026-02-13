@@ -16,7 +16,9 @@ username = input_with_default(
 handler = logging.StreamHandler()
 handler.setLevel(logging.DEBUG)
 hub_connection = HubConnectionBuilder()\
-    .with_url(server_url, options={"verify_ssl": False}) \
+    .with_url(server_url, options={
+        "verify_ssl": False,
+        "skip_negotiation": False}) \
     .configure_logging(logging.DEBUG, socket_trace=True, handler=handler) \
     .with_automatic_reconnect({
             "type": "interval",

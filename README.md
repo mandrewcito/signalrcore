@@ -13,13 +13,16 @@
 
 Python signalr core client library, made by a guy born in Vilalba (Lugo).
 
-Features:
+## About V1.0.0 (aka poluca)  
+
+Feature list:
 * All kind of communications with the server (streaming, sending messages)
 * All transports implemented (sse, long polling and web sockets)
 * All encodings (text, binary - msgpack)
 * Authentication
 * Automatic reconnection with different strategies 
-* Custom certificates
+* Custom ssl context passthrough
+* AsyncIO minimal implementation (will be improved on following versions)
 * ... 
 
 # Links 
@@ -348,6 +351,35 @@ subject.next(str(iteration))
 
 # End streaming
 subject.complete()
+```
+
+# AIO
+
+## Create connection
+
+```python
+from signalrcore.aio.aio_hub_connection_builder import AIOHubConnectionBuilder
+
+builder = AIOHubConnectionBuilder()\
+    .with_url(self.server_url, options=options)\
+    .configure_logging(
+        self.get_log_level(),
+        socket_trace=self.is_debug())\
+    .with_automatic_reconnect({
+        "type": "raw",
+        "keep_alive_interval": 10,
+        "reconnect_interval": 5,
+        "max_attempts": 5
+    })
+
+hub = builder.build()
+
+await hub.start()
+
+await connection.send("SendMessage", [username, message])
+
+await connection.stop()
+
 ```
 
 # Full Examples

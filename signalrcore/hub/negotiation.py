@@ -1,9 +1,11 @@
 import copy
+import base64
+import os
 from dataclasses import dataclass
 from typing import List, Tuple
 from ..helpers import Helpers, RequestHelpers
 from .errors import UnAuthorizedHubError, HubError
-from ..types import HttpTransportType, HubProtocolEncoding
+from ..types import HttpTransportType, HubProtocolEncoding, DEFAULT_ENCODING
 
 
 class NegotiateValidationError(ValueError):
@@ -156,14 +158,32 @@ class NegotiationHandler(object):
             url,
             headers,
             proxies,
-            ssl_context):
+            ssl_context,
+            skip_negotiation):
         self.logger = Helpers.get_logger()
         self.url = url
         self.headers = headers
         self.proxies = proxies
         self.ssl_context = ssl_context
+        self.skip_negotiation = skip_negotiation
 
     def negotiate(self) -> Tuple[str, dict, NegotiateResponse]:
+        if self.skip_negotiation:
+            key = base64.b64encode(os.urandom(16)).decode(DEFAULT_ENCODING)
+            return self.url, self.headers, NegotiateResponse(
+                negotiate_version=0,
+                connection_id=key,
+                access_token=None,
+                url=self.url,
+                available_transports=[
+                    AvailableTransport(
+                        HttpTransportType.web_sockets,
+                        transfer_formats=[
+                            HubProtocolEncoding.text,
+                            HubProtocolEncoding.binary]
+                    )
+                ]
+            )
         url = self.url
         headers = copy.deepcopy(self.headers)
         headers.update({'Content-Type': 'application/json'})
@@ -189,6 +209,11 @@ class NegotiationHandler(object):
         if status_code != 200:
             raise HubError(status_code)\
                 if status_code != 401 else UnAuthorizedHubError()
+
+        error = data.get("error", None)
+
+        if error is not None:  # pragma: no cover
+            raise HubError(error)
 
         is_azure_response = 'url' in data.keys()\
             and 'accessToken' in data.keys()

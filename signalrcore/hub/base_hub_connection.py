@@ -107,7 +107,8 @@ class BaseHubConnection(object):
             self.url,
             self.headers,
             self.proxies,
-            self.ssl_context
+            self.ssl_context,
+            self.skip_negotiation
         )
 
         (url, headers, response) = handler.negotiate()
@@ -140,6 +141,7 @@ class BaseHubConnection(object):
             protocol=self.protocol,
             headers=self.headers,
             token=self.token,
+            skip_negotiation=self.skip_negotiation,
             connection_id=negotiate_response.get_id(),
             ssl_context=self.ssl_context,
             proxies=self.proxies,

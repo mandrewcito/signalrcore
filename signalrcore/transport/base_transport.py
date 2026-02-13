@@ -29,6 +29,7 @@ class BaseTransport(object):
             url: str = None,
             connection_id: str = None,
             is_binary: bool = False,
+            skip_negotiation: bool = False,
             token: Optional[str] = None,
             headers: Optional[Dict] = None,
             proxies: Optional[Dict] = None,
@@ -45,6 +46,7 @@ class BaseTransport(object):
         self.headers = headers
         self.token = token
         self.enable_trace = enable_trace
+        self.skip_negotiation = skip_negotiation
         self.ssl_context = ssl_context
         self.connection_id = connection_id
         self.proxies = proxies
@@ -120,7 +122,8 @@ class BaseTransport(object):
             self.url,
             self.headers,
             self.proxies,
-            self.ssl_context
+            self.ssl_context,
+            self.skip_negotiation
         )
 
         self.url, self.headers, response = handler.negotiate()
