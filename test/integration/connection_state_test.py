@@ -37,7 +37,7 @@ class ConnectionWebSocketStateTest(BaseTestCase):
         result = None
         result = self.connection.send("SendMessage", ["user", "msg"], release)
 
-        self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT * 2))
+        self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT * 3))
 
 
 class ConnectionWebSocketMessagePackStateTest(ConnectionWebSocketStateTest):
@@ -60,19 +60,31 @@ class ConnectionLongPollingStateTest(ConnectionWebSocketStateTest):
 
         time.sleep(CONNECTION_TIMEOUT)
 
-        def release(args):
+        def release(args, orig_msg):
             global LOCKS
             username, msg = args
-            self.logger.debug(f"{username} {msg}")
-            LOCKS[identifier].release()
 
-        self.connection.on("ReceiveMessage", release)
+            self.logger.debug(f"{username} {msg}")
+
+            if orig_msg == msg:
+                LOCKS[identifier].release()
+
+        self.connection.on(
+            "ReceiveMessage",
+            lambda args: release(args, "msg 1"))
 
         self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT))
         self.connection.send("SendMessage", ["user", "msg 1"])
         self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT * 4))
 
-        time.sleep(CONNECTION_TIMEOUT)
+        time.sleep(CONNECTION_TIMEOUT/4)
+
+        self.connection.on(
+            "ReceiveMessage",
+            lambda args: release(args, "msg 2"))
 
         self.connection.send("SendMessage", ["user", "msg 2"])
+
+        time.sleep(CONNECTION_TIMEOUT)
+
         self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT * 4))

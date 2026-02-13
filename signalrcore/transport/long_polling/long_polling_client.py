@@ -177,7 +177,10 @@ class LongPollingBaseClient(BaseClient):
             if self.logger:
                 self.logger.error(f"Receive error: {e}")
 
-            self.on_error(e)
+            if type(e) is OSError:
+                self.on_close()
+            else:
+                self.on_error(e)
 
     def close(self):
         if not self._running:
