@@ -21,9 +21,17 @@ Feature list:
 * All encodings (text, binary - msgpack)
 * Authentication
 * Automatic reconnection with different strategies 
-* Custom ssl context passthrough
+* Custom ssl context passthrough ([see certificates article](https://github.com/mandrewcito/signalrcore/blob/main/docs/articles/CustomClientCert.md))
 * AsyncIO minimal implementation (will be improved on following versions)
 * ... 
+
+## Upcoming changes
+
+* AsyncIO transport layer and callbacks
+* Test suite, divide test into integration and unit. Making stubs of clients which enable testing without server
+  * Managed solution azure server. For testing purposes only (PRs targeting main branch)
+* Ack/Sequence implementation
+* ...
 
 # Links 
 
@@ -141,7 +149,7 @@ hub_connection = HubConnectionBuilder()\
  ```
  
 ## Configuring reconnection
-After reaching max_attempts an exeption will be thrown and on_disconnect event will be fired.
+After reaching max_attempts an exception will be thrown and on_disconnect event will be fired.
 ```python
 hub_connection = HubConnectionBuilder()\
     .with_url(server_url)\
@@ -163,7 +171,7 @@ hub_connection = HubConnectionBuilder()\
 
 ## Configuring additional querystring parameters
 ```python
-server_url ="http.... /?myquerystringparam=134&foo=bar"
+server_url ="http.... /?myQueryStringParam=134&foo=bar"
 connection = HubConnectionBuilder()\
             .with_url(server_url,
             options={
@@ -384,7 +392,7 @@ await connection.stop()
 
 # Full Examples
 
-Examples will be avaiable [here](https://github.com/mandrewcito/signalrcore/tree/master/test/examples)
+Examples will be available [here](https://github.com/mandrewcito/signalrcore/tree/master/test/examples)
 It were developed using package from [aspnet core - SignalRChat](https://codeload.github.com/aspnet/Docs/zip/master) 
 
 ## Chat example
