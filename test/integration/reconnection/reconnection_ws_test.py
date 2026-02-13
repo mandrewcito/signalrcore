@@ -1,16 +1,17 @@
 import logging
+import time
 import uuid
 import threading
 from typing import Dict
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from signalrcore.hub.errors import HubConnectionError
-from test.base_test_case import BaseTestCase
-from signalrcore.types import HttpTransportType
+from ...base_test_case import BaseTestCase
+
 
 LOCKS: Dict[str, threading.Lock] = {}
 
 
-class TestSseReconnectMethods(BaseTestCase):
+class TestWebsocketReconnectMethods(BaseTestCase):
 
     def setUp(self):  # pragma: no cover
         pass
@@ -20,14 +21,11 @@ class TestSseReconnectMethods(BaseTestCase):
 
     def test_reconnect_interval_config(self):
         connection = HubConnectionBuilder()\
-            .with_url(self.server_url, options={
-                "verify_ssl": False,
-                "transport": HttpTransportType.server_sent_events})\
+            .with_url(self.server_url, options={"verify_ssl": False})\
             .configure_logging(logging.ERROR)\
             .with_automatic_reconnect({
                 "type": "interval",
-                "intervals": [1, 2, 4, 45, 6, 7, 8, 9, 10],
-                "keep_alive_interval": 5
+                "intervals": [1, 2, 4, 45, 6, 7, 8, 9, 10]
             })\
             .build()
 
@@ -54,9 +52,7 @@ class TestSseReconnectMethods(BaseTestCase):
 
     def test_reconnect_interval(self):
         connection = HubConnectionBuilder()\
-            .with_url(self.server_url, options={
-                "verify_ssl": False,
-                "transport": HttpTransportType.server_sent_events})\
+            .with_url(self.server_url, options={"verify_ssl": False})\
             .configure_logging(logging.ERROR)\
             .with_automatic_reconnect({
                 "type": "interval",
@@ -68,9 +64,7 @@ class TestSseReconnectMethods(BaseTestCase):
 
     def test_no_reconnect(self):
         connection = HubConnectionBuilder()\
-            .with_url(self.server_url, options={
-                "verify_ssl": False,
-                "transport": HttpTransportType.server_sent_events})\
+            .with_url(self.server_url, options={"verify_ssl": False})\
             .configure_logging(logging.ERROR)\
             .build()
 
@@ -84,18 +78,18 @@ class TestSseReconnectMethods(BaseTestCase):
 
         connection.on_open(release)
 
+        connection.on("ReceiveMessage", release)
+
         connection.start()
 
         self.assertTrue(LOCKS[identifier].acquire(timeout=10))
-        # Released on open
+        # Released on ReOpen
 
         connection.send("DisconnectMe", [])
 
-        connection.on_open(lambda: None)
-        connection.on_close(release)
+        self.assertTrue(LOCKS[identifier].acquire(timeout=10))
 
-        # Released on close
-        self.assertTrue(LOCKS[identifier].acquire(timeout=20))
+        time.sleep(10)
 
         self.assertRaises(
             HubConnectionError,
@@ -133,13 +127,11 @@ class TestSseReconnectMethods(BaseTestCase):
 
     def test_raw_reconnection(self):
         connection = HubConnectionBuilder()\
-            .with_url(self.server_url, options={
-                "verify_ssl": False,
-                "transport": HttpTransportType.server_sent_events})\
+            .with_url(self.server_url, options={"verify_ssl": False})\
             .configure_logging(logging.DEBUG)\
             .with_automatic_reconnect({
                 "type": "raw",
-                "keep_alive_interval": 5,
+                "keep_alive_interval": 10,
                 "max_attempts": 4
             })\
             .build()

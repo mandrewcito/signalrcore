@@ -4,7 +4,7 @@ from signalrcore.hub_connection_builder import HubConnectionBuilder
 from signalrcore.protocol.messagepack_protocol import MessagePackHubProtocol
 from signalrcore.types import HubProtocolEncoding
 
-from test.base_test_case import BaseTestCase
+from ..base_test_case import BaseTestCase
 
 
 class TestConfiguration(BaseTestCase):
@@ -25,6 +25,17 @@ class TestConfiguration(BaseTestCase):
                         "headers": {
                             "mycustomheader": "mycustomheadervalue"
                         }
+                    })
+
+    def test_bad_headers(self):
+        with self.assertRaises(TypeError):
+            self.connection = HubConnectionBuilder()\
+                .with_url(
+                    self.server_url,
+                    options={
+                        "verify_ssl": False,
+                        "access_token_factory": 1234,
+                        "headers": [1, 2]
                     })
 
     def test_bad_url(self):
@@ -97,10 +108,9 @@ class TestConfiguration(BaseTestCase):
                             "verify_ssl": False,
                             "headers": {
                                 "mycustomheader": "mycustomheadervalue"
-                            }
+                            },
+                            "access_token_factory": ""
                         })
-            hub.has_auth_configured = True
-            hub.options["access_token_factory"] = ""
             _ = hub.build()
 
     def test_enable_trace(self):

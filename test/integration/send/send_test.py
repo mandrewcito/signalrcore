@@ -3,7 +3,8 @@ import uuid
 import threading
 
 from signalrcore.hub.errors import HubConnectionError
-from test.base_test_case import BaseTestCase, Urls, CONNECTION_TIMEOUT
+from ...base_test_case import BaseTestCase, Urls, CONNECTION_TIMEOUT, \
+    LOCK_TIMEOUT
 
 LOCKS = {}
 
@@ -18,7 +19,7 @@ class TestSendException(BaseTestCase):
         t0 = time.time()
         while not self.connected:
             time.sleep(0.1)
-            if time.time() - t0 > CONNECTION_TIMEOUT:
+            if time.time() - t0 > CONNECTION_TIMEOUT:  # pragma: no cover
                 raise TimeoutError("TIMEOUT Opening connection")
 
     def test_send_exception(self):
@@ -56,7 +57,7 @@ class TestSendExceptionMsgPack(TestSendException):
         t0 = time.time()
         while not self.connected:
             time.sleep(0.1)
-            if time.time() - t0 > CONNECTION_TIMEOUT:
+            if time.time() - t0 > CONNECTION_TIMEOUT:  # pragma: no cover
                 raise TimeoutError("TIMEOUT Opening connection ")
 
 
@@ -67,7 +68,7 @@ class TestSendWarning(BaseTestCase):
         t0 = time.time()
         while not self.connected:
             time.sleep(0.1)
-            if time.time() - t0 > CONNECTION_TIMEOUT:
+            if time.time() - t0 > CONNECTION_TIMEOUT:  # pragma: no cover
                 raise TimeoutError("TIMEOUT Opening connection ")
 
     def test_send_warning(self):
@@ -91,7 +92,7 @@ class TestSendWarningMsgPack(TestSendWarning):
         t0 = time.time()
         while not self.connected:
             time.sleep(0.1)
-            if time.time() - t0 > CONNECTION_TIMEOUT:
+            if time.time() - t0 > CONNECTION_TIMEOUT:  # pragma: no cover
                 raise TimeoutError("TIMEOUT Opening connection ")
 
 
@@ -106,11 +107,13 @@ class TestSendMethod(BaseTestCase):
         t0 = time.time()
         while not self.connected:
             time.sleep(0.1)
-            if time.time() - t0 > CONNECTION_TIMEOUT:
+            if time.time() - t0 > CONNECTION_TIMEOUT:  # pragma: no cover
                 raise TimeoutError("TIMEOUT Opening connection ")
 
     def receive_message(self, args):
-        self.assertEqual(args[1], self.message)
+        user, message = args
+        self.assertEqual(user, self.username)
+        self.assertEqual(message, self.message)
         self.received = True
 
     def test_send_bad_args(self):
@@ -121,6 +124,80 @@ class TestSendMethod(BaseTestCase):
             TypeError,
             lambda: self.connection.send("SendMessage", A()))
 
+    def test_send_too_few_args(self):
+        identifier = str(uuid.uuid4())
+        LOCKS[identifier] = threading.Lock()
+        result = None
+
+        self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT))
+
+        def on_error(error):
+            while result is None:
+                time.sleep(1)
+
+            if result.invocation_id == error.invocation_id\
+                    and error.error is not None and len(error.error) > 0:
+                self.logger.debug(error.error)
+                LOCKS[identifier].release()
+
+        self.connection.on_error(on_error)
+        result = self.connection.send("SendMessage", ["s"])
+        self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT))
+
+        del LOCKS[identifier]
+
+    def test_send_too_many_args(self):
+        identifier = str(uuid.uuid4())
+        LOCKS[identifier] = threading.Lock()
+        result = None
+
+        self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT))
+
+        def on_error(error):
+            while result is None:
+                time.sleep(1)
+
+            if result.invocation_id == error.invocation_id\
+                    and error.error is not None and len(error.error) > 0:
+                self.logger.debug(error.error)
+                LOCKS[identifier].release()
+
+        self.connection.on_error(on_error)
+
+        result = self.connection.send(
+            "SendMessage",
+            ["many", "bar", "foo", 213])
+
+        self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT))
+
+        del LOCKS[identifier]
+
+    def test_send_invalid_method(self):
+        identifier = str(uuid.uuid4())
+        LOCKS[identifier] = threading.Lock()
+
+        self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT))
+
+        result = None
+
+        def on_error(error):
+            while result is None:
+                time.sleep(1)
+
+            if result.invocation_id == error.invocation_id\
+                    and error.error is not None and len(error.error) > 0:
+                self.logger.debug(error.error)
+                LOCKS[identifier].release()
+
+        self.connection.on_error(on_error)
+        result = self.connection.send(
+            "SendMessageRandomMethod",
+            ["many", "bar", "foo", 213])
+
+        self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT * 2))
+
+        del LOCKS[identifier]
+
     def test_send(self):
         self.message = "new message {0}".format(uuid.uuid4())
         self.username = "mandrewcito"
@@ -130,7 +207,7 @@ class TestSendMethod(BaseTestCase):
         t0 = time.time()
         while not self.received:
             time.sleep(0.1)
-            if time.time() - t0 > CONNECTION_TIMEOUT * 2:
+            if time.time() - t0 > CONNECTION_TIMEOUT * 2:  # pragma: no cover
                 raise TimeoutError("TIMEOUT Receiving message ")
 
         self.assertTrue(self.received)
@@ -176,7 +253,7 @@ class TestSendMethodMsgPack(TestSendMethod):
         t0 = time.time()
         while not self.connected:
             time.sleep(0.1)
-            if time.time() - t0 > CONNECTION_TIMEOUT:
+            if time.time() - t0 > CONNECTION_TIMEOUT:  # pragma: no cover
                 raise TimeoutError("TIMEOUT Opening connection ")
 
 

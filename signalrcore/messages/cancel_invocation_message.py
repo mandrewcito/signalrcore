@@ -1,4 +1,3 @@
-from .base_message import BaseHeadersMessage
 """
 A `CancelInvocation` message is a JSON object with the following properties
 
@@ -13,6 +12,7 @@ Example
     "invocationId": "123"
 }
 """
+from .base_message import BaseHeadersMessage, MessageType
 
 
 class CancelInvocationMessage(BaseHeadersMessage):
@@ -20,5 +20,6 @@ class CancelInvocationMessage(BaseHeadersMessage):
             self,
             invocation_id,
             **kwargs):  # pragma: no cover
-        super(CancelInvocationMessage, self).__init__(5, **kwargs)
+        super(CancelInvocationMessage, self).__init__(
+            MessageType.cancel_invocation.value, **kwargs)
         self.invocation_id = invocation_id

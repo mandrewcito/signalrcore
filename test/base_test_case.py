@@ -5,10 +5,12 @@ import time
 import sys
 import uuid
 
-from signalrcore.hub_connection_builder import HubConnectionBuilder
+from signalrcore.hub_connection_builder import\
+    HubConnectionBuilder, BaseHubConnection
 from signalrcore.protocol.messagepack_protocol import MessagePackHubProtocol
 from signalrcore.types import HttpTransportType
 from signalrcore.helpers import Helpers
+
 
 CONNECTION_TIMEOUT = 20
 LOCK_TIMEOUT = 10
@@ -41,7 +43,7 @@ class Urls:
 
 
 class InternalTestCase(unittest.TestCase):
-    connection = None
+    connection: BaseHubConnection = None
     connected = False
     logger = Helpers.get_logger()
 
@@ -56,7 +58,7 @@ class InternalTestCase(unittest.TestCase):
 
         while not self.connected:
             time.sleep(0.1)
-            if time.time() - t0 > CONNECTION_TIMEOUT:
+            if time.time() - t0 > CONNECTION_TIMEOUT:  # pragma: no cover
                 raise TimeoutError("TIMEOUT Opening connection")
                 # pragma: no cover
 
@@ -67,7 +69,7 @@ class InternalTestCase(unittest.TestCase):
 
         while self.connected:
             time.sleep(0.1)
-            if time.time() - t0 > CONNECTION_TIMEOUT:
+            if time.time() - t0 > CONNECTION_TIMEOUT:  # pragma: no cover
                 raise TimeoutError("TIMEOUT Closing connection")
                 # pragma: no cover
         del self.connection
@@ -80,7 +82,7 @@ class InternalTestCase(unittest.TestCase):
 
 
 class BaseTestCase(InternalTestCase):
-    server_url = Urls.server_url_ssl
+    server_url: str = Urls.server_url_ssl
 
     def get_random_id(self) -> str:
         return str(uuid.uuid4())

@@ -6,7 +6,7 @@ tests:
 	venv/bin/python3 -m unittest discover -s test/ -p "*_test.py" -v
 
 package:
-	venv/bin/python3 setup.py sdist bdist_wheel
+	python3 -m build
 
 lint:
 	venv/bin/flake8 signalrcore test

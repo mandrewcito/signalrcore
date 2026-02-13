@@ -4,8 +4,8 @@ import uuid
 
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from signalrcore.types import HttpTransportType
-from test.base_test_case import BaseTestCase
-from test.base_test_case import Urls
+from ..base_test_case import BaseTestCase
+from ..base_test_case import Urls
 
 LOCKS = {}
 

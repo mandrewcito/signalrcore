@@ -2,7 +2,7 @@ import json
 import threading
 import uuid
 
-from .base_test_case import BaseTestCase, Urls
+from ..base_test_case import BaseTestCase, Urls
 from signalrcore.helpers import RequestHelpers
 from signalrcore.types import DEFAULT_ENCODING
 

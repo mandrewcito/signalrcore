@@ -1,4 +1,4 @@
-from test.base_test_case import BaseTestCase
+from ..base_test_case import BaseTestCase
 from signalrcore.transport.reconnection\
     import RawReconnectionHandler, IntervalReconnectionHandler
 

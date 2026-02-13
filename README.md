@@ -13,14 +13,25 @@
 
 Python signalr core client library, made by a guy born in Vilalba (Lugo).
 
-Features:
+## About V1.0.0 (aka poluca)  
+
+Feature list:
 * All kind of communications with the server (streaming, sending messages)
 * All transports implemented (sse, long polling and web sockets)
 * All encodings (text, binary - msgpack)
 * Authentication
 * Automatic reconnection with different strategies 
-* Custom certificates
+* Custom ssl context passthrough ([see certificates article](https://github.com/mandrewcito/signalrcore/blob/main/docs/articles/CustomClientCert.md))
+* AsyncIO minimal implementation (will be improved on following versions)
 * ... 
+
+## Upcoming changes
+
+* AsyncIO transport layer and callbacks
+* Test suite, divide test into integration and unit. Making stubs of clients which enable testing without server
+  * Managed solution azure server. For testing purposes only (PRs targeting main branch)
+* Ack/Sequence implementation
+* ...
 
 # Links 
 
@@ -43,6 +54,7 @@ Software requirements:
 > Test environment has as a requirement a signalr core server, is available in [here](https://github.com/mandrewcito/signalrcore-containertestservers)
 
 Clone repos and install virtual environment:
+
 ```bash
 git clone https://github.com/mandrewcito/signalrcore-containertestservers
 cd signalrcore
@@ -137,7 +149,7 @@ hub_connection = HubConnectionBuilder()\
  ```
  
 ## Configuring reconnection
-After reaching max_attempts an exeption will be thrown and on_disconnect event will be fired.
+After reaching max_attempts an exception will be thrown and on_disconnect event will be fired.
 ```python
 hub_connection = HubConnectionBuilder()\
     .with_url(server_url)\
@@ -159,7 +171,7 @@ hub_connection = HubConnectionBuilder()\
 
 ## Configuring additional querystring parameters
 ```python
-server_url ="http.... /?myquerystringparam=134&foo=bar"
+server_url ="http.... /?myQueryStringParam=134&foo=bar"
 connection = HubConnectionBuilder()\
             .with_url(server_url,
             options={
@@ -222,8 +234,29 @@ HubConnectionBuilder()\
                 ...
             .build()
 ```
+## Configure custom ssl context
+You can add a custom ssl context to all requests and sockets
 
-## Configure another transport layer
+```python
+MY_CA_FILE_PATH = "ca.crt"
+context = ssl.create_default_context(
+    cafile=MY_CA_FILE_PATH
+)
+
+options = {
+    "ssl_context": context
+}
+
+builder = HubConnectionBuilder()\
+    .with_url(self.server_url, options=options)\
+    .configure_logging(
+        logging.INFO,
+        socket_trace=True)
+ 
+connection = builder.build()
+``` 
+
+More info about certificates [here](https://github.com/mandrewcito/signalrcore/blob/main/docs/articles/CustomClientCert.md)
 
 ### Websockets
 
@@ -328,9 +361,38 @@ subject.next(str(iteration))
 subject.complete()
 ```
 
+# AIO
+
+## Create connection
+
+```python
+from signalrcore.aio.aio_hub_connection_builder import AIOHubConnectionBuilder
+
+builder = AIOHubConnectionBuilder()\
+    .with_url(self.server_url, options=options)\
+    .configure_logging(
+        self.get_log_level(),
+        socket_trace=self.is_debug())\
+    .with_automatic_reconnect({
+        "type": "raw",
+        "keep_alive_interval": 10,
+        "reconnect_interval": 5,
+        "max_attempts": 5
+    })
+
+hub = builder.build()
+
+await hub.start()
+
+await connection.send("SendMessage", [username, message])
+
+await connection.stop()
+
+```
+
 # Full Examples
 
-Examples will be avaiable [here](https://github.com/mandrewcito/signalrcore/tree/master/test/examples)
+Examples will be available [here](https://github.com/mandrewcito/signalrcore/tree/master/test/examples)
 It were developed using package from [aspnet core - SignalRChat](https://codeload.github.com/aspnet/Docs/zip/master) 
 
 ## Chat example

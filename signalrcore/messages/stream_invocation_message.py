@@ -1,4 +1,3 @@
-from .base_message import BaseHeadersMessage
 """
 A `StreamInvocation` message is a JSON object with the following properties:
 
@@ -26,6 +25,7 @@ Example:
 }
 ```
 """
+from .base_message import BaseHeadersMessage, MessageType
 
 
 class StreamInvocationMessage(BaseHeadersMessage):
@@ -34,9 +34,11 @@ class StreamInvocationMessage(BaseHeadersMessage):
             invocation_id,
             target,
             arguments,
+            stream_ids=[],
             **kwargs):
-        super(StreamInvocationMessage, self).__init__(4, **kwargs)
+        super(StreamInvocationMessage, self).__init__(
+            MessageType.stream_invocation.value, **kwargs)
         self.invocation_id = invocation_id
         self.target = target
         self.arguments = arguments
-        self.stream_ids = []
+        self.stream_ids = stream_ids

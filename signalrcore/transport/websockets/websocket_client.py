@@ -51,6 +51,9 @@ class WebSocketClient(BaseSocketClient):
 
         if parsed_url.query:
             relative_reference = f"{parsed_url.path}?{parsed_url.query}"
+        else:
+            relative_reference =\
+                f"{parsed_url.path}?connectionId={self.connection_id}"
 
         return [
             f"GET {relative_reference} HTTP/1.1",

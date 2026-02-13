@@ -10,6 +10,8 @@ from ..messages.stream_invocation_message import StreamInvocationMessage  # 4
 from ..messages.cancel_invocation_message import CancelInvocationMessage  # 5
 from ..messages.ping_message import PingMessage  # 6
 from ..messages.close_message import CloseMessage  # 7
+from ..messages.ack_message import AckMessage  # 8
+from ..messages.sequence_message import SequenceMessage  # 9
 from ..messages.message_type import MessageType
 
 
@@ -36,6 +38,7 @@ class BaseHubProtocol(object):
         dict_message["headers"] = dict_message.get("headers", {})
         dict_message["error"] = dict_message.get("error", None)
         dict_message["result"] = dict_message.get("result", None)
+        dict_message["sequence_id"] = dict_message.get("sequenceId", None)
 
         if message_type is MessageType.invocation:
             return InvocationMessage(**dict_message)
@@ -53,6 +56,10 @@ class BaseHubProtocol(object):
             dict_message["allow_reconnect"] =\
                 dict_message.get("allowReconnect", None)
             return CloseMessage(**dict_message)
+        if message_type is MessageType.ack:  # pragma: no cover
+            return AckMessage(**dict_message)
+        if message_type is MessageType.sequence:  # pragma: no cover
+            return SequenceMessage(**dict_message)
 
     def decode_handshake(self, raw_message: str) -> HandshakeResponseMessage:
         has_record_separator = self.record_separator in raw_message

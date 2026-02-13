@@ -1,3 +1,7 @@
+
+![logo alt](https://raw.githubusercontent.com/mandrewcito/signalrcore/master/docs/img/logo_temp.128.svg.png)
+
+
 # SignalR core client
 [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg?logo=paypal&style=flat-square)](https://www.paypal.me/mandrewcito/1)
 ![Pypi](https://img.shields.io/pypi/v/signalrcore.svg)
@@ -5,11 +9,29 @@
 [![Downloads](https://pepy.tech/badge/signalrcore)](https://pepy.tech/project/signalrcore)
 ![Issues](https://img.shields.io/github/issues/mandrewcito/signalrcore.svg)
 ![Open issues](https://img.shields.io/github/issues-raw/mandrewcito/signalrcore.svg)
-![travis build](https://img.shields.io/travis/mandrewcito/signalrcore.svg)
 ![codecov.io](https://codecov.io/github/mandrewcito/signalrcore/coverage.svg?branch=master)
 
-![logo alt](https://raw.githubusercontent.com/mandrewcito/signalrcore/master/docs/img/logo_temp.128.svg.png)
+Python signalr core client library, made by a guy born in Vilalba (Lugo).
 
+## About V1.0.0 (aka poluca)  
+
+Feature list:
+* All kind of communications with the server (streaming, sending messages)
+* All transports implemented (sse, long polling and web sockets)
+* All encodings (text, binary - msgpack)
+* Authentication
+* Automatic reconnection with different strategies 
+* Custom ssl context passthrough ([see certificates article](https://github.com/mandrewcito/signalrcore/blob/main/docs/articles/CustomClientCert.md))
+* AsyncIO minimal implementation (will be improved on following versions)
+* ... 
+
+## Upcoming changes
+
+* AsyncIO transport layer and callbacks
+* Test suite, divide test into integration and unit. Making stubs of clients which enable testing without server
+  * Managed solution azure server. For testing purposes only (PRs targeting main branch)
+* Ack/Sequence implementation
+* ...
 
 # Links 
 
@@ -19,19 +41,35 @@
 
 * [Wiki - This Doc](https://mandrewcito.github.io/signalrcore/)
 
-# Develop
+* [Aspnetcore SignalR docs](https://github.com/dotnet/aspnetcore/tree/main/src/SignalR/docs)
 
-Test server will be available in [here](https://github.com/mandrewcito/signalrcore-containertestservers) and docker compose is required.
+# Development
+Software requirements:
+> - python > 3.8
+> - virtualenv
+> - pip
+> - docker
+> - docker compose
+> 
+> Test environment has as a requirement a signalr core server, is available in [here](https://github.com/mandrewcito/signalrcore-containertestservers)
+
+Clone repos and install virtual environment:
 
 ```bash
+git clone https://github.com/mandrewcito/signalrcore-containertestservers
+cd signalrcore
+make dev-install
 git clone https://github.com/mandrewcito/signalrcore-containertestservers
 cd signalrcore-containertestservers
 docker compose up
 cd ../signalrcore
-make tests
+make pytest-cov
 ```
+Have fun :)
 
-# A tiny How To
+# A Tiny How To
+
+You can reach a lot of examples in *tests* folder, raw implementations in *playground* and fully working examples at the *examples* folder.
 
 ## Connect to a server without auth
 
@@ -68,7 +106,7 @@ hub_connection = HubConnectionBuilder()\
             }).build()
 ```
 ### Unauthorized errors
-A login function must provide a error control if authorization fails. When connection starts, if authorization fails exception will be raised.
+A login function must provide an error controller if authorization fails. When connection starts, if authorization fails exception will be propagated.
 
 ```python
     def login(self):
@@ -99,8 +137,8 @@ HubConnectionBuilder()\
     .configure_logging(logging.DEBUG, socket_trace=True) 
     ... 
  ```
- ## Configure your own handler
- ```python
+## Configure your own handler
+```python
  import logging
 handler = logging.StreamHandler()
 handler.setLevel(logging.DEBUG)
@@ -109,9 +147,9 @@ hub_connection = HubConnectionBuilder()\
     .configure_logging(logging.DEBUG, socket_trace=True, handler=handler)
     ...
  ```
+ 
 ## Configuring reconnection
-After reaching max_attempts an exception will be thrown and on_disconnect event will be
-fired.
+After reaching max_attempts an exception will be thrown and on_disconnect event will be fired.
 ```python
 hub_connection = HubConnectionBuilder()\
     .with_url(server_url)\
@@ -130,6 +168,7 @@ hub_connection = HubConnectionBuilder()\
             ...
             .build()
 ```
+
 ## Configuring additional querystring parameters
 ```python
 server_url ="http.... /?myQueryStringParam=134&foo=bar"
@@ -139,7 +178,8 @@ connection = HubConnectionBuilder()\
             })\
             .build()
 ```
-## Configure skip negotiation
+
+## Configuring skip negotiation
 ```python
 hub_connection = HubConnectionBuilder() \
         .with_url("ws://"+server_url, options={
@@ -152,6 +192,7 @@ hub_connection = HubConnectionBuilder() \
         .build()
 
 ```
+
 ## Configuring ping(keep alive)
 
 keep_alive_interval sets the seconds of ping message
@@ -167,6 +208,7 @@ hub_connection = HubConnectionBuilder()\
         "max_attempts": 5
     }).build()
 ```
+
 ## Configuring logging
 ```python
 hub_connection = HubConnectionBuilder()\
@@ -192,20 +234,77 @@ HubConnectionBuilder()\
                 ...
             .build()
 ```
+## Configure custom ssl context
+You can add a custom ssl context to all requests and sockets
+
+```python
+MY_CA_FILE_PATH = "ca.crt"
+context = ssl.create_default_context(
+    cafile=MY_CA_FILE_PATH
+)
+
+options = {
+    "ssl_context": context
+}
+
+builder = HubConnectionBuilder()\
+    .with_url(self.server_url, options=options)\
+    .configure_logging(
+        logging.INFO,
+        socket_trace=True)
+ 
+connection = builder.build()
+``` 
+
+More info about certificates [here](https://github.com/mandrewcito/signalrcore/blob/main/docs/articles/CustomClientCert.md)
+
+### Websockets
+
+Will be used as transport layer by default, you do not need to specify it.
+
+```python
+HubConnectionBuilder()\
+    .with_url(server_http_url, options={
+        ...
+        "transport": HttpTransportType.web_sockets
+        })\
+    .configure_logging(logging.ERROR)\
+    .build()
+```
+
+### Server sent events
+
+```python
+HubConnectionBuilder()\
+    .with_url(server_http_url, options={
+        ...
+        "transport": HttpTransportType.server_sent_events
+        })\
+    .configure_logging(logging.ERROR)\
+    .build()
+```
+### Long polling
+
+```python
+HubConnectionBuilder()\
+    .with_url(server_http_url, options={
+        ...
+        "transport": HttpTransportType.long_polling
+        })\
+    .configure_logging(logging.ERROR)\
+    .build()
+```
 ## Events
 
-### On connect / On disconnect
-
+### On Connect / On Disconnect
 on_open - fires when connection is opened and ready to send messages
 on_close - fires when connection is closed
-
 ```python
 hub_connection.on_open(lambda: print("connection opened and handshake received ready to send messages"))
 hub_connection.on_close(lambda: print("connection closed"))
-hub_connection.on_reconnect(lambda: print("reconnection in progress"))
 
 ```
-### On hub error (Hub Exceptions ...)
+### On Hub Error (Hub Exceptions ...)
 ```
 hub_connection.on_error(lambda data: print(f"An exception was thrown closed{data.error}"))
 ```
@@ -217,13 +316,14 @@ hub_connection.on("ReceiveMessage", print)
 ```
 ## Sending messages
 SendMessage - signalr method
-username, message - parameters of signalr method
+username, message - parameters of signalrmethod
 ```python
     hub_connection.send("SendMessage", [username, message])
 ```
+
 ## Sending messages with callback
 SendMessage - signalr method
-username, message - parameters of signalr method
+username, message - parameters of signalrmethod
 ```python
     send_callback_received = threading.Lock()
     send_callback_received.acquire()
@@ -234,6 +334,7 @@ username, message - parameters of signalr method
     if not send_callback_received.acquire(timeout=1):
         raise ValueError("CALLBACK NOT RECEIVED")
 ```
+
 ## Requesting streaming (Server to client)
 ```python
 hub_connection.stream(
@@ -258,9 +359,34 @@ subject.next(str(iteration))
 
 # End streaming
 subject.complete()
+```
 
+# AIO
 
+## Create connection
 
+```python
+from signalrcore.aio.aio_hub_connection_builder import AIOHubConnectionBuilder
+
+builder = AIOHubConnectionBuilder()\
+    .with_url(self.server_url, options=options)\
+    .configure_logging(
+        self.get_log_level(),
+        socket_trace=self.is_debug())\
+    .with_automatic_reconnect({
+        "type": "raw",
+        "keep_alive_interval": 10,
+        "reconnect_interval": 5,
+        "max_attempts": 5
+    })
+
+hub = builder.build()
+
+await hub.start()
+
+await connection.send("SendMessage", [username, message])
+
+await connection.stop()
 
 ```
 
@@ -298,7 +424,6 @@ hub_connection = HubConnectionBuilder()\
 
 hub_connection.on_open(lambda: print("connection opened and handshake received ready to send messages"))
 hub_connection.on_close(lambda: print("connection closed"))
-hub_connection.on_reconnect(lambda: print("reconnection in progress"))
 
 hub_connection.on("ReceiveMessage", print)
 hub_connection.start()
