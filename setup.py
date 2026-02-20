@@ -18,7 +18,7 @@ setuptools.setup(
     url="https://github.com/mandrewcito/signalrcore",
     packages=setuptools.find_packages(exclude=["test", "test.*"]),
     classifiers=[
-        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         "Operating System :: OS Independent"
     ],
     install_requires=[
