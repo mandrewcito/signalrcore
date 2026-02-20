@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="signalrcore",
-    version="1.0.0",
+    version="1.0.1",
     author="mandrewcito",
     author_email="signalrcore@mandrewcito.dev",
     description="Python SignalR Core full client (transports and encodings)."
@@ -18,11 +18,11 @@ setuptools.setup(
     url="https://github.com/mandrewcito/signalrcore",
     packages=setuptools.find_packages(exclude=["test", "test.*"]),
     classifiers=[
-        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         "Operating System :: OS Independent"
     ],
     install_requires=[
-        "msgpack==1.0.2"
+        "msgpack==1.1.2"
     ],
     extras_require={
         'dev': [
