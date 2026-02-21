@@ -8,7 +8,8 @@ class AIOHubConnectionBuilder(HubConnectionBuilder):
         """Creates the connection hub
 
         Returns:
-            [BaseHubConnection]: [connection SignalR object]
+            [AIOBaseHubConnection|AIOAuthHubConnection]:
+                [connection SignalR AIO object]
         """
 
         return AIOAuthHubConnection(

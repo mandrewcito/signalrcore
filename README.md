@@ -39,13 +39,13 @@ Feature list:
 
 * [Pypi](https://pypi.org/project/signalrcore/)
 
-* [Wiki - This Doc](https://mandrewcito.github.io/signalrcore/)
+* [Documentation](https://mandrewcito.github.io/signalrcore/)
 
 * [Aspnetcore SignalR docs](https://github.com/dotnet/aspnetcore/tree/main/src/SignalR/docs)
 
 # Development
 Software requirements:
-> - python > 3.8
+> - python >= 3.9
 > - virtualenv
 > - pip
 > - docker

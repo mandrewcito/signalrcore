@@ -12,6 +12,12 @@ class AuthHubConnection(BaseHubConnection):
         super(AuthHubConnection, self).__init__(headers=headers, **kwargs)
 
     def start(self):
+        """Starts the connection
+
+        Returns:
+            bool: True if connection stars successfully, False
+            if connection cant start or is already connected
+        """
         try:
             Helpers.get_logger().debug("Starting connection ...")
             self.token = self.auth_function()
