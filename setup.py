@@ -34,4 +34,11 @@ setuptools.setup(
             'build'
         ]
     },
+    project_urls={
+        "Homepage": "https://signalrcore.mandrewcito.dev",
+        "Documentation": "https://mandrewcito.github.io/signalrcore/",
+        "Repository": "https://github.com/mandrewcito/signalrcore",
+        "Tracker": "https://github.com/mandrewcito/signalrcore/issues",
+        "Changelog": "https://github.com/mandrewcito/signalrcore/releases",
+    }
 )

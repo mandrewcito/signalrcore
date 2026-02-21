@@ -102,7 +102,13 @@ class BaseHubConnection(object):
         self.skip_negotiation = skip_negotiation
         self._callbacks = HubCallbacks()
 
-    def negotiate(self) -> NegotiateResponse:
+    def _negotiate(self) -> NegotiateResponse:
+        """Negotiates connection with the server, do not call it
+        manually.
+        Updates url and headers if is necessary
+        Returns:
+            NegotiateResponse: Negotiation response result.
+        """
         handler = NegotiationHandler(
             self.url,
             self.headers,
@@ -118,14 +124,20 @@ class BaseHubConnection(object):
 
         return response
 
-    def start(self) -> None:
+    def start(self) -> bool:
+        """Starts the connection
+
+        Returns:
+            bool: True if connection stars successfully, False
+            if connection cant start or is already connected
+        """
         if self.transport is not None and self.transport.is_connected():
             self.logger.warning("Already connected unable to start")
             return False
 
         self.logger.debug("Connection started")
 
-        negotiate_response = self.negotiate()
+        negotiate_response = self._negotiate()
 
         self.protocol = ProtocolFactory.create(
                 self.preferred_transport,
@@ -155,6 +167,11 @@ class BaseHubConnection(object):
         return self.transport.start()
 
     def stop(self) -> None:
+        """Stops the connection
+
+        Returns:
+            None
+        """
         self.logger.debug("Connection stop")
         if self.transport is not None:
             return self.transport.stop()

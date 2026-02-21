@@ -10,14 +10,9 @@ from .transport.sockets.utils import create_ssl_context
 
 
 class HubConnectionBuilder(object):
-    """
-    Hub connection class, manages handshake and messaging
-
-    Args:
-        hub_url: SignalR core url
-
-    Raises:
-        HubConnectionError: Raises an Exception if url is empty or None
+    """Builder for SignalR hub connections using a fluent interface.
+    Use :meth:`with_url` as the first call to configure url and connection options.
+    Use :meth:`build` as the final call to obtain a ready-to-use connection.
     """
 
     def __init__(self):
