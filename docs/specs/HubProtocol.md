@@ -1,3 +1,10 @@
+---
+layout: default
+title: Hub Protocol
+parent: Specifications
+nav_order: 1
+---
+
 # SignalR Hub Protocol
 
 The SignalR Protocol is a protocol for two-way RPC over any Message-based transport. Either party in the connection may invoke procedures on the other party, and procedures can return zero or more results or an error.

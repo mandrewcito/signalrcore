@@ -23,6 +23,12 @@ coverage:
 
 pytest-cov:
 	venv/bin/pytest --junitxml=reports/junit.xml --cov=. --cov-report=html:coverage_html --cov-report=xml:coverage.xml --cov-report=term
+github-pages:
+	docker run --rm \
+	--volume="$(pwd)/docs:/srv/jekyll" \
+	-p 4000:4000 \
+	jekyll/jekyll:4 \
+	jekyll serve --watch --force_polling
 
 clean:
 	@find . -name "*.pyc" -exec rm -f '{}' +

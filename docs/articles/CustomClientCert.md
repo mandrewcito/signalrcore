@@ -1,3 +1,10 @@
+---
+layout: default
+title: Custom Client Certificates
+parent: Articles
+nav_order: 1
+---
+
 # Configuring client-server certificates
 
 

@@ -1,1 +1,45 @@
-theme: jekyll-theme-leap-day
+title: SignalR Core Python Client
+description: Python SignalR Core full client — supports WebSockets, SSE, Long Polling, MessagePack, authentication, and automatic reconnection.
+
+remote_theme: just-the-docs/just-the-docs
+
+url: "https://mandrewcito.github.io"
+baseurl: "/signalrcore"
+
+plugins:
+  - jekyll-remote-theme
+  - jekyll-seo-tag
+
+logo: "img/logo_temp.128.svg.png"
+
+search_enabled: true
+search:
+  heading_level: 2
+  previews: 3
+  preview_words_before: 5
+  preview_words_after: 10
+  tokenizer_separator: /[\s/]+/
+  rel_url: true
+  button: false
+
+nav_sort: case_insensitive
+
+aux_links:
+  "GitHub":
+    - "https://github.com/mandrewcito/signalrcore"
+  "PyPI":
+    - "https://pypi.org/project/signalrcore/"
+
+aux_links_new_tab: true
+
+footer_content: "Copyright &copy; mandrewcito. Released under the <a href=\"https://github.com/mandrewcito/signalrcore/blob/main/LICENSE\">MIT License</a>."
+
+back_to_top: true
+back_to_top_text: "Back to top"
+
+gh_edit_link: true
+gh_edit_link_text: "Edit this page on GitHub"
+gh_edit_repository: "https://github.com/mandrewcito/signalrcore"
+gh_edit_branch: "main"
+gh_edit_source: docs
+gh_edit_view_mode: "edit"
