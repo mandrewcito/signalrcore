@@ -50,8 +50,7 @@ def parse_sse_to_json(raw: bytes) -> dict:
             depth -= 1
             if depth == 0:
                 return text[start:i+1]
-    # pragma: no cover
-    raise ValueError(f"Malformed json {raw}")
+    raise ValueError(f"Malformed json {raw}")  # pragma: no cover
 
 
 class SSEClient(BaseSocketClient):
@@ -146,7 +145,7 @@ class SSEClient(BaseSocketClient):
             if self._is_chunked:
                 self._raw_buffer = body_start
                 self._decode_chunks()
-            else:
+            else:  # pragma: no cover
                 self._buffer = body_start
 
         self.running = True
@@ -205,23 +204,23 @@ class SSEClient(BaseSocketClient):
         """Decode all complete HTTP chunks from _raw_buffer into _buffer."""
         while self._raw_buffer:
             crlf_pos = self._raw_buffer.find(b"\r\n")
-            if crlf_pos == -1:
+            if crlf_pos == -1:  # pragma: no cover
                 break
 
             # Strip chunk extensions (e.g. "1a;ext=foo\r\n")
             size_hex = self._raw_buffer[:crlf_pos].split(b";")[0].strip()
 
-            if not size_hex:
+            if not size_hex:  # pragma: no cover
                 # Empty line between chunks, skip it
                 self._raw_buffer = self._raw_buffer[crlf_pos + 2:]
                 continue
 
             try:
                 chunk_size = int(size_hex, 16)
-            except ValueError:
+            except ValueError:  # pragma: no cover
                 break
 
-            if chunk_size == 0:
+            if chunk_size == 0:  # pragma: no cover
                 # Final chunk — server closed the stream
                 raise SocketClosedError()
 

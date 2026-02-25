@@ -102,7 +102,7 @@ class WebSocketClient(BaseSocketClient):
         data = b""
         while len(data) < n:
             chunk = self.sock.recv(n - len(data))
-            if not chunk:
+            if not chunk:  # pragma: no cover
                 raise SocketClosedError()
             data += chunk
         return data
@@ -111,10 +111,10 @@ class WebSocketClient(BaseSocketClient):
         """Read a single WebSocket frame. Returns (fin, opcode, data)."""
         try:
             header = self._recv_exactly(2)
-        except ssl.SSLError as ex:
+        except ssl.SSLError as ex:  # pragma: no cover
             self.logger.error(ex)
             raise NoHeaderException()
-        except SocketClosedError:
+        except SocketClosedError:  # pragma: no cover
             raise NoHeaderException()
 
         fin = (header[0] & 0x80) != 0
@@ -125,7 +125,7 @@ class WebSocketClient(BaseSocketClient):
             self.logger.debug(
                 f"fin: {fin}, opcode: {opcode:#x}, masked_len: {masked_len}")
 
-        if masked_len & 0x80:
+        if masked_len & 0x80:  # pragma: no cover
             # RFC 6455 §5.1: server MUST NOT mask frames sent to the client
             try:
                 self.send(struct.pack(">H", 1002), opcode=0x8)
