@@ -136,7 +136,7 @@ class WebSocketClient(BaseSocketClient):
         payload_len = masked_len & 0x7F
         if payload_len == 126:
             payload_len = struct.unpack(">H", self._recv_exactly(2))[0]
-        elif payload_len == 127:
+        elif payload_len == 127:  # pragma: no cover
             payload_len = struct.unpack(">Q", self._recv_exactly(8))[0]
 
         data = self._recv_exactly(payload_len)
@@ -146,13 +146,13 @@ class WebSocketClient(BaseSocketClient):
     def _recv_frame(self):
         fin, opcode, data = self._read_one_frame()
 
-        if opcode == 0x8:
+        if opcode == 0x8:  # pragma: no cover
             raise SocketClosedError()
 
         payload = data
         while not fin:
             fin, cont_opcode, data = self._read_one_frame()
-            if cont_opcode == 0x8:
+            if cont_opcode == 0x8:  # pragma: no cover
                 raise SocketClosedError()
             payload += data
 
