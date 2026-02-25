@@ -15,7 +15,7 @@ class BaseClient(object):
     def is_connection_closed() -> bool:  # pragma: no cover
         raise NotImplementedError()
 
-    def is_trace_enabled() -> bool:  # pragma: no cover
+    def is_trace_enabled(self) -> bool:  # pragma: no cover
         raise NotImplementedError()
 
     def send(message: Union[bytes, str], **kwargs) -> None:  # pragma: no cover

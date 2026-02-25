@@ -11,7 +11,8 @@ from .transport.sockets.utils import create_ssl_context
 
 class HubConnectionBuilder(object):
     """Builder for SignalR hub connections using a fluent interface.
-    Use :meth:`with_url` as the first call to configure url and connection options.
+    Use :meth:`with_url` as the first call to configure url
+        and connection options.
     Use :meth:`build` as the final call to obtain a ready-to-use connection.
     """
 

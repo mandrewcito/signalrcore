@@ -53,6 +53,9 @@ class LongPollingBaseClient(BaseClient):
             or self._thread is None\
             or not self._thread.is_alive()
 
+    def is_trace_enabled(self):
+        return self.enable_trace
+
     def send(
             self,
             message: Union[str, bytes],
