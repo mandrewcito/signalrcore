@@ -97,41 +97,71 @@ class WebSocketClient(BaseSocketClient):
         frame = header + masking_key + masked_payload
         self.sock.sendall(frame)
 
+    def _recv_exactly(self, n):
+        data = b""
+        while len(data) < n:
+            chunk = self.sock.recv(n - len(data))
+            if not chunk:
+                raise SocketClosedError()
+            data += chunk
+        return data
+
     def _recv_frame(self):
-        try:
-            header = self.sock.recv(2)
-        except ssl.SSLError as ex:
-            self.logger.error(ex)
-            header = None
+        message_data = b""
+        while True:
+            try:
+                header = self._recv_exactly(2)
+            except ssl.SSLError as ex:
+                self.logger.error(ex)
+                header = None
 
-        if header is None or len(header) < 2:
-            raise NoHeaderException()
+            if header is None or len(header) < 2:
+                raise NoHeaderException()
 
-        fin_opcode = header[0]
-        masked_len = header[1]
+            fin_opcode = header[0]
+            fin = fin_opcode & 0x80
+            opcode = fin_opcode & 0x0F
 
-        if self.logger:
-            self.logger.debug(
-                f"fin opcode: {fin_opcode}, masked len: {masked_len}")
+            masked_len = header[1]
+            mask_len = masked_len & 0x80
+            payload_len = masked_len & 0x7F
+            if payload_len == 126:
+                payload_len = struct.unpack(">H", self._recv_exactly(2))[0]
+            elif payload_len == 127:
+                payload_len = struct.unpack(">Q", self._recv_exactly(8))[0]
 
-        if fin_opcode == 8:
-            raise SocketClosedError(header)
-        payload_len = masked_len & 0x7F
-        if payload_len == 126:
-            payload_len = struct.unpack(">H", self.sock.recv(2))[0]
-        elif payload_len == 127:
-            payload_len = struct.unpack(">Q", self.sock.recv(8))[0]
+            if self.logger:
+                self.logger.debug(
+                    f"fin opcode: {fin_opcode} ({fin}:{opcode}), masked len: {masked_len} ({mask_len}:{payload_len})")
 
-        if masked_len & 0x80:
-            masking_key = self.sock.recv(4)
-            masked_data = self.sock.recv(payload_len)
-            data = bytes(
-                b ^ masking_key[i % 4]
-                for i, b in enumerate(masked_data))
-        else:
-            data = self.sock.recv(payload_len)
+            if opcode == 8:
+                raise SocketClosedError(header)
+
+            # Handle PING (9) and PONG (10) control frames
+            if opcode == 9 or opcode == 10:
+                if mask_len:
+                    self._recv_exactly(4 + payload_len) # Skip mask and payload
+                else:
+                    self._recv_exactly(payload_len) # Skip payload
+                continue # Wait for next frame
+
+            if mask_len:
+                masking_key = self._recv_exactly(4)
+                masked_data = self._recv_exactly(payload_len)
+                data = bytes(
+                    b ^ masking_key[i % 4]
+                    for i, b in enumerate(masked_data))
+            else:
+                data = self._recv_exactly(payload_len)
+
+            if self.is_trace_enabled():
+                self.logger.debug(f"[TRACE] [{len(data)}] {data}")
+            message_data += data
+
+            if fin:
+                break
 
         if self.is_trace_enabled():
-            self.logger.debug(f"[TRACE] - {data}")
+            self.logger.debug(f"[TRACE] [{len(message_data)}] {message_data}")
 
-        return self.prepare_data(data)
+        return self.prepare_data(message_data)
