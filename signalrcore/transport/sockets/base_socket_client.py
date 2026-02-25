@@ -164,7 +164,7 @@ class BaseSocketClient(BaseClient):
             while self.running:
                 message = self._recv_frame()
 
-                if self.on_message:
+                if self.on_message and message is not None:
                     self.on_message(self, message)
 
         except (OSError, Exception) as e:

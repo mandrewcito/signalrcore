@@ -212,6 +212,33 @@ class TestSendMethod(BaseTestCase):
 
         self.assertTrue(self.received)
 
+    def test_send_long_message(self):
+        self.message = "new message {0}".format(uuid.uuid4()) * 86
+        self.username = "mandrewcito"
+        self.received = False
+
+        def on_receive_message(args):
+            user, message = args
+            self.assertEqual(user, self.username)
+            self.assertEqual(
+                len(message),
+                len(self.message),
+                f"Original {self.message}, received: {message}")
+            self.received = True
+
+        self.connection.unsubscribe("ReceiveMessage", self.receive_message)
+        self.connection.on("ReceiveMessage", on_receive_message)
+
+        self.connection.send("SendMessage", [self.username, self.message])
+
+        t0 = time.time()
+        while not self.received:
+            time.sleep(0.1)
+            if time.time() - t0 > CONNECTION_TIMEOUT * 3:  # pragma: no cover
+                raise TimeoutError("TIMEOUT Receiving message ")
+
+        self.assertTrue(self.received)
+
     def test_send_with_callback(self):
         self.message = "new message {0}".format(uuid.uuid4())
         self.username = "mandrewcito"

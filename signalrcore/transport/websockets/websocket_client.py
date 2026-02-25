@@ -97,41 +97,66 @@ class WebSocketClient(BaseSocketClient):
         frame = header + masking_key + masked_payload
         self.sock.sendall(frame)
 
-    def _recv_frame(self):
+    def _recv_exactly(self, n):
+        """Receive exactly n bytes, looping over partial reads."""
+        data = b""
+        while len(data) < n:
+            chunk = self.sock.recv(n - len(data))
+            if not chunk:
+                raise SocketClosedError()
+            data += chunk
+        return data
+
+    def _read_one_frame(self):
+        """Read a single WebSocket frame. Returns (fin, opcode, data)."""
         try:
-            header = self.sock.recv(2)
+            header = self._recv_exactly(2)
         except ssl.SSLError as ex:
             self.logger.error(ex)
-            header = None
-
-        if header is None or len(header) < 2:
+            raise NoHeaderException()
+        except SocketClosedError:
             raise NoHeaderException()
 
-        fin_opcode = header[0]
+        fin = (header[0] & 0x80) != 0
+        opcode = header[0] & 0x0F
         masked_len = header[1]
 
         if self.logger:
             self.logger.debug(
-                f"fin opcode: {fin_opcode}, masked len: {masked_len}")
-
-        if fin_opcode == 8:
-            raise SocketClosedError(header)
-        payload_len = masked_len & 0x7F
-        if payload_len == 126:
-            payload_len = struct.unpack(">H", self.sock.recv(2))[0]
-        elif payload_len == 127:
-            payload_len = struct.unpack(">Q", self.sock.recv(8))[0]
+                f"fin: {fin}, opcode: {opcode:#x}, masked_len: {masked_len}")
 
         if masked_len & 0x80:
-            masking_key = self.sock.recv(4)
-            masked_data = self.sock.recv(payload_len)
-            data = bytes(
-                b ^ masking_key[i % 4]
-                for i, b in enumerate(masked_data))
-        else:
-            data = self.sock.recv(payload_len)
+            # RFC 6455 §5.1: server MUST NOT mask frames sent to the client
+            try:
+                self.send(struct.pack(">H", 1002), opcode=0x8)
+            except Exception:
+                pass
+            raise SocketClosedError()
+
+        payload_len = masked_len & 0x7F
+        if payload_len == 126:
+            payload_len = struct.unpack(">H", self._recv_exactly(2))[0]
+        elif payload_len == 127:
+            payload_len = struct.unpack(">Q", self._recv_exactly(8))[0]
+
+        data = self._recv_exactly(payload_len)
+
+        return fin, opcode, data
+
+    def _recv_frame(self):
+        fin, opcode, data = self._read_one_frame()
+
+        if opcode == 0x8:
+            raise SocketClosedError()
+
+        payload = data
+        while not fin:
+            fin, cont_opcode, data = self._read_one_frame()
+            if cont_opcode == 0x8:
+                raise SocketClosedError()
+            payload += data
 
         if self.is_trace_enabled():
-            self.logger.debug(f"[TRACE] - {data}")
+            self.logger.debug(f"[TRACE] - {payload}")
 
-        return self.prepare_data(data)
+        return self.prepare_data(payload)

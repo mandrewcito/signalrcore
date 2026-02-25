@@ -1,7 +1,7 @@
 import socket
-import time
 import ssl
 import struct
+import threading
 import urllib.parse as parse
 
 from typing import Callable, Union
@@ -9,9 +9,49 @@ from typing import Callable, Union
 from ...helpers import Helpers
 from ...helpers import RequestHelpers
 from ..sockets.base_socket_client import BaseSocketClient, WINDOW_SIZE
-from ...types import RECORD_SEPARATOR, DEFAULT_ENCODING
+from ..sockets.errors import SocketClosedError, SocketHandshakeError
+from ...types import RECORD_SEPARATOR, DEFAULT_ENCODING, CRLF, CRLF_CRLF
 
 THREAD_NAME = "Signalrcore SSE client"
+
+
+def parse_sse_to_json(raw: bytes) -> dict:
+    text = raw.decode(DEFAULT_ENCODING, errors='replace')
+
+    start = text.find('{')
+    if start == -1:
+        raise ValueError("JSON not found in content")
+
+    depth = 0
+    in_string = False
+    escape_next = False
+
+    for i in range(start, len(text)):
+        char = text[i]
+
+        if escape_next:
+            escape_next = False
+            continue
+
+        if char == '\\' and in_string:
+            escape_next = True
+            continue
+
+        if char == '"':
+            in_string = not in_string
+            continue
+
+        if in_string:
+            continue
+
+        if char == '{':
+            depth += 1
+        elif char == '}':
+            depth -= 1
+            if depth == 0:
+                return text[start:i+1]
+
+    raise ValueError(f"Malformed json {raw}")
 
 
 class SSEClient(BaseSocketClient):
@@ -44,6 +84,8 @@ class SSEClient(BaseSocketClient):
         )
 
         self._buffer = b""
+        self._raw_buffer = b""
+        self._is_chunked = False
 
     def get_socket_headers(self):
         parsed_url = parse.urlparse(self.url)
@@ -60,6 +102,59 @@ class SSEClient(BaseSocketClient):
             "Cache-Control: no-cache",
             "Connection: keep-alive"
         ]
+
+    def connect(self):
+        self.sock = self.create_socket()
+
+        request_headers = self.get_socket_headers()
+
+        for k, v in self.headers.items():
+            request_headers.append(f"{k}: {v}")
+
+        request = CRLF.join(request_headers) + CRLF_CRLF
+        req = request.encode(DEFAULT_ENCODING)
+
+        if self.is_trace_enabled():
+            self.logger.debug(f"[TRACE] - {req}")
+
+        self.sock.sendall(req)
+
+        response = b""
+        crlf_crlf = CRLF_CRLF.encode(DEFAULT_ENCODING)
+        while crlf_crlf not in response:
+            chunk = self.sock.recv(WINDOW_SIZE)
+            if not chunk:
+                raise SocketHandshakeError(
+                    "Connection closed during handshake")
+            response += chunk
+
+        if self.is_trace_enabled():
+            self.logger.debug(f"[TRACE] - {response}")
+
+        if self.success_status_code not in response:
+            raise SocketHandshakeError(
+                f"Handshake failed: {response.decode()}")
+
+        # Detect chunked encoding and rescue body bytes read with the headers
+        headers_end = response.index(crlf_crlf)
+        headers = response[:headers_end]
+        body_start = response[headers_end + len(crlf_crlf):]
+
+        self._is_chunked = b"transfer-encoding: chunked" in headers.lower()
+
+        if body_start:
+            if self._is_chunked:
+                self._raw_buffer = body_start
+                self._decode_chunks()
+            else:
+                self._buffer = body_start
+
+        self.running = True
+        self.recv_thread = threading.Thread(
+            target=self.run,
+            name=self.thread_name)
+        self.recv_thread.daemon = True
+        self.recv_thread.start()
 
     def send(
             self,
@@ -93,43 +188,114 @@ class SSEClient(BaseSocketClient):
 
         if self.is_trace_enabled():
             self.logger.debug(f"[TRACE] - [prepare data: input] {buffer}")
-
-        array = [x for x in buffer.splitlines() if b'{' in x]
-        data = b"".join(array)
-
-        decoded_str = data.decode(DEFAULT_ENCODING)
+        sep = RECORD_SEPARATOR.encode(DEFAULT_ENCODING)
+        if sep in buffer:
+            decoded_strs = [parse_sse_to_json(x) for x in buffer.split(sep)]
+            decoded_str = RECORD_SEPARATOR.join(decoded_strs)
+        else:
+            decoded_str = parse_sse_to_json(buffer)
 
         if self.is_trace_enabled():
             self.logger.debug(
                 f"[TRACE] - [prepare data: output] {decoded_str}")
 
-        return decoded_str\
-            .replace("\r\n", "")\
-            .replace("data:", "")
+        return decoded_str
+
+    def _decode_chunks(self):
+        """Decode all complete HTTP chunks from _raw_buffer into _buffer."""
+        while self._raw_buffer:
+            crlf_pos = self._raw_buffer.find(b"\r\n")
+            if crlf_pos == -1:
+                break
+
+            # Strip chunk extensions (e.g. "1a;ext=foo\r\n")
+            size_hex = self._raw_buffer[:crlf_pos].split(b";")[0].strip()
+
+            if not size_hex:
+                # Empty line between chunks, skip it
+                self._raw_buffer = self._raw_buffer[crlf_pos + 2:]
+                continue
+
+            try:
+                chunk_size = int(size_hex, 16)
+            except ValueError:
+                break
+
+            if chunk_size == 0:
+                # Final chunk — server closed the stream
+                raise SocketClosedError()
+
+            data_start = crlf_pos + 2
+            data_end = data_start + chunk_size
+
+            # Need the full chunk data plus the trailing \r\n
+            if len(self._raw_buffer) < data_end + 2:
+                break
+
+            self._buffer += self._raw_buffer[data_start:data_end]
+            self._raw_buffer = self._raw_buffer[data_end + 2:]
+
+    def _find_frame_end(self):
+        """Return (index, end_length) for the first SSE frame boundary,
+        or (-1, 0). Handles both LF-only (\\n\\n) and CRLF (\\r\\n\\r\\n)."""
+        crlf = self._buffer.find(b"\r\n\r\n")
+        lf = self._buffer.find(b"\n\n")
+        if crlf == -1 and lf == -1:
+            return -1, 0
+        if crlf == -1:
+            return lf, 2
+        if lf == -1:
+            return crlf, 4
+        return (crlf, 4) if crlf < lf else (lf, 2)
 
     def _recv_frame(self):
         end_record = RECORD_SEPARATOR.encode(DEFAULT_ENCODING)
 
-        while end_record not in self._buffer:
+        while True:
+            idx, end_len = self._find_frame_end()
+            if idx != -1:
+                break
+
             chunk = self.sock.recv(WINDOW_SIZE)
-
             if not chunk:
-                time.sleep(1)
-                continue
+                raise SocketClosedError()
 
-            self._buffer += chunk
+            if self._is_chunked:
+                self._raw_buffer += chunk
+                self._decode_chunks()
+            else:
+                self._buffer += chunk
 
         if self.is_trace_enabled():
             self.logger.debug(f"[TRACE] [BUFFER] - {self._buffer}")
 
+        frame_data = self._buffer[:idx]
+        self._buffer = self._buffer[idx + end_len:]
+
+        # Extract and concatenate data: fields from the SSE frame
+        data_parts = []
+        for line in frame_data.split(b"\n"):
+            line = line.rstrip(b"\r")
+            if line.startswith(b"data:"):
+                data_parts.append(line[5:].lstrip(b" "))
+
+        if not data_parts:
+            return None  # keep-alive or non-data frame
+
+        data = b"".join(data_parts)
+
+        # Strip SignalR record separator if present
+        if end_record in data:
+            data = data[:data.rindex(end_record)]
+
+        if not data:
+            return None
+
         try:
-            idx = self._buffer.index(end_record)
-            complete_buffer = self._buffer[0: idx]
-            self._buffer = self._buffer[idx + 1:]
-            return self.prepare_data(complete_buffer)
+            return self.prepare_data(data)
         except Exception as ex:
-            self.logger.debug(ex)
-            return ""
+            self.logger.error(ex)
+            raise ex
 
     def dispose(self):
         if self.sock is not None:

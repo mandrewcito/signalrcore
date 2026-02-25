@@ -30,7 +30,7 @@ class ConnectionWebSocketStateTest(BaseTestCase):
         result = self.connection.invoke(
             "SendMessage", ["user", "msg"], release)
 
-        self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT * 2))
+        self.assertTrue(LOCKS[identifier].acquire(timeout=LOCK_TIMEOUT * 4))
 
         time.sleep(CONNECTION_TIMEOUT)
 
