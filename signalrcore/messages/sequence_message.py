@@ -16,10 +16,10 @@ Example:
 }
 ```
 """
-from .base_message import BaseHeadersMessage, MessageType
+from .base_message import BaseMessage, MessageType
 
 
-class SequenceMessage(BaseHeadersMessage):
+class SequenceMessage(BaseMessage):
     def __init__(self, sequence_id: int, **kwargs):  # pragma: no cover
         super().__init__(MessageType.sequence.value, **kwargs)
         self.sequence_id = sequence_id
