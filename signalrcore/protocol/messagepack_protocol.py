@@ -29,7 +29,8 @@ class MessagePackHubProtocol(BaseHubProtocol):
         "item",
         "result_kind",
         "result",
-        "stream_ids"
+        "stream_ids",
+        "sequence_id"
     ]
 
     def __init__(self, version: int = 1):
@@ -187,7 +188,7 @@ class MessagePackHubProtocol(BaseHubProtocol):
                 allow_reconnect=raw[2] if len(raw) > 2 else None)
         elif raw[0] == 8:  # pragma: no cover # AckMessage
             return AckMessage(sequence_id=raw[1])
-        elif raw[0] == 7:  # pragma: no cover # SequenceMessage
+        elif raw[0] == 9:  # pragma: no cover # SequenceMessage
             return SequenceMessage(sequence_id=raw[1])
 
         raise Exception("Unknown message type.")  # pragma: no cover
