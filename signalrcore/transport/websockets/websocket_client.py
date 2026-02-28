@@ -150,6 +150,7 @@ class WebSocketClient(BaseSocketClient):
             raise SocketClosedError()
 
         payload = data
+
         while not fin:
             fin, cont_opcode, data = self._read_one_frame()
             if cont_opcode == 0x8:  # pragma: no cover
