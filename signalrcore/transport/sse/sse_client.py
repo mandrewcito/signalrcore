@@ -187,7 +187,9 @@ class SSEClient(BaseSocketClient):
 
         if self.is_trace_enabled():
             self.logger.debug(f"[TRACE] - [prepare data: input] {buffer}")
+
         sep = RECORD_SEPARATOR.encode(DEFAULT_ENCODING)
+
         if sep in buffer:
             decoded_strs = [parse_sse_to_json(x) for x in buffer.split(sep)]
             decoded_str = RECORD_SEPARATOR.join(decoded_strs)

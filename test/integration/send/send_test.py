@@ -213,7 +213,7 @@ class TestSendMethod(BaseTestCase):
         self.assertTrue(self.received)
 
     def test_send_long_message(self):
-        self.message = "new message {0}".format(uuid.uuid4()) * 86
+        self.message = "new message {0}".format(uuid.uuid4()) * 128
         self.username = "mandrewcito"
         self.received = False
 
