@@ -19,6 +19,9 @@ class MyEncoder(JSONEncoder):
         if "stream_ids" in data:
             data["streamIds"] = data["stream_ids"]
             del data["stream_ids"]
+        if "sequence_id" in data:
+            data["sequenceId"] = data["sequence_id"]
+            del data["sequence_id"]
         return data
 
 
