@@ -22,7 +22,7 @@ setuptools.setup(
         "Operating System :: OS Independent"
     ],
     install_requires=[
-        "msgpack==1.1.2"
+        "msgpack==1.2.1"
     ],
     extras_require={
         'dev': [
