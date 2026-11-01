@@ -45,7 +45,7 @@ Feature list:
 
 # Development
 Software requirements:
-> - python >= 3.9
+> - python >= 3.10 (recommended 3.12 LTS)
 > - virtualenv
 > - pip
 > - docker
