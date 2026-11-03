@@ -15,16 +15,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v7
     - name: Set up Python 3.12
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v7
       with:
         python-version: '3.12'
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install .[dev]
-        pip install codecov
     - run: git clone https://github.com/mandrewcito/signalrcore-containertestservers containers
     - name: run SignalR server and Azure function
       run: SIGNALRCORE_AZURE_CONNECTION_STRING="Endpoint=https://signalrcore-server-mandrewcito-test.service.signalr.net;AccessKey=""${ACCESS_KEY}"";Version=1.0;" docker compose -f containers/docker-compose.yml up -d
@@ -55,7 +54,7 @@ jobs:
          # Test
          pytest --junitxml=reports/junit.xml --cov=. --cov-report=xml:coverage.xml --cov-report=term
     - name: Upload test results to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v7
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: |
