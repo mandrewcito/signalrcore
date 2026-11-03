@@ -16,6 +16,7 @@ class WebsocketTransport(BaseTransport):
             **kwargs):
         super(WebsocketTransport, self).__init__(**kwargs)
         self.handshake_received = False
+        self.connection_alive = False
         self.connection_checker = ConnectionStateChecker(
             lambda: self.send(PingMessage()),
             keep_alive_interval
