@@ -63,7 +63,7 @@ git clone https://github.com/mandrewcito/signalrcore-containertestservers
 cd signalrcore-containertestservers
 docker compose up
 cd ../signalrcore
-make pytest-cov
+make tests
 ```
 Have fun :)
 

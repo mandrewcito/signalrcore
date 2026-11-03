@@ -141,7 +141,7 @@ if not send_callback_received.acquire(timeout=1):
 ## Development Setup
 
 Requirements:
-- Python >= 3.9
+- Python >= 3.10 (recommended 3.12 LTS)
 - virtualenv
 - pip
 - docker
@@ -159,7 +159,7 @@ cd signalrcore-containertestservers
 docker compose up
 
 cd ../signalrcore
-make pytest-cov
+make tests
 ```
 
 ---

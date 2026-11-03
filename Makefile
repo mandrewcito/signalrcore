@@ -3,7 +3,7 @@ dev-install:
 	venv/bin/pip install .[dev]
 
 tests:
-	venv/bin/python3 -m unittest discover -s test/ -p "*_test.py" -v
+	venv/bin/pytest --junitxml=reports/junit.xml --cov=. --cov-report=html:coverage_html --cov-report=xml:coverage.xml --cov-report=term
 
 package:
 	python3 -m build
@@ -21,8 +21,6 @@ coverage:
 	venv/bin/coverage run -m unittest discover -s test/ -p "*_test.py"
 	venv/bin/coverage html --omit="venv/*" -d coverage_html
 
-pytest-cov:
-	venv/bin/pytest --junitxml=reports/junit.xml --cov=. --cov-report=html:coverage_html --cov-report=xml:coverage.xml --cov-report=term
 github-pages:
 	docker run --rm \
 	--volume="$(pwd)/docs:/srv/jekyll" \

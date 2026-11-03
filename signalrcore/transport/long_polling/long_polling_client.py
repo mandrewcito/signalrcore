@@ -2,7 +2,7 @@ import ssl
 import time
 import threading
 
-from typing import Callable, Union
+from typing import Callable, List, Union
 from ...helpers import RequestHelpers, Helpers
 from ...types import DEFAULT_ENCODING, RECORD_SEPARATOR
 from urllib.error import HTTPError
@@ -136,26 +136,24 @@ class LongPollingBaseClient(BaseClient):
                 self.logger.debug(f"[TRACE] {data}")
         return data
 
-    def _append(self, frame: bytes) -> Union[bytes, None]:
+    def _append(self, frame: bytes) -> List[bytes]:
         """
             Appends a frame to the current buffer
         Args:
             frame (str, bytes): frame received
 
         Returns:
-            Union[str, bytes, None]: message or messages
-                that are complete on the buffer
+            List[bytes]: all messages that are complete on the buffer
         """
         self._buffer += frame
-        has_record_separator = self._byte_separator in self._buffer
+        complete_buffers = []
 
-        if not has_record_separator:
-            return None
+        while self._byte_separator in self._buffer:
+            idx = self._buffer.index(self._byte_separator)
+            complete_buffers.append(self._buffer[0: idx])
+            self._buffer = self._buffer[idx + 1:]
 
-        idx = self._buffer.index(self._byte_separator)
-        complete_buffer = self._buffer[0: idx]
-        self._buffer = self._buffer[idx + 1:]
-        return complete_buffer
+        return complete_buffers
 
     def prepare_data(self, data: bytes) -> Union[bytes, str]:
         return data
@@ -168,9 +166,10 @@ class LongPollingBaseClient(BaseClient):
                 frame = self._recv_frame()
 
                 if frame is not None:
-                    complete_buffer = self._append(frame)
+                    for complete_buffer in self._append(frame):
+                        if not complete_buffer:
+                            continue
 
-                    if complete_buffer is not None:
                         message = self.prepare_data(complete_buffer)
                         self.on_message(self, message)
 

@@ -17,12 +17,16 @@ setuptools.setup(
     license_file="LICENSE",
     url="https://github.com/mandrewcito/signalrcore",
     packages=setuptools.find_packages(exclude=["test", "test.*"]),
+    python_requires=">=3.10",
     classifiers=[
-        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Operating System :: OS Independent"
     ],
     install_requires=[
-        "msgpack==1.1.2"
+        "msgpack==1.2.4"
     ],
     extras_require={
         'dev': [

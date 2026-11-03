@@ -45,7 +45,7 @@ Feature list:
 
 # Development
 Software requirements:
-> - python >= 3.9
+> - python >= 3.10 (recommended 3.12 LTS)
 > - virtualenv
 > - pip
 > - docker
@@ -63,7 +63,7 @@ git clone https://github.com/mandrewcito/signalrcore-containertestservers
 cd signalrcore-containertestservers
 docker compose up
 cd ../signalrcore
-make pytest-cov
+make tests
 ```
 Have fun :)
 
