@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "signalrcore"
+version = "1.0.2"
+description = "Python SignalR Core full client (transports and encodings). Compatible with azure / serverless functions. Also with automatic reconnect and manually reconnect."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [
+  { name = "mandrewcito", email = "signalrcore@mandrewcito.dev" },
+]
+keywords = ["signalr", "core", "client", "3.1+"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Operating System :: OS Independent",
+]
+dependencies = [
+  "msgpack==1.2.4",
+]
+
+[project.optional-dependencies]
+dev = [
+  "requests",
+  "flake8",
+  "coverage",
+  "pytest",
+  "pytest-cov",
+  "build",
+]
+
+[project.urls]
+Homepage = "https://signalrcore.mandrewcito.dev"
+Documentation = "https://mandrewcito.github.io/signalrcore/"
+Repository = "https://github.com/mandrewcito/signalrcore"
+Tracker = "https://github.com/mandrewcito/signalrcore/issues"
+Changelog = "https://github.com/mandrewcito/signalrcore/releases"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["signalrcore*"]
+exclude = ["test*", "docs*"]
