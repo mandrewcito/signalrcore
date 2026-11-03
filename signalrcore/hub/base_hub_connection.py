@@ -101,6 +101,8 @@ class BaseHubConnection(object):
         self.stream_handlers = defaultdict(list)
         self.skip_negotiation = skip_negotiation
         self._callbacks = HubCallbacks()
+        self._receive_sequence_id = 0
+        self._send_sequence_id = 0
 
     def _negotiate(self) -> NegotiateResponse:
         """Negotiates connection with the server, do not call it
@@ -146,6 +148,11 @@ class BaseHubConnection(object):
             if self._selected_protocol is None else\
             self._selected_protocol
 
+        def wrapped_on_reconnect():
+            self.logger.debug("Reconnecting: Sending SequenceMessage")
+            self.transport.send(SequenceMessage(self._receive_sequence_id))
+            self._callbacks.on_reconnect()
+
         self.transport = TransportFactory.create(
             negotiate_response,
             self.preferred_transport,
@@ -159,10 +166,20 @@ class BaseHubConnection(object):
             proxies=self.proxies,
             on_close=self._callbacks.on_close,
             on_open=self._callbacks.on_open,
-            on_reconnect=self._callbacks.on_reconnect,
+            on_reconnect=wrapped_on_reconnect,
             on_message=self.on_message,
             **self.kwargs
         )
+
+        # On start, reset sequence
+        self._receive_sequence_id = 0
+        self._send_sequence_id = 0
+
+        # Note: If this is a reconnect we'd need to emit SequenceMessage
+        # Actually start will re-negotiate,
+        # handle reconnect logic separately if needed
+        # Or if we just need to send it on actual reconnect event:
+        # For now, start is fresh connection.
 
         return self.transport.start()
 
@@ -307,6 +324,7 @@ class BaseHubConnection(object):
                         message.invocation_id,
                         on_invocation))
 
+            self._send_sequence_id += 1
             self.transport.send(message)
             result.message = message
 
@@ -405,6 +423,18 @@ class BaseHubConnection(object):
     def on_message(self, messages: List[BaseMessage]) -> None:
         for message in messages:
             self.logger.debug(message)
+
+            is_trackable = message.type in [
+                MessageType.invocation,
+                MessageType.stream_item,
+                MessageType.completion,
+                MessageType.stream_invocation,
+                MessageType.cancel_invocation
+            ]
+
+            if is_trackable:
+                self._receive_sequence_id += 1
+
             if message.type == MessageType.invocation_binding_failure:  # pragma: no cover # noqa: E501
                 self.__on_binding_failure(message)
             elif message.type == MessageType.invocation:
@@ -427,6 +457,9 @@ class BaseHubConnection(object):
             elif message.type == MessageType.sequence:  # pragma: no cover # 9
                 self.__on_sequence_message(message)
 
+            if is_trackable:
+                self.transport.send(AckMessage(self._receive_sequence_id))
+
     def stream(self, event, event_params) -> StreamHandler:
         """Starts server streaming
             connection.stream(
@@ -447,6 +480,7 @@ class BaseHubConnection(object):
         invocation_id = str(uuid.uuid4())
         stream_obj = StreamHandler(event, invocation_id)
         self.stream_handlers[invocation_id].append(stream_obj)
+        self._send_sequence_id += 1
         self.transport.send(
             StreamInvocationMessage(
                 invocation_id,
