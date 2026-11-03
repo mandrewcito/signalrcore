@@ -23,6 +23,7 @@ class BaseTransport(object):
     _client: Optional[BaseClient]
     connection_checker: ConnectionStateChecker
     manually_closing: bool
+    connection_alive: bool = False
 
     def __init__(
             self,
