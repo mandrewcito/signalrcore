@@ -159,7 +159,7 @@ cd signalrcore-containertestservers
 docker compose up
 
 cd ../signalrcore
-make pytest-cov
+make tests
 ```
 
 ---
