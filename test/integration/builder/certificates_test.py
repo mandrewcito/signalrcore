@@ -24,7 +24,7 @@ class CustomSslContextWebSocketTests(BaseTestCase):
         self.username = "mandrewcito"
 
         def release(msg):
-            global LOCKS
+            global LOCKS  # noqa: F824
             self.logger.debug(msg)
             if identifier in msg[1]:
                 LOCKS[identifier].release()
