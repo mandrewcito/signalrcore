@@ -20,18 +20,6 @@ from ..types import HubProtocolEncoding, RECORD_SEPARATOR, DEFAULT_ENCODING
 
 class MessagePackHubProtocol(BaseHubProtocol):
 
-    _priority = [
-        "type",
-        "headers",
-        "invocation_id",
-        "target",
-        "arguments",
-        "item",
-        "result_kind",
-        "result",
-        "stream_ids"
-    ]
-
     def __init__(self, version: int = 1):
         super(MessagePackHubProtocol, self).__init__(
             "messagepack",
@@ -40,33 +28,57 @@ class MessagePackHubProtocol(BaseHubProtocol):
             RECORD_SEPARATOR)
         self.logger = Helpers.get_logger()
 
+    def _read_varint(self, raw, offset):
+        length = 0
+        num_bytes = 0
+        num_bits_to_shift = [0, 7, 14, 21, 28]
+
+        while True:
+            if offset + num_bytes >= len(raw):
+                raise ValueError("Cannot read message length")
+
+            byte_read = raw[offset + num_bytes]
+            length |= (byte_read & 0x7F) << num_bits_to_shift[num_bytes]
+            num_bytes += 1
+
+            if byte_read & 0x80 == 0:
+                return length, num_bytes
+
+            if num_bytes >= len(num_bits_to_shift):
+                raise ValueError("Cannot read message length")
+
     def parse_messages(self, raw):
-        try:
-            messages = []
-            offset = 0
-            max_length_prefix_size = 5
-            num_bits_to_shift = [0, 7, 14, 21, 28]
-            while offset < len(raw):
-                length = 0
-                num_bytes = 0
-                while True:
-                    byte_read = raw[offset + num_bytes]
-                    length |=\
-                        (byte_read & 0x7F) << num_bits_to_shift[num_bytes]
-                    num_bytes += 1
-                    if byte_read & 0x80 == 0:
-                        break
-                    if offset == max_length_prefix_size\
-                            or offset + num_bytes > len(raw):
-                        raise Exception("Cannot read message length")
-                offset = offset + num_bytes
+        messages = []
+        offset = 0
+
+        while offset < len(raw):
+            try:
+                length, num_bytes = self._read_varint(raw, offset)
+            except Exception as ex:
+                self.logger.error("Parse messages Error {0}".format(ex))
+                self.logger.error("raw msg '{0}'".format(raw))
+                break
+
+            offset += num_bytes
+
+            # Incomplete frame, wait for the remaining bytes
+            if offset + length > len(raw):
+                self.logger.debug(
+                    "Incomplete message received, waiting for more data")
+                break
+
+            try:
                 values = msgpack.unpackb(raw[offset: offset + length])
-                offset = offset + length
-                message = self._decode_message(values)
-                messages.append(message)
-        except Exception as ex:
-            self.logger.error("Parse messages Error {0}".format(ex))
-            self.logger.error("raw msg '{0}'".format(raw))
+                messages.append(self._decode_message(values))
+            except Exception as ex:
+                # A single malformed message must not discard the
+                # messages that follow it.
+                self.logger.error("Parse message Error {0}".format(ex))
+                self.logger.error(
+                    "raw msg '{0}'".format(raw[offset: offset + length]))
+
+            offset += length
+
         return messages
 
     def decode_handshake(self, raw_message):
@@ -101,16 +113,59 @@ class MessagePackHubProtocol(BaseHubProtocol):
         return varint_length + encoded_message
 
     def _encode_message(self, message):
-        result = []
+        message_type = message.type.value
 
-        # sort attributes
-        for attribute in self._priority:
-            if hasattr(message, attribute):
-                if (attribute == "type"):
-                    result.append(getattr(message, attribute).value)
-                else:
-                    result.append(getattr(message, attribute))
-        return result
+        if message_type == 1:  # Invocation
+            return [
+                1,
+                message.headers,
+                message.invocation_id,
+                message.target,
+                message.arguments,
+                getattr(message, "stream_ids", []) or []
+            ]
+
+        if message_type == 2:  # StreamItem
+            return [2, message.headers, message.invocation_id, message.item]
+
+        if message_type == 3:  # Completion
+            # ResultKind: 1 = error, 2 = void, 3 = non-void
+            error = getattr(message, "error", None)
+            result = getattr(message, "result", None)
+
+            if error is not None:
+                return [3, message.headers, message.invocation_id, 1, error]
+            if result is not None:
+                return [3, message.headers, message.invocation_id, 3, result]
+            return [3, message.headers, message.invocation_id, 2]
+
+        if message_type == 4:  # StreamInvocation
+            return [
+                4,
+                message.headers,
+                message.invocation_id,
+                message.target,
+                message.arguments,
+                message.stream_ids or []
+            ]
+
+        if message_type == 5:  # CancelInvocation
+            return [5, message.headers, message.invocation_id]
+
+        if message_type == 6:  # Ping
+            return [6]
+
+        if message_type == 7:  # Close
+            return [7, message.error, bool(message.allow_reconnect)]
+
+        if message_type == 8:  # Ack
+            return [8, message.sequence_id]
+
+        if message_type == 9:  # Sequence
+            return [9, message.sequence_id]
+
+        raise ValueError(
+            "Cannot encode unknown message type {0}".format(message_type))
 
     def _decode_message(self, raw):
         # {} {"error"}
@@ -125,10 +180,12 @@ class MessagePackHubProtocol(BaseHubProtocol):
         # [9, SequenceId]
 
         if raw[0] == 1:  # InvocationMessage
-            if len(raw[5]) > 0:
+            stream_ids = raw[5] if len(raw) > 5 else []
+            if stream_ids:
                 return InvocationClientStreamMessage(
                     headers=raw[1],
-                    stream_ids=raw[5],
+                    invocation_id=raw[2],
+                    stream_ids=stream_ids,
                     target=raw[3],
                     arguments=raw[4])
             else:
@@ -183,11 +240,11 @@ class MessagePackHubProtocol(BaseHubProtocol):
 
         elif raw[0] == 7:  # CloseMessageEncoding
             return CloseMessage(
-                error=raw[1],
+                error=raw[1] if len(raw) > 1 else None,
                 allow_reconnect=raw[2] if len(raw) > 2 else None)
         elif raw[0] == 8:  # pragma: no cover # AckMessage
             return AckMessage(sequence_id=raw[1])
-        elif raw[0] == 7:  # pragma: no cover # SequenceMessage
+        elif raw[0] == 9:  # pragma: no cover # SequenceMessage
             return SequenceMessage(sequence_id=raw[1])
 
         raise Exception("Unknown message type.")  # pragma: no cover
