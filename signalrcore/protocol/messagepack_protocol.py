@@ -40,33 +40,57 @@ class MessagePackHubProtocol(BaseHubProtocol):
             RECORD_SEPARATOR)
         self.logger = Helpers.get_logger()
 
+    def _read_varint(self, raw, offset):
+        length = 0
+        num_bytes = 0
+        num_bits_to_shift = [0, 7, 14, 21, 28]
+
+        while True:
+            if offset + num_bytes >= len(raw):
+                raise ValueError("Cannot read message length")
+
+            byte_read = raw[offset + num_bytes]
+            length |= (byte_read & 0x7F) << num_bits_to_shift[num_bytes]
+            num_bytes += 1
+
+            if byte_read & 0x80 == 0:
+                return length, num_bytes
+
+            if num_bytes >= len(num_bits_to_shift):
+                raise ValueError("Cannot read message length")
+
     def parse_messages(self, raw):
-        try:
-            messages = []
-            offset = 0
-            max_length_prefix_size = 5
-            num_bits_to_shift = [0, 7, 14, 21, 28]
-            while offset < len(raw):
-                length = 0
-                num_bytes = 0
-                while True:
-                    byte_read = raw[offset + num_bytes]
-                    length |=\
-                        (byte_read & 0x7F) << num_bits_to_shift[num_bytes]
-                    num_bytes += 1
-                    if byte_read & 0x80 == 0:
-                        break
-                    if offset == max_length_prefix_size\
-                            or offset + num_bytes > len(raw):
-                        raise Exception("Cannot read message length")
-                offset = offset + num_bytes
+        messages = []
+        offset = 0
+
+        while offset < len(raw):
+            try:
+                length, num_bytes = self._read_varint(raw, offset)
+            except Exception as ex:
+                self.logger.error("Parse messages Error {0}".format(ex))
+                self.logger.error("raw msg '{0}'".format(raw))
+                break
+
+            offset += num_bytes
+
+            # Incomplete frame, wait for the remaining bytes
+            if offset + length > len(raw):
+                self.logger.debug(
+                    "Incomplete message received, waiting for more data")
+                break
+
+            try:
                 values = msgpack.unpackb(raw[offset: offset + length])
-                offset = offset + length
-                message = self._decode_message(values)
-                messages.append(message)
-        except Exception as ex:
-            self.logger.error("Parse messages Error {0}".format(ex))
-            self.logger.error("raw msg '{0}'".format(raw))
+                messages.append(self._decode_message(values))
+            except Exception as ex:
+                # A single malformed message must not discard the
+                # messages that follow it.
+                self.logger.error("Parse message Error {0}".format(ex))
+                self.logger.error(
+                    "raw msg '{0}'".format(raw[offset: offset + length]))
+
+            offset += length
+
         return messages
 
     def decode_handshake(self, raw_message):
@@ -125,7 +149,7 @@ class MessagePackHubProtocol(BaseHubProtocol):
         # [9, SequenceId]
 
         if raw[0] == 1:  # InvocationMessage
-            if len(raw[5]) > 0:
+            if len(raw) > 5 and len(raw[5]) > 0:
                 return InvocationClientStreamMessage(
                     headers=raw[1],
                     stream_ids=raw[5],
