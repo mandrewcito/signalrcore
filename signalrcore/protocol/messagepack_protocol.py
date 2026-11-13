@@ -180,7 +180,8 @@ class MessagePackHubProtocol(BaseHubProtocol):
         # [9, SequenceId]
 
         if raw[0] == 1:  # InvocationMessage
-            stream_ids = raw[5] if len(raw) > 5 else []
+            stream_ids = raw[5]\
+              if len(raw) > 5 and len(raw[5]) > 0 else []
             if stream_ids:
                 return InvocationClientStreamMessage(
                     headers=raw[1],
