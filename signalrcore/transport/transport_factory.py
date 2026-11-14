@@ -35,7 +35,7 @@ class TransportFactory(object):
         if HttpTransportType.server_sent_events in names:  # pragma no cover
             return SSETransport(**kwargs)
 
-        if HttpTransportType.server_sent_events in names:  # pragma no cover
+        if HttpTransportType.long_polling in names:
             return LongPollingTransport(**kwargs)
 
         raise RuntimeError(
