@@ -1,4 +1,5 @@
 import base64
+import ssl
 import unittest
 from unittest.mock import Mock, patch
 
@@ -55,44 +56,64 @@ class SocketErrorClassificationTest(unittest.TestCase):
         client.run()
         return client
 
-    def test_empty_response_closes_connection(self):
-        client = self.run_client(NoHeaderException())
+    def assert_closed(self, error):
+        client = self.run_client(error)
 
         self.assertTrue(client.closed)
         self.assertIsNone(client.received_error)
+        self.assertFalse(client.running)
 
-    def test_server_closed_socket_closes_connection(self):
-        client = self.run_client(SocketClosedError())
-
-        self.assertTrue(client.closed)
-        self.assertIsNone(client.received_error)
-
-    def test_closed_file_descriptor_closes_connection(self):
-        client = self.run_client(OSError(9, "Bad file descriptor"))
-
-        self.assertTrue(client.closed)
-        self.assertIsNone(client.received_error)
-
-    def test_empty_response_while_closing_is_ignored(self):
-        client = self.run_client(NoHeaderException(), is_closing=True)
-
-        self.assertFalse(client.closed)
-        self.assertIsNone(client.received_error)
-
-    def test_closed_file_descriptor_while_closing_is_ignored(self):
-        client = self.run_client(
-            OSError(9, "Bad file descriptor"), is_closing=True)
-
-        self.assertFalse(client.closed)
-        self.assertIsNone(client.received_error)
-
-    def test_other_errors_are_reported(self):
-        error = OSError(5, "Input/output error")
-
+    def assert_error(self, error):
         client = self.run_client(error)
 
         self.assertFalse(client.closed)
         self.assertIs(client.received_error, error)
+        self.assertFalse(client.running)
+
+    def test_connection_reset_triggers_close(self):
+        self.assert_closed(ConnectionResetError(104, "Connection reset"))
+
+    def test_broken_pipe_triggers_close(self):
+        self.assert_closed(BrokenPipeError(32, "Broken pipe"))
+
+    def test_ssl_error_triggers_close(self):
+        self.assert_closed(ssl.SSLError("SSL connection closed"))
+
+    def test_socket_error_triggers_close(self):
+        self.assert_closed(OSError(9, "Bad file descriptor"))
+
+    def test_socket_closed_error_triggers_close(self):
+        self.assert_closed(SocketClosedError())
+
+    def test_no_header_triggers_close(self):
+        self.assert_closed(NoHeaderException())
+
+    def test_non_os_error_triggers_error(self):
+        self.assert_error(ValueError("bad frame"))
+
+    def test_errors_are_suppressed_while_closing(self):
+        client = self.run_client(
+            ConnectionResetError(104, "Connection reset"),
+            is_closing=True)
+
+        self.assertFalse(client.closed)
+        self.assertIsNone(client.received_error)
+
+    def test_socket_error_is_suppressed_while_closing(self):
+        client = self.run_client(
+            OSError(9, "Bad file descriptor"),
+            is_closing=True)
+
+        self.assertFalse(client.closed)
+        self.assertIsNone(client.received_error)
+
+    def test_no_header_is_suppressed_while_closing(self):
+        client = self.run_client(
+            NoHeaderException(),
+            is_closing=True)
+
+        self.assertFalse(client.closed)
+        self.assertIsNone(client.received_error)
 
 
 class ProxySocketCreationTest(unittest.TestCase):
