@@ -1,10 +1,13 @@
 import json
 import unittest
 
+from signalrcore.messages.ack_message import AckMessage
+from signalrcore.messages.close_message import CloseMessage
 from signalrcore.messages.invocation_message import (
     InvocationClientStreamMessage,
     InvocationMessage,
 )
+from signalrcore.messages.sequence_message import SequenceMessage
 from signalrcore.protocol.json_hub_protocol import JsonHubProtocol
 
 
@@ -49,3 +52,21 @@ class TestJsonHubProtocol(unittest.TestCase):
         self.assertEqual(message.stream_ids, ["stream-id"])
         self.assertFalse(hasattr(message, "invocationId"))
         self.assertFalse(hasattr(message, "streamIds"))
+
+    def test_ack_uses_sequence_id_field(self):
+        encoded = self.encode_to_dict(AckMessage(7))
+
+        self.assertEqual(encoded["sequenceId"], 7)
+        self.assertNotIn("sequence_id", encoded)
+
+    def test_sequence_uses_sequence_id_field(self):
+        encoded = self.encode_to_dict(SequenceMessage(9))
+
+        self.assertEqual(encoded["sequenceId"], 9)
+        self.assertNotIn("sequence_id", encoded)
+
+    def test_close_uses_allow_reconnect_field(self):
+        encoded = self.encode_to_dict(CloseMessage("boom", True))
+
+        self.assertEqual(encoded["allowReconnect"], True)
+        self.assertNotIn("allow_reconnect", encoded)
