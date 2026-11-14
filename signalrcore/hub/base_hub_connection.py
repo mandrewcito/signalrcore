@@ -9,6 +9,7 @@ from .errors import HubConnectionError
 from signalrcore.helpers import Helpers
 from .handlers import StreamHandler, InvocationHandler
 from ..transport.base_transport import BaseTransport
+from ..transport.sockets.utils import create_ssl_context
 from ..subject import Subject
 from ..messages.invocation_message import InvocationMessage
 from collections import defaultdict
@@ -78,7 +79,7 @@ class BaseHubConnection(object):
             preferred_transport: Optional[HttpTransportType] = None,
             skip_negotiation=False,
             headers=None,
-            ssl_context: ssl.SSLContext = ssl.create_default_context(),
+            ssl_context: ssl.SSLContext = None,
             protocol=None,
             proxies: dict = {},
             **kwargs):
@@ -86,7 +87,9 @@ class BaseHubConnection(object):
         self.preferred_transport = preferred_transport
         self.kwargs = kwargs
         self.url = url
-        self.ssl_context = ssl_context
+        self.ssl_context = ssl_context\
+            if ssl_context is not None else\
+            create_ssl_context(True)
         self.proxies = proxies
         self.token = None
         self._selected_protocol = protocol

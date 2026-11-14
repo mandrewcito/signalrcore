@@ -11,6 +11,7 @@ from ..hub.negotiation import NegotiateResponse, NegotiationHandler
 from .base_client import BaseClient
 from ..messages.ping_message import PingMessage
 from .reconnection import ConnectionStateChecker
+from .sockets.utils import create_ssl_context
 
 
 class TransportState(enum.Enum):
@@ -38,7 +39,7 @@ class BaseTransport(object):
             token: Optional[str] = None,
             headers: Optional[Dict] = None,
             proxies: Optional[Dict] = None,
-            ssl_context: ssl.SSLContext = ssl.create_default_context(),
+            ssl_context: ssl.SSLContext = None,
             enable_trace: bool = False,
             on_open: Callable = None,
             on_close: Callable = None,
@@ -52,7 +53,9 @@ class BaseTransport(object):
         self.token = token
         self.enable_trace = enable_trace
         self.skip_negotiation = skip_negotiation
-        self.ssl_context = ssl_context
+        self.ssl_context = ssl_context\
+            if ssl_context is not None else\
+            create_ssl_context(True)
         self.connection_id = connection_id
         self.proxies = proxies
         self.protocol = protocol

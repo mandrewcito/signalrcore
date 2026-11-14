@@ -113,22 +113,13 @@ class RequestHelpers:
             timeout: float = None,
             ssl_context: ssl.SSLContext = None) -> HTTPResponse:
 
-        request_headers = {}
-
         if headers is None:
-            # pragma: no cover
-            request_headers = {'Content-Type': 'application/json'}
-
-        request_headers = copy.deepcopy(headers)
+            request_headers = {"Content-Type": "application/json"}
+        else:
+            request_headers = copy.deepcopy(headers)
 
         if data is not None:
-            request_headers.update({"Content-Length": str(len(data))})
-
-        proxy_handler = None
-
-        if len(proxies.keys()) > 0:
-            proxy_handler = urllib.request.ProxyHandler(proxies)
-            # pragma: no cover
+            request_headers["Content-Length"] = str(len(data))
 
         updated_url = RequestHelpers.update_querystring(url, params)
 
@@ -138,15 +129,22 @@ class RequestHelpers:
                 headers=request_headers,
                 data=data)
 
-        opener = urllib.request.build_opener(proxy_handler)\
-            if proxy_handler is not None else\
-            urllib.request.urlopen
+        handlers = []
 
-        with opener(
-                req,
-                context=ssl_context,
-                timeout=timeout) as response:
+        if proxies:
+            handlers.append(urllib.request.ProxyHandler(proxies))
 
+        if ssl_context is not None:
+            handlers.append(
+                urllib.request.HTTPSHandler(context=ssl_context))
+
+        if handlers:
+            opener = urllib.request.build_opener(*handlers)
+            response = opener.open(req, timeout=timeout)
+        else:  # pragma: no cover
+            response = urllib.request.urlopen(req, timeout=timeout)
+
+        with response:
             return HTTPResponse(
                 context=ssl_context,
                 request=req,
@@ -226,22 +224,25 @@ class Helpers:
         )
 
     @staticmethod
-    def get_negotiate_url(url):
-        querystring = ""
-        if Helpers.has_querystring(url):
-            url, querystring = Helpers.split_querystring(url)
-
+    def get_negotiate_url(url, negotiate_version=None):
         url_parts = parse.urlsplit(Helpers.websocket_to_http(url))
 
         negotiate_suffix = "negotiate"\
             if url_parts.path.endswith('/')\
             else "/negotiate"
 
-        url_parts = url_parts._replace(path=url_parts.path + negotiate_suffix)
+        url_parts = url_parts._replace(
+            path=url_parts.path + negotiate_suffix)
 
-        return parse.urlunsplit(url_parts) \
-            if querystring == "" else\
-            parse.urlunsplit(url_parts) + "?" + querystring
+        query = parse.parse_qs(url_parts.query)
+
+        if negotiate_version is not None:
+            query["negotiateVersion"] = [str(negotiate_version)]
+
+        url_parts = url_parts._replace(
+            query=parse.urlencode(query, doseq=True))
+
+        return parse.urlunsplit(url_parts)
 
     @staticmethod
     def encode_connection_id(url, id):

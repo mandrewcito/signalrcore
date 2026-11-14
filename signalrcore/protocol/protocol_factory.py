@@ -13,6 +13,10 @@ PROTOCOLS = {
     HubProtocolEncoding.binary: MessagePackHubProtocol
 }
 
+# The handshake protocol version is independent from the negotiate
+# protocol version. It is always 1.
+HANDSHAKE_VERSION = 1
+
 
 class ProtocolFactory(object):
     def create(
@@ -46,6 +50,8 @@ class ProtocolFactory(object):
 
         protocol = PROTOCOLS.get(protocol_key, JsonHubProtocol)
 
+        kwargs.pop("version", None)
+
         return protocol(
-            version=negotiate_response.negotiate_version,
+            version=HANDSHAKE_VERSION,
             **kwargs)

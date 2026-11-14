@@ -27,6 +27,7 @@ class WebsocketTransport(BaseTransport):
             url=self.url,
             connection_id=self.connection_id,
             headers=self.headers,
+            proxies=self.proxies,
             is_binary=type(self.protocol) is MessagePackHubProtocol,
             ssl_context=self.ssl_context,
             enable_trace=self.enable_trace,
