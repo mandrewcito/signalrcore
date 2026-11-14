@@ -23,20 +23,19 @@ class ConnectionStateChecker(object):
         self.logger = Helpers.get_logger()
 
     def start(self):
-        assert self._lock.acquire(timeout=10)
+        with self._lock:
+            # Recreate the thread when the previous one died (for
+            # example because ping_function raised or because stop()
+            # was called from the checker thread itself).
+            if self._thread is not None and self._thread.is_alive():
+                return
 
-        if self._thread is not None:
-            return
-
-        self.running = True
-        self._thread = threading.Thread(
-            target=self.run,
-            name=THREAD_NAME)
-
-        self._thread.daemon = True
-
-        self._thread.start()
-        self._lock.release()
+            self.running = True
+            self._thread = threading.Thread(
+                target=self.run,
+                name=THREAD_NAME)
+            self._thread.daemon = True
+            self._thread.start()
 
     def run(self):
         while self.running:
@@ -47,18 +46,26 @@ class ConnectionStateChecker(object):
             time_without_messages = time.time() - self.last_message
 
             if self.keep_alive_interval < time_without_messages:
-                self.ping_function()
+                try:
+                    self.ping_function()
+                except Exception as ex:
+                    # A failed ping must not silently kill the
+                    # keep-alive thread.
+                    self.logger.error(f"Keep alive ping failed: {ex}")
             self.last_run = time.time()
 
     def stop(self):
         is_same_thread = threading.current_thread().name == THREAD_NAME
-        self.running = False
-        if self._thread is not None\
-                and not is_same_thread\
-                and self._thread.is_alive():
-
-            self._thread.join(timeout=10)
+        with self._lock:
+            self.running = False
+            thread = self._thread
             self._thread = None
+
+        if thread is not None\
+                and not is_same_thread\
+                and thread.is_alive():
+
+            thread.join(timeout=10)
 
 
 class ReconnectionType(Enum):
