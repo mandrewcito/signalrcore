@@ -5,7 +5,7 @@ import urllib.parse as parse
 import threading
 from typing import Callable, Optional, Dict
 from ...helpers import Helpers
-from .utils import WINDOW_SIZE
+from .utils import WINDOW_SIZE, create_ssl_context
 from .errors import SocketHandshakeError, \
     NoHeaderException, SocketClosedError
 from ...types import DEFAULT_ENCODING, CRLF, CRLF_CRLF
@@ -22,13 +22,15 @@ class BaseSocketClient(BaseClient):
             is_binary: bool = False,
             headers: Optional[Dict] = None,
             proxies: Optional[Dict] = None,
-            ssl_context: ssl.SSLContext = ssl.create_default_context(),
+            ssl_context: ssl.SSLContext = None,
             enable_trace: bool = False,
             on_message: Callable = None,
             on_open: Callable = None,
             on_error: Callable = None,
             on_close: Callable = None):
-        self.ssl_context = ssl_context
+        self.ssl_context = ssl_context\
+            if ssl_context is not None else\
+            create_ssl_context(True)
         self.thread_name = thread_name
         self.success_status_code = success_status_code
         self.url = url
@@ -41,8 +43,6 @@ class BaseSocketClient(BaseClient):
         self.on_open = on_open
         self.on_error = on_error
         self.on_close = on_close
-
-        self.ssl_context = ssl_context
 
         self.logger = Helpers.get_logger()
 
