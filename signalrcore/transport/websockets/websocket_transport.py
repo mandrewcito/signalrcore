@@ -40,9 +40,12 @@ class WebsocketTransport(BaseTransport):
         msg, messages = self.protocol.decode_handshake(message)
         if msg.error is None or msg.error == "":
             self.handshake_received = True
+            if self.reconnection_handler is not None:
+                # A successful handshake means the connection is
+                # healthy again: reset the retry counter.
+                self.reconnection_handler.reset()
             self._set_state(TransportState.connected)
             if self.reconnection_handler is not None:
-                self.reconnection_handler.reconnecting = False
                 if not self.connection_checker.running:
                     self.connection_checker.start()
         else:
@@ -97,8 +100,6 @@ class WebsocketTransport(BaseTransport):
                 if type(self.protocol) is MessagePackHubProtocol else
                 0x1)
             self.connection_checker.last_message = time.time()
-            if self.reconnection_handler is not None:
-                self.reconnection_handler.reset()
         except (OSError, SocketClosedError) as ex:  # pragma: no cover
             self.handshake_received = False  # pragma: no cover
             self.logger.warning("Connection closed {0}".format(ex))

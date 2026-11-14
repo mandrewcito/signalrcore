@@ -1,5 +1,6 @@
 import enum
 import traceback
+import threading
 import time
 import ssl
 from typing import Callable, Dict, Optional
@@ -17,6 +18,9 @@ class TransportState(enum.Enum):
     connected = 1  # connection established, handshake received
     reconnecting = 2  # connection not established, reconnecting
     disconnected = 3  # connection not established
+
+
+RECONNECTION_THREAD_NAME = "Signalrcore reconnection"
 
 
 class BaseTransport(object):
@@ -63,6 +67,9 @@ class BaseTransport(object):
         self.state = TransportState.disconnected
         self.reconnection_handler = reconnection_handler
         self.manually_closing = False
+        self._reconnection_lock = threading.Lock()
+        self._reconnect_thread = None
+        self._reconnect_pending = False
 
     def _set_state(self, new_state: TransportState):
         """Internal helper to change state and call appropriate callbacks."""
@@ -187,27 +194,101 @@ class BaseTransport(object):
             self.connection_alive = False
 
     def handle_reconnect(self) -> bool:
-        if self.is_reconnecting() or self.manually_closing:
+        if self.manually_closing or self.reconnection_handler is None:
             return False
 
-        if self.reconnection_handler is None:  # pragma: no cover
+        if self._client is None or not self._client.is_connection_closed():
             return False
 
-        if not self._client.is_connection_closed():
-            return False
+        with self._reconnection_lock:
+            loop_alive = self._reconnect_thread is not None\
+                and self._reconnect_thread.is_alive()
 
-        try:
-            self.reconnection_handler.reconnecting = True
+        if loop_alive and self.is_reconnecting():
+            # Duplicate close event or connection-check polling while
+            # a reconnection loop is already running.
+            return True
 
-            self._set_state(TransportState.reconnecting)
+        self.reconnection_handler.reconnecting = True
 
-            self._client.dispose()
-            self.start(reconnection=True)
-        except Exception as ex:  # pragma: no cover
-            self.logger.error(ex)
-            sleep_time = self.reconnection_handler.next()
-            self.deferred_reconnect(sleep_time)
+        # Set the state synchronously before spawning the thread so
+        # that concurrent callers do not start several loops.
+        self._set_state(TransportState.reconnecting)
+
+        with self._reconnection_lock:
+            if self._reconnect_thread is not None\
+                    and self._reconnect_thread.is_alive():
+                # The connection dropped again after a successful
+                # reconnection, make the running loop retry.
+                self._reconnect_pending = True
+                return True
+
+            self._reconnect_pending = False
+            self._reconnect_thread = threading.Thread(
+                target=self._reconnect_loop,
+                name=RECONNECTION_THREAD_NAME)
+            self._reconnect_thread.daemon = True
+            self._reconnect_thread.start()
+
         return True
+
+    def _dispose_current_client(self):
+        if self._client is None:  # pragma: no cover
+            return
+        try:
+            self._client.dispose()
+        except Exception as ex:  # pragma: no cover
+            self.logger.debug(f"Error disposing old client: {ex}")
+
+    def _reconnect_loop(self):
+        try:
+            while not self.manually_closing:
+                # Release the dead client resources before creating
+                # a new one.
+                self._dispose_current_client()
+
+                try:
+                    sleep_time = self.reconnection_handler.next()
+                except ValueError as ex:
+                    # Max attempts / intervals reached, give up.
+                    self.logger.error(f"Reconnection failed: {ex}")
+                    self.reconnection_handler.reconnecting = False
+                    self.connection_checker.stop()
+                    self._set_state(TransportState.disconnected)
+                    return
+
+                if self.manually_closing:  # pragma: no cover
+                    return
+
+                time.sleep(sleep_time)
+
+                if self.manually_closing:  # pragma: no cover
+                    return
+
+                try:
+                    self.start(reconnection=True)
+                except Exception as ex:
+                    self.logger.warning(
+                        f"Reconnection attempt failed: {ex}")
+                    continue
+
+                # A close event may have arrived while the connection
+                # was being established; retry instead of losing it.
+                with self._reconnection_lock:
+                    pending = self._reconnect_pending
+                    self._reconnect_pending = False
+
+                if pending or self.is_disconnected():
+                    # The connection dropped while it was being
+                    # established; keep retrying.
+                    continue
+
+                return
+        finally:
+            with self._reconnection_lock:
+                if self._reconnect_thread is threading.current_thread():
+                    self._reconnect_thread = None
+                    self._reconnect_pending = False
 
     def send_handshake(self):
         msg = self.protocol.handshake_message()

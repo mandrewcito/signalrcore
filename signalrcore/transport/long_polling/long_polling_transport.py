@@ -102,8 +102,13 @@ class LongPollingTransport(BaseTransport):
 
         self.handshake_received = handshake_response.error is None
 
-        if self.handshake_received and not self.connection_checker.running:
-            self.connection_checker.start()
+        if self.handshake_received:
+            if self.reconnection_handler is not None:
+                # A successful handshake means the connection is
+                # healthy again: reset the retry counter.
+                self.reconnection_handler.reset()
+            if not self.connection_checker.running:
+                self.connection_checker.start()
             self.connection_checker.last_message = time.time()
 
         return messages
