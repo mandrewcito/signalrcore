@@ -68,6 +68,7 @@ class BaseTransport(object):
         self._on_reconnect = on_reconnect
 
         self.state = TransportState.disconnected
+        self.handshake_received = False
         self.reconnection_handler = reconnection_handler
         self.manually_closing = False
         self._reconnection_lock = threading.Lock()
