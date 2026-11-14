@@ -146,7 +146,7 @@ class NegotiationTests(unittest.TestCase):
         token = "asdf"
         false_obj = {
             "negotiateVersion": 1,
-            "accessToken": token,
+            "connectionToken": token,
             "connectionId": "12",
             "availableTransports": [{
                 "transport": "WebSockets",

@@ -1,3 +1,4 @@
+import base64
 import socket
 import ssl
 import urllib.parse as parse
@@ -66,26 +67,88 @@ class BaseSocketClient(BaseClient):
 
     def create_socket(self):
         parsed_url = parse.urlparse(self.url)
-        host, port = parsed_url.hostname, parsed_url.port
-        is_secure_connection = parsed_url.scheme in ("wss", "https")
+        host = parsed_url.hostname
         port = Helpers.get_port(parsed_url)
+        is_secure_connection = parsed_url.scheme in ("wss", "https")
 
         proxy_info = Helpers.get_proxy_info(
             is_secure_connection,
             self.proxies
         )
 
-        if proxy_info is not None:
-            host = proxy_info.hostname,
-            port = proxy_info.port
+        if proxy_info is None:
+            raw_sock = socket.create_connection((host, port))
 
-        raw_sock = socket.create_connection((host, port))
+            if is_secure_connection:
+                raw_sock = self.ssl_context.wrap_socket(
+                    raw_sock,
+                    server_hostname=host)
+            return raw_sock
 
+        proxy_host = proxy_info.hostname
+        proxy_port = proxy_info.port or\
+            (443 if proxy_info.scheme == "https" else 80)
+
+        raw_sock = socket.create_connection((proxy_host, proxy_port))
+
+        # Secure connections must tunnel through the proxy, otherwise
+        # TLS would be negotiated with the proxy instead of the
+        # SignalR server.
         if is_secure_connection:
+            self._tunnel_through_proxy(
+                raw_sock, proxy_info, host, port)
             raw_sock = self.ssl_context.wrap_socket(
                 raw_sock,
                 server_hostname=host)
+
         return raw_sock
+
+    def _tunnel_through_proxy(
+            self,
+            sock,
+            proxy_info,
+            host: str,
+            port: int):
+        target = f"{host}:{port}"
+
+        headers = [
+            f"CONNECT {target} HTTP/1.1",
+            f"Host: {target}"
+        ]
+
+        if proxy_info.username is not None:
+            username = parse.unquote(proxy_info.username)
+            password = parse.unquote(proxy_info.password or "")
+            credentials = base64.b64encode(
+                f"{username}:{password}".encode(DEFAULT_ENCODING)
+            ).decode(DEFAULT_ENCODING)
+            headers.append(f"Proxy-Authorization: Basic {credentials}")
+
+        request = CRLF.join(headers) + CRLF_CRLF
+        sock.sendall(request.encode(DEFAULT_ENCODING))
+
+        response = b""
+        response_delimiter = CRLF_CRLF.encode(DEFAULT_ENCODING)
+
+        while response_delimiter not in response:
+            chunk = sock.recv(WINDOW_SIZE)
+
+            if not chunk:
+                raise SocketHandshakeError(
+                    "Connection closed during proxy handshake")
+
+            response += chunk
+
+        status_line = response.split(
+            CRLF.encode(DEFAULT_ENCODING), 1)[0].decode(
+                DEFAULT_ENCODING,
+                errors="replace")
+
+        status_parts = status_line.split()
+
+        if len(status_parts) < 2 or status_parts[1] != "200":
+            raise SocketHandshakeError(
+                f"Proxy handshake failed: {status_line}")
 
     def connect(self):
         self.sock = self.create_socket()

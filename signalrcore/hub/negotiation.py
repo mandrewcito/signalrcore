@@ -46,6 +46,7 @@ class AvailableTransport:
 class BaseResponse(object):
     negotiate_version: int
     connection_id: str
+    connection_token: str
     access_token: str
     available_transports: List[AvailableTransport]
 
@@ -53,8 +54,11 @@ class BaseResponse(object):
         if self.negotiate_version == 0:
             return self.connection_id
 
-        if self.negotiate_version == 1:
-            return self.access_token
+        if self.negotiate_version >= 1:
+            if not self.connection_token:
+                raise ValueError(
+                    "Negotiate response has no connectionToken")
+            return self.connection_token
 
         raise ValueError(
             f"Negotiate version invalid {self.negotiate_version}")
@@ -67,6 +71,11 @@ class AzureResponse(BaseResponse):
     access_token: str
     url: str
     available_transports: List[AvailableTransport]
+
+    def get_id(self) -> str:
+        # Azure redirect responses use accessToken as bearer token,
+        # not as a SignalR connection token.
+        return self.access_token
 
     @classmethod
     def from_dict(cls, data: dict) -> "NegotiateResponse":
@@ -114,6 +123,7 @@ class NegotiateResponse(BaseResponse):
     access_token: str
     url: str
     available_transports: List[AvailableTransport]
+    connection_token: str = None
 
     @classmethod
     def from_dict(cls, data: dict) -> "NegotiateResponse":
@@ -121,8 +131,9 @@ class NegotiateResponse(BaseResponse):
             raise NegotiateValidationError(
                 "Negotiate response must be a JSON object")
 
-        version = data.get("negotiateVersion")
-        if not isinstance(version, int):
+        # Missing negotiateVersion means version 0 (legacy servers).
+        version = data.get("negotiateVersion", 0)
+        if isinstance(version, bool) or not isinstance(version, int):
             raise NegotiateValidationError(
                 "negotiateVersion must be an integer")
 
@@ -130,6 +141,13 @@ class NegotiateResponse(BaseResponse):
         if not isinstance(connection_id, str) or not connection_id:
             raise NegotiateValidationError(
                 "connectionId must be a non-empty string")
+
+        connection_token = data.get("connectionToken", None)
+        if version >= 1:
+            if not isinstance(connection_token, str)\
+                    or not connection_token:
+                raise NegotiateValidationError(
+                    "connectionToken must be a non-empty string")
 
         transports = data.get("availableTransports")
         if not isinstance(transports, list) or not transports:
@@ -146,6 +164,7 @@ class NegotiateResponse(BaseResponse):
         return cls(
             negotiate_version=version,
             connection_id=connection_id,
+            connection_token=connection_token,
             available_transports=parsed_transports,
             access_token=access_token,
             url=url
@@ -173,6 +192,7 @@ class NegotiationHandler(object):
             return self.url, self.headers, NegotiateResponse(
                 negotiate_version=0,
                 connection_id=key,
+                connection_token=None,
                 access_token=None,
                 url=self.url,
                 available_transports=[
@@ -188,7 +208,8 @@ class NegotiationHandler(object):
         headers = copy.deepcopy(self.headers)
         headers.update({'Content-Type': 'application/json'})
 
-        negotiate_url = Helpers.get_negotiate_url(self.url)
+        negotiate_url = Helpers.get_negotiate_url(
+            self.url, negotiate_version=1)
 
         self.logger.debug("Negotiate url:{0}".format(negotiate_url))
 
@@ -223,7 +244,7 @@ class NegotiationHandler(object):
 
         if "connectionId" in data.keys():
             url = Helpers.encode_connection_id(
-                self.url, negotiate_response.connection_id)
+                self.url, negotiate_response.get_id())
 
         # Azure
         if is_azure_response:
