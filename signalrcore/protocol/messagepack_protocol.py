@@ -20,18 +20,6 @@ from ..types import HubProtocolEncoding, RECORD_SEPARATOR, DEFAULT_ENCODING
 
 class MessagePackHubProtocol(BaseHubProtocol):
 
-    _priority = [
-        "type",
-        "headers",
-        "invocation_id",
-        "target",
-        "arguments",
-        "item",
-        "result_kind",
-        "result",
-        "stream_ids"
-    ]
-
     def __init__(self, version: int = 1):
         super(MessagePackHubProtocol, self).__init__(
             "messagepack",
@@ -125,16 +113,59 @@ class MessagePackHubProtocol(BaseHubProtocol):
         return varint_length + encoded_message
 
     def _encode_message(self, message):
-        result = []
+        message_type = message.type.value
 
-        # sort attributes
-        for attribute in self._priority:
-            if hasattr(message, attribute):
-                if (attribute == "type"):
-                    result.append(getattr(message, attribute).value)
-                else:
-                    result.append(getattr(message, attribute))
-        return result
+        if message_type == 1:  # Invocation
+            return [
+                1,
+                message.headers,
+                message.invocation_id,
+                message.target,
+                message.arguments,
+                getattr(message, "stream_ids", []) or []
+            ]
+
+        if message_type == 2:  # StreamItem
+            return [2, message.headers, message.invocation_id, message.item]
+
+        if message_type == 3:  # Completion
+            # ResultKind: 1 = error, 2 = void, 3 = non-void
+            error = getattr(message, "error", None)
+            result = getattr(message, "result", None)
+
+            if error is not None:
+                return [3, message.headers, message.invocation_id, 1, error]
+            if result is not None:
+                return [3, message.headers, message.invocation_id, 3, result]
+            return [3, message.headers, message.invocation_id, 2]
+
+        if message_type == 4:  # StreamInvocation
+            return [
+                4,
+                message.headers,
+                message.invocation_id,
+                message.target,
+                message.arguments,
+                message.stream_ids or []
+            ]
+
+        if message_type == 5:  # CancelInvocation
+            return [5, message.headers, message.invocation_id]
+
+        if message_type == 6:  # Ping
+            return [6]
+
+        if message_type == 7:  # Close
+            return [7, message.error, bool(message.allow_reconnect)]
+
+        if message_type == 8:  # Ack
+            return [8, message.sequence_id]
+
+        if message_type == 9:  # Sequence
+            return [9, message.sequence_id]
+
+        raise ValueError(
+            "Cannot encode unknown message type {0}".format(message_type))
 
     def _decode_message(self, raw):
         # {} {"error"}
@@ -149,10 +180,13 @@ class MessagePackHubProtocol(BaseHubProtocol):
         # [9, SequenceId]
 
         if raw[0] == 1:  # InvocationMessage
-            if len(raw) > 5 and len(raw[5]) > 0:
+            stream_ids = raw[5]\
+              if len(raw) > 5 and len(raw[5]) > 0 else []
+            if stream_ids:
                 return InvocationClientStreamMessage(
                     headers=raw[1],
-                    stream_ids=raw[5],
+                    invocation_id=raw[2],
+                    stream_ids=stream_ids,
                     target=raw[3],
                     arguments=raw[4])
             else:
@@ -207,14 +241,14 @@ class MessagePackHubProtocol(BaseHubProtocol):
 
         elif raw[0] == 7:  # CloseMessageEncoding
             return CloseMessage(
-                error=raw[1],
+                error=raw[1] if len(raw) > 1 else None,
                 allow_reconnect=raw[2] if len(raw) > 2 else None)
-        elif raw[0] == 8:  # pragma: no cover # AckMessage
+        elif raw[0] == 8:  # AckMessage
             return AckMessage(sequence_id=raw[1])
-        elif raw[0] == 9:  # pragma: no cover # SequenceMessage
+        elif raw[0] == 9:  # SequenceMessage
             return SequenceMessage(sequence_id=raw[1])
 
-        raise Exception("Unknown message type.")  # pragma: no cover
+        raise Exception("Unknown message type.")
 
     def _to_varint(self, value):
         buffer = b''

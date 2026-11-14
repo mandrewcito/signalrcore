@@ -68,14 +68,21 @@ class InvocationClientStreamMessage(BaseHeadersMessage):
             stream_ids,
             target,
             arguments,
+            invocation_id=None,
             **kwargs):
-        super(InvocationClientStreamMessage, self).__init__(1, **kwargs)
+        super(InvocationClientStreamMessage, self).__init__(
+            MessageType.invocation.value, **kwargs)
+        self.invocation_id = invocation_id
         self.target = target
         self.arguments = arguments
         self.stream_ids = stream_ids
 
     def __repr__(self):
         repr_str =\
-            "InvocationMessage: stream_ids {0}, target {1}, arguments {2}"
+            "InvocationMessage: invocation_id {0}, stream_ids {1}, " \
+            "target {2}, arguments {3}"
         return repr_str.format(
-            self.stream_ids, self.target, self.arguments)
+            self.invocation_id,
+            self.stream_ids,
+            self.target,
+            self.arguments)

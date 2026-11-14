@@ -17,10 +17,6 @@ all:
 upload:
 	venv/bin/twine upload dist/* --verbose
 
-coverage:
-	venv/bin/coverage run -m unittest discover -s test/ -p "*_test.py"
-	venv/bin/coverage html --omit="venv/*" -d coverage_html
-
 github-pages:
 	docker run --rm \
 	--volume="$(pwd)/docs:/srv/jekyll" \

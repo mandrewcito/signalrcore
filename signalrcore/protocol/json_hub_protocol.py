@@ -12,13 +12,12 @@ class MyEncoder(JSONEncoder):
     def default(self, o):
         if type(o) is MessageType:
             return o.value
-        data = o.__dict__
-        if "invocation_id" in data:
-            data["invocationId"] = data["invocation_id"]
-            del data["invocation_id"]
+        data = dict(o.__dict__)
+        invocation_id = data.pop("invocation_id", None)
+        if invocation_id is not None:
+            data["invocationId"] = invocation_id
         if "stream_ids" in data:
-            data["streamIds"] = data["stream_ids"]
-            del data["stream_ids"]
+            data["streamIds"] = data.pop("stream_ids")
         return data
 
 

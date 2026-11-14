@@ -15,7 +15,7 @@ class ConnectionWebSocketStateTest(BaseTestCase):
         time.sleep(CONNECTION_TIMEOUT)
 
         def release(completion_message):
-            global LOCKS
+            global LOCKS  # noqa: F824
 
             while result is None:
                 time.sleep(1)
@@ -61,7 +61,7 @@ class ConnectionLongPollingStateTest(ConnectionWebSocketStateTest):
         time.sleep(CONNECTION_TIMEOUT)
 
         def release(args, orig_msg):
-            global LOCKS
+            global LOCKS  # noqa: F824
             username, msg = args
 
             self.logger.debug(f"{username} {msg}")
