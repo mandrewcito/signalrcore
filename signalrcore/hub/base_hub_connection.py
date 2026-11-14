@@ -347,13 +347,23 @@ class BaseHubConnection(object):
             handler.next_callback(message.item)
 
     def __on_completion_message(self, message: CompletionMessage) -> None:  # 3
-        if message.error is not None and len(message.error) > 0:
-            self._callbacks.on_error(message)
-        else:
-            # Send callbacks
-            fired_handlers: List[StreamHandler] = self.stream_handlers.get(
-                message.invocation_id, [])
+        fired_handlers = self.stream_handlers.get(
+            message.invocation_id, [])
 
+        if message.error is not None and len(message.error) > 0:
+            # Stream errors belong to the stream subscription. Only fall
+            # back to the connection level handler when the invocation
+            # has no stream handler (for example invoke() callbacks).
+            stream_handlers = [
+                handler for handler in fired_handlers
+                if isinstance(handler, StreamHandler)]
+
+            if len(stream_handlers) > 0:
+                for handler in stream_handlers:
+                    handler.error_callback(message)
+            else:
+                self._callbacks.on_error(message)
+        else:
             # Stream callbacks
             for handler in fired_handlers:
                 handler: StreamHandler
