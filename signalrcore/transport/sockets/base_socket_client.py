@@ -167,25 +167,24 @@ class BaseSocketClient(BaseClient):
                 if self.on_message and message is not None:
                     self.on_message(self, message)
 
-        except (OSError, Exception) as e:
+        except Exception as e:
             self.running = False
 
             # is closing and no header indicates
             # that socket has not received anything
-            has_no_content = type(e) is NoHeaderException
+            has_no_content = isinstance(e, NoHeaderException)
 
-            # is closing and errno indicates
-            # that file descriptor points to a closed file
-            has_closed_fd = type(e) is OSError and e.errno == 9
-
-            # closed by the server
-            connection_closed = has_closed_fd or type(e) is SocketClosedError
+            # closed by the server, or the socket/SSL layer raised an
+            # OSError subclass (ConnectionResetError,
+            # BrokenPipeError, ssl.SSLError...). All of them mean the
+            # connection is gone and reconnection must be triggered.
+            connection_closed = isinstance(e, (SocketClosedError, OSError))
 
             if (has_no_content or connection_closed) and not self.is_closing:
                 self.on_close()
                 return
 
-            if (has_closed_fd or has_no_content) and self.is_closing:
+            if (has_no_content or connection_closed) and self.is_closing:
                 return
 
             self.logger.error(f"Receive error: {e}")
