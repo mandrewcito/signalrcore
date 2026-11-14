@@ -1,15 +1,10 @@
-from ..base_test_case import BaseTestCase
+import unittest
+
 from signalrcore.transport.reconnection\
     import RawReconnectionHandler, IntervalReconnectionHandler
 
 
-class TestReconnectionHandlerMethods(BaseTestCase):
-    def setUp(self):  # pragma: no cover
-        pass
-
-    def tearDown(self):  # pragma: no cover
-        pass
-
+class TestReconnectionHandlerMethods(unittest.TestCase):
     def test_raw_handler(self):
         handler = RawReconnectionHandler(5, 10)
         attempt = 0
