@@ -82,7 +82,10 @@ class WebsocketTransport(BaseTransport):
         self.logger.debug("Message received {0}".format(raw_message))
         if not self.handshake_received:
             messages = self.evaluate_handshake(raw_message)
-            self._set_state(TransportState.connected)
+
+            # A rejected handshake must not be reported as connected.
+            if not self.handshake_received:
+                return []
 
             if len(messages) > 0:
                 return self._on_message(messages)
