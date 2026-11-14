@@ -7,6 +7,7 @@ from .long_polling_client import\
     LongPollingTextClient
 from ...messages.ping_message import PingMessage
 from ..reconnection import ConnectionStateChecker
+from ...protocol.messagepack_protocol import MessagePackHubProtocol
 
 
 class LongPollingTransport(BaseTransport):
@@ -19,8 +20,11 @@ class LongPollingTransport(BaseTransport):
         super(LongPollingTransport, self).__init__(**kwargs)
         self.keep_alive_interval = keep_alive_interval
 
+        # The hub connection does not pass is_binary, derive it from
+        # the negotiated protocol.
         self._client_cls = LongPollingBinaryClient\
-            if self.is_binary else LongPollingTextClient
+            if self.is_binary or type(self.protocol) is MessagePackHubProtocol\
+            else LongPollingTextClient
 
         self.connection_checker = ConnectionStateChecker(
             self.connection_check,
