@@ -101,8 +101,6 @@ class LongPollingBaseClient(BaseClient):
             self._thread = None
 
     def _recv_frame(self) -> Union[str, bytes, None]:
-        data = None
-
         try:
             response = RequestHelpers.get(
                 url=Helpers.websocket_to_http(self.url),
@@ -113,27 +111,33 @@ class LongPollingBaseClient(BaseClient):
                 timeout=None,
                 ssl_context=self.ssl_context
             )
-
-            status_code, data = response.status_code, response.content
-
-            if status_code == 200 or status_code == 204:
-                # 204 -> another client with the same
-                #   id has connected, connection closed
-                # 200, content-length: 0 -> no data, you can retry
-                return data
-
-            if status_code == 404 or status_code == 400:
-                # 400 -> missing ID
-                # 404 -> No ID on server side (failed negotiation??)
-                raise OSError(response.content.decode(DEFAULT_ENCODING))
+        except HTTPError as err:
+            # urlopen raises HTTPError on 4xx/5xx, before a response
+            # is available.
+            # 400 -> missing ID
+            # 404 -> No ID on server side (failed negotiation??)
+            if err.code in (400, 404):
+                raise OSError(
+                    f"Connection closed by server ({err.code})") from err
+            raise
         except TimeoutError:
             return None
-        except Exception as err:
-            if self.enable_trace:
-                self.logger.debug(f"[TRACE] {err}")
-        finally:
-            if self.enable_trace:
-                self.logger.debug(f"[TRACE] {data}")
+
+        status_code, data = response.status_code, response.content
+
+        if status_code == 204:
+            # another client with the same id has connected,
+            # connection closed
+            raise OSError("Connection closed by server (204)")
+
+        if status_code != 200:
+            raise OSError(
+                f"Unexpected long polling status {status_code}")
+
+        # 200, content-length: 0 -> no data, you can retry
+        if self.enable_trace:
+            self.logger.debug(f"[TRACE] {data}")
+
         return data
 
     def _append(self, frame: bytes) -> List[bytes]:
@@ -173,13 +177,15 @@ class LongPollingBaseClient(BaseClient):
                         message = self.prepare_data(complete_buffer)
                         self.on_message(self, message)
 
-        except (OSError, Exception) as e:
+        except Exception as e:
             self._running = False
 
             if self.logger:
                 self.logger.error(f"Receive error: {e}")
 
-            if type(e) is OSError:  # pragma: no cover
+            # OSError and subclasses (HTTPError, URLError,
+            # ConnectionResetError...) mean the connection is gone.
+            if isinstance(e, OSError):
                 self.on_close()
             else:
                 self.on_error(e)
@@ -241,7 +247,7 @@ class LongPollingTextClient(LongPollingBaseClient):
 
 class LongPollingBinaryClient(LongPollingBaseClient):
     def __init__(self, **kwargs):
-        super(LongPollingTextClient, self).__init__(
+        super(LongPollingBinaryClient, self).__init__(
             "Signalrcore long polling binary client",
             receive_header="binary",
             **kwargs)
