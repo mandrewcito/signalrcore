@@ -81,7 +81,7 @@ class BaseHubConnection(object):
             headers=None,
             ssl_context: ssl.SSLContext = None,
             protocol=None,
-            proxies: dict = {},
+            proxies: Optional[dict] = None,
             **kwargs):
         self.preferred_protocol = preferred_protocol
         self.preferred_transport = preferred_transport
@@ -90,7 +90,7 @@ class BaseHubConnection(object):
         self.ssl_context = ssl_context\
             if ssl_context is not None else\
             create_ssl_context(True)
-        self.proxies = proxies
+        self.proxies = proxies if proxies is not None else {}
         self.token = None
         self._selected_protocol = protocol
 

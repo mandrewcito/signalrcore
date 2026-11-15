@@ -70,6 +70,7 @@ class BaseTransport(object):
         self.state = TransportState.disconnected
         self.handshake_received = False
         self.reconnection_handler = reconnection_handler
+        self._client = None
         self.manually_closing = False
         self._reconnection_lock = threading.Lock()
         self._reconnect_thread = None
@@ -147,6 +148,12 @@ class BaseTransport(object):
         raise NotImplementedError()
 
     def start(self, reconnection: bool = False):
+        if not reconnection:
+            # A previous stop() must not poison manual restarts.
+            self.manually_closing = False
+            if self.reconnection_handler is not None:
+                self.reconnection_handler.reset()
+
         if reconnection:
             self.negotiate()
             self._set_state(TransportState.reconnecting)
@@ -164,14 +171,29 @@ class BaseTransport(object):
     def dispose(self):
         if not self.is_disconnected():
             self.connection_checker.stop()
-            self._client.close()
+
+            if self._client is not None:
+                self._client.close()
 
     def stop(self):
-        if self.manually_closing or self.is_disconnected():
+        if self.is_disconnected():
             return
+
+        # Set the flag first: close callbacks must not start a
+        # reconnection while the connection is being stopped manually.
         self.manually_closing = True
         self.handshake_received = False
-        self.dispose()
+
+        if self.reconnection_handler is not None:
+            self.reconnection_handler.reconnecting = False
+
+        try:
+            self.dispose()
+        finally:
+            # stop() may be called while reconnecting, when the client
+            # was already disposed and no close callback fires. Make
+            # sure the transport never stays in the reconnecting state.
+            self._set_state(TransportState.disconnected)
 
     def on_socket_error(self, error: Exception):  # pragma: no cover
         """
