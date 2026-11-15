@@ -1,111 +1,38 @@
-import asyncio
-from .aio_base_hub_connection import \
-    TransportState, _run_and_wait, _wait_for_state
-from ...hub.auth_hub_connection import AuthHubConnection
-from typing import Awaitable, List, Callable, Optional, Any
-from ...messages.completion_message import CompletionMessage
+from ...helpers import Helpers
+from ..utils import maybe_await
+from .aio_base_hub_connection import AIOBaseHubConnection
 
 
-class AIOAuthHubConnection(AuthHubConnection):
-    def __init__(self, **kwargs):
-        super(AIOAuthHubConnection, self).__init__(**kwargs)
+class AIOAuthHubConnection(AIOBaseHubConnection):
+    """Asyncio hub connection that fetches a bearer token before connecting."""
 
-    async def wait_until_state(
-            self,
-            state: TransportState,
-            timeout: float = None) -> Awaitable:
-        await _wait_for_state(self, state, timeout)
+    def __init__(self, auth_function, headers=None, **kwargs):
+        if headers is None:
+            self.headers = dict()
+        else:
+            self.headers = headers
 
-    async def start(self) -> Awaitable:
-        """Starts the connection and waits until the connection
-        is ready.
+        self.auth_function = auth_function
 
-        Returns:
-            bool: True if connection stars successfully, False
-            if connection cant start or is already connected
-        """
-        return await _run_and_wait(
-            self, super().start, TransportState.connected)
+        super(AIOAuthHubConnection, self).__init__(headers=headers, **kwargs)
 
-    async def stop(self) -> Awaitable:
-        """Stops the connection and waits until the connection
-        is closed
+    async def start(self) -> bool:
+        """Fetches the access token and starts the connection.
+
+        The auth function may be a plain function or a coroutine function.
 
         Returns:
-            None
+            bool: True if connection starts successfully, False if it is
+            already connected.
         """
-        return await _run_and_wait(
-            self, super().stop, TransportState.disconnected)
-
-    async def send(
-            self,
-            method: str,
-            arguments: List[Any],
-            on_invocation: Optional[Callable[[List[CompletionMessage]], Awaitable[None]]] = None,  # noqa: E501
-            invocation_id: str = None) -> Awaitable:
-        """invokes a server function
-
-        Args:
-            method (string): Method name
-            arguments (list|Subject): Method parameters
-            on_invocation (function, optional): On invocation send callback
-                will be raised on send server function ends. Defaults to None.
-            invocation_id (string, optional): Override invocation ID.
-                Exceptions thrown by the hub will use this ID,
-                making it easier to handle with the on_error call.
-
-        Raises:
-            HubConnectionError: If hub is not ready to send
-            TypeError: If arguments are invalid list or Subject
-        """
-        result = await asyncio.to_thread(
-            super().invoke,
-            method,
-            arguments,
-            on_invocation,
-            invocation_id
-        )
-        return result
-
-    async def invoke(
-            self,
-            method: str,
-            arguments: List[Any],
-            on_invocation: Optional[Callable[[List[CompletionMessage]], Awaitable[None]]] = None,  # noqa: E501
-            invocation_id: str = None):
-        """invokes a server function
-
-        Args:
-            method (string): Method name
-            arguments (list|Subject): Method parameters
-            on_invocation (function, optional): On invocation send callback
-                will be raised on send server function ends. Defaults to None.
-            invocation_id (string, optional): Override invocation ID.
-                Exceptions thrown by the hub will use this ID,
-                making it easier to handle with the on_error call.
-
-        Raises:
-            HubConnectionError: If hub is not ready to send
-            TypeError: If arguments are invalid list or Subject
-        """
-        result = await asyncio.to_thread(
-            super().invoke,
-            method,
-            arguments,
-            on_invocation,
-            invocation_id
-        )
-        return result
-
-    def on(
-            self,
-            event: str,
-            callback_function: Callable[[List[Any]], Awaitable[None]])\
-            -> None:
-        """Register a callback on the specified event
-        Args:
-            event (string):  Event name
-            callback_function (Function): callback function,
-                arguments will be bound
-        """
-        return super().on(event, callback_function)
+        try:
+            Helpers.get_logger().debug("Starting connection ...")
+            self.token = await maybe_await(self.auth_function())
+            Helpers.get_logger()\
+                .debug("auth function result {0}".format(self.token))
+            self.headers["Authorization"] = "Bearer " + self.token
+            return await super(AIOAuthHubConnection, self).start()
+        except Exception as ex:
+            Helpers.get_logger().error(
+                "Error starting connection: {0}".format(ex))
+            raise ex

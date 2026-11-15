@@ -1,8 +1,7 @@
 import base64
-import hashlib
 import os
-import struct
 import ssl
+import struct
 import urllib.parse as parse
 
 from typing import Optional, Callable, Union
@@ -10,15 +9,18 @@ from typing import Optional, Callable, Union
 from ..sockets.errors import\
     SocketClosedError, NoHeaderException, SocketHandshakeError
 from ..sockets.base_socket_client import BaseSocketClient
-from ...types import DEFAULT_ENCODING, CRLF
+from ...types import DEFAULT_ENCODING
+from . import framing
+from .framing import (
+    MAX_PAYLOAD_SIZE,
+    build_frame,
+    parse_handshake_headers,
+    websocket_accept)
+
+# Kept as a module attribute for backwards compatibility.
+WEBSOCKET_GUID = framing.WEBSOCKET_GUID
 
 THREAD_NAME = "Signalrcore websocket client"
-
-WEBSOCKET_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
-
-# SignalR broadcasts can be large, but no message should be able to make
-# the client allocate an unbounded buffer from the frame header alone.
-MAX_PAYLOAD_SIZE = 16 * 1024 * 1024
 
 
 class WebSocketClient(BaseSocketClient):
@@ -87,17 +89,7 @@ class WebSocketClient(BaseSocketClient):
 
     @staticmethod
     def _parse_handshake_headers(response: bytes) -> dict:
-        headers = {}
-
-        for line in response.decode(
-                DEFAULT_ENCODING, errors="replace").split(CRLF):
-            if ":" not in line:
-                continue
-
-            name, value = line.split(":", 1)
-            headers[name.strip().lower()] = value.strip()
-
-        return headers
+        return parse_handshake_headers(response)
 
     def validate_handshake_response(self, response: bytes):
         key = getattr(self, "_websocket_key", None)
@@ -113,11 +105,7 @@ class WebSocketClient(BaseSocketClient):
             raise SocketHandshakeError(
                 "Missing Sec-WebSocket-Accept header")
 
-        expected = base64.b64encode(
-            hashlib.sha1(
-                (key + WEBSOCKET_GUID).encode(DEFAULT_ENCODING)
-            ).digest()
-        ).decode(DEFAULT_ENCODING)
+        expected = websocket_accept(key)
 
         if accept != expected:
             raise SocketHandshakeError(
@@ -139,22 +127,7 @@ class WebSocketClient(BaseSocketClient):
         # Text or binary opcode (no fragmentation)
         payload = message.encode(DEFAULT_ENCODING)\
             if type(message) is str else message
-        header = bytes([0x80 | opcode])
-        length = len(payload)
-        if length <= 125:
-            header += bytes([0x80 | length])
-        elif length <= 65535:
-            header += bytes([0x80 | 126]) + struct.pack(">H", length)
-        else:
-            header += bytes([0x80 | 127]) + struct.pack(">Q", length)
-
-        # Mask the payload
-        masking_key = os.urandom(4)
-        masked_payload = bytes(
-            b ^ masking_key[i % 4]
-            for i, b in enumerate(payload))
-        frame = header + masking_key + masked_payload
-        self.sock.sendall(frame)
+        self.sock.sendall(build_frame(payload, opcode))
 
     def _recv_exactly(self, n):
         """Receive exactly n bytes, looping over partial reads."""
