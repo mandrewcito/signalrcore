@@ -457,6 +457,10 @@ class BaseHubConnection(object):
         Returns:
             [StreamHandler]: stream handler
         """
+        if self.transport is None or not self.transport.is_running():
+            raise HubConnectionError(
+                "Cannot connect to SignalR hub. Unable to transmit messages")
+
         invocation_id = str(uuid.uuid4())
         stream_obj = StreamHandler(event, invocation_id)
         self.stream_handlers[invocation_id].append(stream_obj)
