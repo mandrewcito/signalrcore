@@ -154,21 +154,42 @@ class RequestHelpers:
 
 class Helpers:
 
+    DEFAULT_HANDLER_FLAG = "_signalrcore_default_handler"
+
+    @staticmethod
+    def _log_formatter(level):
+        debug_formatter = ""\
+            if level != logging.DEBUG else\
+            "- %(filename)s:%(lineno)d "
+        return logging.Formatter(
+            '%(asctime)s - %(name)s '
+            + debug_formatter +
+            '- %(levelname)s - %(message)s')
+
     @staticmethod
     def configure_logger(level=logging.INFO, handler=None):
         logger = Helpers.get_logger()
+
         if handler is None:
-            handler = logging.StreamHandler()
-            debug_formatter = ""\
-                if level != logging.DEBUG else\
-                "- %(filename)s:%(lineno)d "
-            handler.setFormatter(
-                logging.Formatter(
-                    '%(asctime)s - %(name)s '
-                    + debug_formatter +
-                    '- %(levelname)s - %(message)s'))
+            # Reuse the handler created by a previous call, otherwise
+            # every configure_logging() adds another one and messages
+            # are logged once per handler.
+            handler = next(
+                (existing for existing in logger.handlers
+                 if getattr(
+                     existing, Helpers.DEFAULT_HANDLER_FLAG, False)),
+                None)
+
+            if handler is None:
+                handler = logging.StreamHandler()
+                setattr(handler, Helpers.DEFAULT_HANDLER_FLAG, True)
+                logger.addHandler(handler)
+
+            handler.setFormatter(Helpers._log_formatter(level))
             handler.setLevel(level)
-        logger.addHandler(handler)
+        elif handler not in logger.handlers:
+            logger.addHandler(handler)
+
         logger.setLevel(level)
 
     @staticmethod

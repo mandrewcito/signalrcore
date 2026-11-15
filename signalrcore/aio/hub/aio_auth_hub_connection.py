@@ -1,6 +1,6 @@
 import asyncio
-import time
-from .aio_base_hub_connection import TransportState
+from .aio_base_hub_connection import \
+    TransportState, _run_and_wait, _wait_for_state
 from ...hub.auth_hub_connection import AuthHubConnection
 from typing import Awaitable, List, Callable, Optional, Any
 from ...messages.completion_message import CompletionMessage
@@ -14,13 +14,7 @@ class AIOAuthHubConnection(AuthHubConnection):
             self,
             state: TransportState,
             timeout: float = None) -> Awaitable:
-        t0 = time.time()
-        while self.transport is None or self.transport.state != state:
-            await asyncio.sleep(0.1)
-            if timeout is not None and t0 + timeout < time.time():  # pragma: no cover # noqa E501
-                raise TimeoutError()
-        self.logger.info(
-            f"Time elapsed until state change {time.time() - t0}s")
+        await _wait_for_state(self, state, timeout)
 
     async def start(self) -> Awaitable:
         """Starts the connection and waits until the connection
@@ -30,12 +24,8 @@ class AIOAuthHubConnection(AuthHubConnection):
             bool: True if connection stars successfully, False
             if connection cant start or is already connected
         """
-        t1 = asyncio.to_thread(super().start)
-        t2 = self.wait_until_state(TransportState.connected)
-
-        result, _ = await asyncio.gather(t1, t2)
-
-        return result
+        return await _run_and_wait(
+            self, super().start, TransportState.connected)
 
     async def stop(self) -> Awaitable:
         """Stops the connection and waits until the connection
@@ -44,10 +34,8 @@ class AIOAuthHubConnection(AuthHubConnection):
         Returns:
             None
         """
-        t1 = asyncio.to_thread(super().stop)
-        t2 = self.wait_until_state(TransportState.disconnected)
-        result, _ = await asyncio.gather(t1, t2)
-        return result
+        return await _run_and_wait(
+            self, super().stop, TransportState.disconnected)
 
     async def send(
             self,
