@@ -117,16 +117,27 @@ class AIOBaseTransport(object):
     def is_running(self):
         return self.state != TransportState.disconnected
 
+    async def wait_until(
+            self,
+            predicate: Callable[[], bool],
+            timeout: Optional[float] = None) -> None:
+        """Waits until predicate() is true.
+
+        The predicate is re-evaluated on every state change; unlike
+        wait_until_state it can accept several target states.
+        """
+        async def _wait():
+            async with self._state_condition:
+                while not predicate():
+                    await self._state_condition.wait()
+
+        await asyncio.wait_for(_wait(), timeout=timeout)
+
     async def wait_until_state(
             self,
             state: TransportState,
             timeout: Optional[float] = None) -> None:
-        async def _wait():
-            async with self._state_condition:
-                while self.state != state:
-                    await self._state_condition.wait()
-
-        await asyncio.wait_for(_wait(), timeout=timeout)
+        await self.wait_until(lambda: self.state == state, timeout=timeout)
 
     async def negotiate(self) -> NegotiateResponse:
         handler = AsyncNegotiationHandler(
