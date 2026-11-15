@@ -28,7 +28,7 @@ A complete Python client for ASP.NET Core SignalR — supporting all transports,
 
 ---
 
-## Features (V1.0.0 "poluca")
+## Features (V1.1.0 "poluca")
 
 | Feature | Details |
 |---------|---------|
@@ -64,12 +64,6 @@ hub_connection.start()
 hub_connection.send("SendMessage", ["username", "Hello!"])
 hub_connection.stop()
 ```
-
-## Upcoming Changes
-
-- Test suite split into integration and unit tests
-- Ack/Sequence implementation
-- Azure managed solution for testing
 
 ## Links
 

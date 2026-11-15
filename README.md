@@ -13,7 +13,7 @@
 
 Python signalr core client library, made by a guy born in Vilalba (Lugo).
 
-## About V1.0.0 (aka poluca)  
+## About V1.1.0 (aka poluca)  
 
 Feature list:
 * All kind of communications with the server (streaming, sending messages)
@@ -24,13 +24,6 @@ Feature list:
 * Custom ssl context passthrough ([see certificates article](https://github.com/mandrewcito/signalrcore/blob/main/docs/articles/CustomClientCert.md))
 * AsyncIO implementation: transports, streaming, async callbacks and reconnection
 * ... 
-
-## Upcoming changes
-
-* Test suite, divide test into integration and unit. Making stubs of clients which enable testing without server
-  * Managed solution azure server. For testing purposes only (PRs targeting main branch)
-* Ack/Sequence implementation
-* ...
 
 # Links 
 
