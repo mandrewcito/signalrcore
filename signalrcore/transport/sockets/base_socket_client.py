@@ -48,6 +48,7 @@ class BaseSocketClient(BaseClient):
 
         self.running: bool = False
         self.is_closing: bool = False
+        self.sock: Optional[socket.socket] = None
         self.recv_thread: threading.Thread = None
         self._lock = threading.Lock()
 
@@ -61,6 +62,14 @@ class BaseSocketClient(BaseClient):
 
     def get_socket_headers(self) -> str:  # pragma: no cover
         raise NotImplementedError("Clients must implement this method")
+
+    def validate_handshake_response(self, response: bytes):
+        """Validate protocol specific handshake headers.
+
+        Subclasses may raise SocketHandshakeError when the response is
+        not acceptable. The default implementation accepts everything.
+        """
+        pass
 
     def prepare_data(self, data):  # pragma: no cover
         raise NotImplementedError("Clients must implement data postprocessing")
@@ -184,6 +193,8 @@ class BaseSocketClient(BaseClient):
             raise SocketHandshakeError(
                 f"Handshake failed: {response.decode()}")
 
+        self.validate_handshake_response(response)
+
         self.running = True
         self.recv_thread = threading.Thread(
             target=self.run,
@@ -222,8 +233,9 @@ class BaseSocketClient(BaseClient):
             self.recv_thread = None
 
     def run(self):
-        self.on_open()
         try:
+            self.on_open()
+
             while self.running:
                 message = self._recv_frame()
 
@@ -253,6 +265,19 @@ class BaseSocketClient(BaseClient):
             self.logger.error(f"Receive error: {e}")
 
             self.on_error(e)
+        finally:
+            # The receive loop owns the socket: when it ends, the
+            # socket must not stay open (on_open failures included).
+            self._close_socket()
+
+    def _close_socket(self):
+        if self.sock is None:
+            return
+
+        try:
+            self.sock.close()
+        except Exception as ex:  # pragma: no cover
+            self.logger.debug(f"Error closing socket: {ex}")
 
     def _recv_frame(self):  # pragma: no cover
         raise NotImplementedError()

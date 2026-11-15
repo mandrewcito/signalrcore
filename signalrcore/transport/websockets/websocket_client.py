@@ -1,4 +1,5 @@
 import base64
+import hashlib
 import os
 import struct
 import ssl
@@ -6,11 +7,18 @@ import urllib.parse as parse
 
 from typing import Optional, Callable, Union
 
-from ..sockets.errors import SocketClosedError, NoHeaderException
+from ..sockets.errors import\
+    SocketClosedError, NoHeaderException, SocketHandshakeError
 from ..sockets.base_socket_client import BaseSocketClient
-from ...types import DEFAULT_ENCODING
+from ...types import DEFAULT_ENCODING, CRLF
 
 THREAD_NAME = "Signalrcore websocket client"
+
+WEBSOCKET_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+
+# SignalR broadcasts can be large, but no message should be able to make
+# the client allocate an unbounded buffer from the frame header alone.
+MAX_PAYLOAD_SIZE = 16 * 1024 * 1024
 
 
 class WebSocketClient(BaseSocketClient):
@@ -20,7 +28,7 @@ class WebSocketClient(BaseSocketClient):
             connection_id: str = "",
             is_binary: bool = False,
             headers: Optional[dict] = None,
-            proxies: dict = {},
+            proxies: Optional[dict] = None,
             ssl_context: ssl.SSLContext = None,
             enable_trace: bool = False,
             on_message: Callable = None,
@@ -46,7 +54,13 @@ class WebSocketClient(BaseSocketClient):
     def get_socket_headers(self):
         parsed_url = parse.urlparse(self.url)
 
-        key = base64.b64encode(os.urandom(16)).decode(DEFAULT_ENCODING)
+        # A custom key is honored if the caller provided one, otherwise
+        # generate a new one and keep it to validate the accept header.
+        key = self.headers.get("Sec-WebSocket-Key")\
+            or self.headers.get("sec-websocket-key")\
+            or base64.b64encode(os.urandom(16)).decode(DEFAULT_ENCODING)
+        self._websocket_key = key
+
         relative_reference = parsed_url.path
 
         if parsed_url.query:
@@ -57,12 +71,57 @@ class WebSocketClient(BaseSocketClient):
 
         return [
             f"GET {relative_reference} HTTP/1.1",
-            f"Host: {parsed_url.hostname}",
+            f"Host: {self._host_header(parsed_url)}",
             "Upgrade: websocket",
             "Connection: Upgrade",
             f"Sec-WebSocket-Key: {key}",
             "Sec-WebSocket-Version: 13"
         ]
+
+    @staticmethod
+    def _host_header(parsed_url) -> str:
+        # netloc keeps non-default ports and IPv6 brackets; strip any
+        # user information that may be present in the URL.
+        return parsed_url.netloc.rsplit("@", 1)[-1]\
+            or parsed_url.hostname
+
+    @staticmethod
+    def _parse_handshake_headers(response: bytes) -> dict:
+        headers = {}
+
+        for line in response.decode(
+                DEFAULT_ENCODING, errors="replace").split(CRLF):
+            if ":" not in line:
+                continue
+
+            name, value = line.split(":", 1)
+            headers[name.strip().lower()] = value.strip()
+
+        return headers
+
+    def validate_handshake_response(self, response: bytes):
+        key = getattr(self, "_websocket_key", None)
+
+        if key is None:  # pragma: no cover
+            raise SocketHandshakeError(
+                "Sec-WebSocket-Key was not generated")
+
+        accept = self._parse_handshake_headers(
+            response).get("sec-websocket-accept")
+
+        if accept is None:
+            raise SocketHandshakeError(
+                "Missing Sec-WebSocket-Accept header")
+
+        expected = base64.b64encode(
+            hashlib.sha1(
+                (key + WEBSOCKET_GUID).encode(DEFAULT_ENCODING)
+            ).digest()
+        ).decode(DEFAULT_ENCODING)
+
+        if accept != expected:
+            raise SocketHandshakeError(
+                f"Invalid Sec-WebSocket-Accept: {accept}")
 
     def prepare_data(self, data):
         if self.is_binary:
@@ -127,10 +186,7 @@ class WebSocketClient(BaseSocketClient):
 
         if masked_len & 0x80:  # pragma: no cover
             # RFC 6455 §5.1: server MUST NOT mask frames sent to the client
-            try:
-                self.send(struct.pack(">H", 1002), opcode=0x8)
-            except Exception:
-                pass
+            self._send_control_frame(0x8, struct.pack(">H", 1002))
             raise SocketClosedError()
 
         payload_len = masked_len & 0x7F
@@ -139,22 +195,63 @@ class WebSocketClient(BaseSocketClient):
         elif payload_len == 127:  # pragma: no cover
             payload_len = struct.unpack(">Q", self._recv_exactly(8))[0]
 
+        if payload_len > MAX_PAYLOAD_SIZE:
+            # Do not allocate/read an unbounded payload.
+            self._send_control_frame(0x8, struct.pack(">H", 1009))
+            raise SocketClosedError()
+
         data = self._recv_exactly(payload_len)
 
         return fin, opcode, data
 
+    def _send_control_frame(self, opcode, data=b""):
+        try:
+            self.send(data, opcode=opcode)
+        except Exception as ex:  # pragma: no cover
+            # The connection may already be gone; reading will fail soon.
+            self.logger.debug(
+                f"Unable to send control frame {opcode:#x}: {ex}")
+
     def _recv_frame(self):
-        fin, opcode, data = self._read_one_frame()
+        payload = b""
+        message_started = False
 
-        if opcode == 0x8:  # pragma: no cover
-            raise SocketClosedError()
+        while True:
+            fin, opcode, data = self._read_one_frame()
 
-        payload = data
-        while not fin:
-            fin, cont_opcode, data = self._read_one_frame()
-            if cont_opcode == 0x8:  # pragma: no cover
+            if opcode == 0x9:  # ping -> pong with the same payload
+                self._send_control_frame(0xA, data)
+                continue
+
+            if opcode == 0xA:  # pong -> ignore
+                continue
+
+            if opcode == 0x8:  # close
                 raise SocketClosedError()
-            payload += data
+
+            if opcode in (0x1, 0x2):  # text / binary
+                if message_started:  # pragma: no cover
+                    self._send_control_frame(0x8, struct.pack(">H", 1002))
+                    raise SocketClosedError()
+
+                payload = data
+                message_started = True
+            elif opcode == 0x0:  # continuation
+                if not message_started:  # pragma: no cover
+                    self._send_control_frame(0x8, struct.pack(">H", 1002))
+                    raise SocketClosedError()
+
+                payload += data
+            else:  # pragma: no cover
+                self._send_control_frame(0x8, struct.pack(">H", 1002))
+                raise SocketClosedError()
+
+            if len(payload) > MAX_PAYLOAD_SIZE:  # pragma: no cover
+                self._send_control_frame(0x8, struct.pack(">H", 1009))
+                raise SocketClosedError()
+
+            if fin:
+                break
 
         if self.is_trace_enabled():
             self.logger.debug(f"[TRACE] - {payload}")

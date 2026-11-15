@@ -4,6 +4,7 @@ from unittest.mock import Mock
 
 from signalrcore.messages.ping_message import PingMessage
 from signalrcore.protocol.json_hub_protocol import JsonHubProtocol
+from signalrcore.transport.base_transport import TransportState
 from signalrcore.transport.long_polling.long_polling_transport import\
     LongPollingTransport
 from signalrcore.transport.reconnection import RawReconnectionHandler
@@ -184,6 +185,89 @@ class WebsocketTransportReconnectLoopTest(unittest.TestCase):
             self.assertFalse(handler.reconnecting)
         finally:
             transport.connection_checker.stop()
+
+
+class TransportStopTest(unittest.TestCase):
+    TRANSPORTS = (
+        WebsocketTransport,
+        SSETransport,
+        LongPollingTransport,
+    )
+
+    def build(self, transport_cls):
+        return transport_cls(
+            url="ws://localhost:5000/chat",
+            protocol=JsonHubProtocol(),
+            reconnection_handler=RawReconnectionHandler(0.001, 2),
+            on_open=lambda: None,
+            on_close=lambda: None,
+            on_reconnect=lambda: None)
+
+    def test_stop_while_reconnecting_sets_disconnected(self):
+        for transport_cls in self.TRANSPORTS:
+            with self.subTest(transport=transport_cls.__name__):
+                transport = self.build(transport_cls)
+                transport._client = Mock()
+                transport._set_state(TransportState.reconnecting)
+
+                transport.stop()
+
+                self.assertTrue(transport.is_disconnected())
+                self.assertTrue(transport.manually_closing)
+                self.assertFalse(transport.connection_checker.running)
+                transport._client.close.assert_called_once()
+
+    def test_stop_while_reconnecting_without_client(self):
+        for transport_cls in self.TRANSPORTS:
+            with self.subTest(transport=transport_cls.__name__):
+                transport = self.build(transport_cls)
+                transport._client = None
+                transport._set_state(TransportState.reconnecting)
+
+                transport.stop()
+
+                self.assertTrue(transport.is_disconnected())
+                self.assertTrue(transport.manually_closing)
+
+    def test_stop_is_idempotent(self):
+        transport = self.build(WebsocketTransport)
+        transport._client = Mock()
+        transport._set_state(TransportState.reconnecting)
+
+        transport.stop()
+        transport.stop()
+
+        self.assertTrue(transport.is_disconnected())
+        transport._client.close.assert_called_once()
+
+    def test_manual_start_after_stop_resets_manually_closing(self):
+        transport = self.build(WebsocketTransport)
+        transport.manually_closing = True
+        client = Mock()
+        transport.create_client = Mock(return_value=client)
+
+        transport.start()
+
+        self.assertFalse(transport.manually_closing)
+        self.assertTrue(transport.is_connecting())
+        client.connect.assert_called_once()
+
+    def test_reconnection_loop_exits_after_stop(self):
+        transport = self.build(WebsocketTransport)
+        transport.reconnection_handler = RawReconnectionHandler(0.2, 100)
+        client = Mock()
+        client.is_connection_closed.return_value = True
+        transport._client = client
+        transport.start = Mock(side_effect=OSError("server unavailable"))
+
+        self.assertTrue(transport.handle_reconnect())
+        thread = transport._reconnect_thread
+
+        transport.stop()
+        thread.join(timeout=2)
+
+        self.assertFalse(thread.is_alive())
+        self.assertTrue(transport.is_disconnected())
 
 
 if __name__ == "__main__":  # pragma: no cover

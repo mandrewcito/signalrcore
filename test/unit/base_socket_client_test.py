@@ -21,24 +21,35 @@ class FakeSocketClient(BaseSocketClient):
             is_closing=False,
             url=None,
             proxies=None,
-            ssl_context=None):
+            ssl_context=None,
+            open_error=None):
         super(FakeSocketClient, self).__init__(
             thread_name="fake socket client",
             success_status_code=b"101",
             url=url,
             proxies=proxies,
             ssl_context=ssl_context,
-            on_open=self._noop,
+            on_open=self._on_open,
             on_close=self._on_close,
             on_error=self._on_error)
         self.error = error
+        self.open_error = open_error
         self.is_closing = is_closing
         self.running = True
         self.closed = False
         self.received_error = None
+        self.validated = None
+        self.sock = Mock()
 
-    def _noop(self):
-        pass
+    def _on_open(self):
+        if self.open_error is not None:
+            raise self.open_error
+
+    def get_socket_headers(self):
+        return ["GET /chat HTTP/1.1"]
+
+    def validate_handshake_response(self, response):
+        self.validated = response
 
     def _on_close(self):
         self.closed = True
@@ -244,6 +255,44 @@ class WebsocketTransportProxyTest(unittest.TestCase):
         client = transport.create_client()
 
         self.assertEqual(client.proxies, proxies)
+
+
+class OnOpenFailureTest(unittest.TestCase):
+    def test_on_open_error_is_reported_and_socket_closed(self):
+        error = ValueError("bad on_open")
+        client = FakeSocketClient(open_error=error)
+
+        client.run()
+
+        self.assertIs(client.received_error, error)
+        self.assertFalse(client.running)
+        self.assertFalse(client.closed)
+        client.sock.close.assert_called_once()
+
+    def test_on_open_os_error_closes_connection(self):
+        client = FakeSocketClient(
+            open_error=ConnectionResetError(104, "Connection reset"))
+
+        client.run()
+
+        self.assertTrue(client.closed)
+        self.assertIsNone(client.received_error)
+        self.assertFalse(client.running)
+        client.sock.close.assert_called_once()
+
+
+class HandshakeValidationHookTest(unittest.TestCase):
+    @patch("signalrcore.transport.sockets.base_socket_client.threading.Thread")
+    def test_connect_calls_validation_hook(self, thread):
+        response = b"HTTP/1.1 101 Switching Protocols\r\n\r\n"
+        client = FakeSocketClient(url="ws://example.com/chat")
+        client.create_socket = Mock(return_value=client.sock)
+        client.sock.recv.return_value = response
+
+        client.connect()
+
+        self.assertEqual(client.validated, response)
+        thread.assert_called_once()
 
 
 if __name__ == "__main__":  # pragma: no cover
