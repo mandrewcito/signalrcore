@@ -470,7 +470,7 @@ class BaseHubConnection(object):
             elif message.type == MessageType.sequence:  # pragma: no cover # 9
                 self.__on_sequence_message(message)
 
-            if is_trackable:
+            if is_trackable and self.transport is not None:
                 self.transport.send(AckMessage(self._receive_sequence_id))
 
     def stream(self, event, event_params) -> StreamHandler:
