@@ -1,8 +1,10 @@
+import json
 import unittest
 from unittest.mock import Mock, patch
 from urllib.parse import parse_qs, urlparse
 
 from signalrcore.helpers import Helpers
+from signalrcore.hub.errors import HubError, UnAuthorizedHubError
 from signalrcore.hub.negotiation import (
     AzureResponse,
     NegotiateResponse,
@@ -188,6 +190,53 @@ class NegotiationHandlerTest(unittest.TestCase):
         self.assertEqual(
             negotiate_response.get_id(),
             negotiate_response.connection_id)
+
+
+class NegotiationErrorResponseTest(unittest.TestCase):
+    def build_handler(self):
+        return NegotiationHandler(
+            url="wss://example.com/chat",
+            headers={},
+            proxies={},
+            ssl_context=None,
+            skip_negotiation=False)
+
+    @staticmethod
+    def response(status_code, body=None):
+        response = Mock()
+        response.status_code = status_code
+        response.json.return_value = body
+        return response
+
+    @patch(POST)
+    def test_unauthorized_does_not_parse_body(self, post):
+        response = self.response(401)
+        response.json.side_effect = json.JSONDecodeError("empty", "", 0)
+        post.return_value = response
+
+        with self.assertRaises(UnAuthorizedHubError):
+            self.build_handler().negotiate()
+
+        response.json.assert_not_called()
+
+    @patch(POST)
+    def test_server_error_does_not_parse_body(self, post):
+        response = self.response(500)
+        response.json.side_effect = json.JSONDecodeError("empty", "", 0)
+        post.return_value = response
+
+        with self.assertRaises(HubError) as context:
+            self.build_handler().negotiate()
+
+        self.assertIs(type(context.exception), HubError)
+        response.json.assert_not_called()
+
+    @patch(POST)
+    def test_empty_success_body_is_rejected(self, post):
+        post.return_value = self.response(200, None)
+
+        with self.assertRaises(HubError):
+            self.build_handler().negotiate()
 
 
 if __name__ == "__main__":  # pragma: no cover

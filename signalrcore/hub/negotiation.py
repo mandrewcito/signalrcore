@@ -219,17 +219,22 @@ class NegotiationHandler(object):
             proxies=self.proxies,
             ssl_context=self.ssl_context)
 
-        status_code, data = response.status_code, response.json()
+        status_code = response.status_code
 
         self.logger.debug(
             "Negotiate response status code {0}".format(status_code))
 
-        self.logger.debug(
-            "Negotiate response {0}".format(data))
-
         if status_code != 200:
             raise HubError(status_code)\
                 if status_code != 401 else UnAuthorizedHubError()
+
+        data = response.json()
+
+        self.logger.debug(
+            "Negotiate response {0}".format(data))
+
+        if not isinstance(data, dict):
+            raise HubError("Negotiate response is not a JSON object")
 
         error = data.get("error", None)
 
