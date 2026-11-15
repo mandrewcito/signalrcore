@@ -1,3 +1,4 @@
+import asyncio
 from typing import Callable
 
 from ...helpers import Helpers
@@ -5,7 +6,12 @@ from ..utils import call_callback
 
 
 class AIOStreamHandler(object):
-    """Server to client stream subscription with async aware callbacks."""
+    """Server to client stream subscription with async aware callbacks.
+
+    Items may arrive before ``subscribe`` is called, for example the first
+    item of a fast stream. They are buffered and delivered once the
+    callbacks are registered so no stream item is lost.
+    """
 
     def __init__(self, event: str, invocation_id: str):
         self.event = event
@@ -20,11 +26,16 @@ class AIOStreamHandler(object):
         self.error_callback =\
             lambda _: self.logger.warning(
                 "next error handler fired, no callback configured")
+        self._subscribed = False
+        self._pending = []
+        self._flush_task = None
 
     def subscribe(self, subscribe_callbacks: dict):
         """Registers the stream callbacks.
 
-        Callbacks may be plain functions or coroutine functions.
+        Callbacks may be plain functions or coroutine functions. Events
+        received before this call are delivered as soon as the callbacks
+        are registered.
         """
         error =\
             " subscribe object must be a dict like {0}"\
@@ -51,15 +62,46 @@ class AIOStreamHandler(object):
         self.next_callback = subscribe_callbacks["next"]
         self.complete_callback = subscribe_callbacks["complete"]
         self.error_callback = subscribe_callbacks["error"]
+        self._subscribed = True
+
+        if self._pending:
+            self._flush_task = asyncio.get_running_loop().create_task(
+                self._flush())
+
+    async def _call(self, kind: str, value):
+        if kind == "next":
+            await call_callback(self.next_callback, value)
+        elif kind == "complete":
+            await call_callback(self.complete_callback, value)
+        else:
+            await call_callback(self.error_callback, value)
+
+    async def _flush(self):
+        while self._pending:
+            kind, value = self._pending.pop(0)
+            await self._call(kind, value)
+
+    async def _deliver(self, kind: str, value):
+        if not self._subscribed:
+            self._pending.append((kind, value))
+            return
+
+        task = self._flush_task
+
+        if task is not None:
+            await task
+            self._flush_task = None
+
+        await self._call(kind, value)
 
     async def next(self, item):
-        await call_callback(self.next_callback, item)
+        await self._deliver("next", item)
 
     async def complete(self, message):
-        await call_callback(self.complete_callback, message)
+        await self._deliver("complete", message)
 
     async def error(self, message):
-        await call_callback(self.error_callback, message)
+        await self._deliver("error", message)
 
 
 class AIOInvocationHandler(object):

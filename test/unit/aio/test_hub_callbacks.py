@@ -195,6 +195,74 @@ class AIOInvocationCallbackTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("invocation-id", self.connection.stream_handlers)
 
 
+class AIOStreamBufferingTest(unittest.IsolatedAsyncioTestCase):
+    """Items emitted before subscribe must not be lost."""
+
+    async def test_next_before_subscribe_is_buffered(self):
+        events = []
+        handler = AIOStreamHandler("Counter", "invocation-id")
+
+        await handler.next(0)
+        await handler.next(1)
+
+        self.assertEqual(events, [])
+        self.assertEqual(handler._pending, [("next", 0), ("next", 1)])
+
+        async def on_next(item):
+            await asyncio.sleep(0)
+            events.append(item)
+
+        handler.subscribe({
+            "next": on_next,
+            "complete": lambda _: None,
+            "error": lambda _: None,
+        })
+
+        await handler._flush_task
+        self.assertEqual(events, [0, 1])
+        self.assertEqual(handler._pending, [])
+
+    async def test_buffered_events_keep_order_with_new_items(self):
+        events = []
+        handler = AIOStreamHandler("Counter", "invocation-id")
+
+        await handler.next(0)
+
+        async def on_next(item):
+            events.append(item)
+
+        handler.subscribe({
+            "next": on_next,
+            "complete": lambda _: events.append("complete"),
+            "error": lambda _: events.append("error"),
+        })
+
+        await handler.next(1)
+        await handler.complete("done")
+
+        self.assertEqual(events, [0, 1, "complete"])
+
+    async def test_completion_before_subscribe_is_buffered(self):
+        events = []
+        handler = AIOStreamHandler("Counter", "invocation-id")
+
+        await handler.next(0)
+        await handler.complete("done")
+
+        async def on_complete(message):
+            events.append(("complete", message))
+
+        handler.subscribe({
+            "next": lambda item: events.append(("next", item)),
+            "complete": on_complete,
+            "error": lambda _: None,
+        })
+
+        await handler._flush_task
+        self.assertEqual(
+            events, [("next", 0), ("complete", "done")])
+
+
 class AIOCloseMessageTest(unittest.IsolatedAsyncioTestCase):
     async def test_close_message_disposes_transport(self):
         connection = AIOBaseHubConnection(url="http://localhost/hub")

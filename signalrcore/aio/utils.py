@@ -13,7 +13,13 @@ async def maybe_await(value):
 
 
 async def call_callback(callback, *args, **kwargs):
-    """Calls a sync or async callback and awaits its result if needed."""
+    """Calls a sync or async callback and awaits its result if needed.
+
+    A missing callback is a no-op so optional hooks stay optional.
+    """
+    if callback is None:
+        return None
+
     return await maybe_await(callback(*args, **kwargs))
 
 

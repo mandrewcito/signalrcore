@@ -186,9 +186,19 @@ class AIOLongPollingClientTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(post[1], b"payload")
 
     async def test_binary_client_returns_bytes(self):
+        polls = {"count": 0}
+
         async def handler(server, request, writer):
             if request[0].startswith(b"GET"):
-                await send(writer, body=b"\x01\x02\x1e")
+                polls["count"] += 1
+
+                if polls["count"] == 1:
+                    await send(writer, body=b"\x01\x02\x1e")
+                else:
+                    # Later polls must not duplicate the message before
+                    # the assertion runs.
+                    await asyncio.sleep(0.05)
+                    await send(writer, status=204, reason="No Content")
             else:
                 await send(writer, body=b"{}")
 
