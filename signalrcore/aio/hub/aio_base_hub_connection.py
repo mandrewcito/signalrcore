@@ -1,5 +1,5 @@
 import uuid
-from typing import Any, Awaitable, Callable, List, Optional, Union
+from typing import Awaitable, Callable, List, Optional, Union
 
 from ...hub.base_hub_connection import (
     BaseHubConnection,
@@ -19,6 +19,7 @@ from ...messages.stream_invocation_message import StreamInvocationMessage
 from ...messages.stream_item_message import StreamItemMessage
 from ...subject import Subject
 from ...transport.base_transport import TransportState  # noqa: F401
+from ..subject import AIOSubject
 from ..transport.base_transport import AIOBaseTransport
 from ..utils import call_callback
 from .aio_connection_mixin import AIO_CONNECTION_TIMEOUT  # noqa: F401
@@ -39,7 +40,7 @@ class AIOBaseHubConnection(AIOConnectionMixin, BaseHubConnection):
     async def send(
             self,
             method: str,
-            arguments: List[Any],
+            arguments: Union[List, AIOSubject],
             on_invocation: Optional[Callable[
                 [List[CompletionMessage]], Awaitable[None]]] = None,
             invocation_id: str = None) -> InvocationResult:
@@ -54,7 +55,7 @@ class AIOBaseHubConnection(AIOConnectionMixin, BaseHubConnection):
     async def invoke(
             self,
             method: str,
-            arguments: Union[List, Subject],
+            arguments: Union[List, AIOSubject],
             on_invocation: Optional[Callable[
                 [List[CompletionMessage]], Awaitable[None]]] = None,
             invocation_id: Optional[str] = None) -> InvocationResult:
@@ -62,7 +63,8 @@ class AIOBaseHubConnection(AIOConnectionMixin, BaseHubConnection):
 
         Args:
             method (string): Method name
-            arguments (list|Subject): Method parameters
+            arguments (list|AIOSubject): Method parameters. Use
+                :class:`AIOSubject` for client to server streaming.
             on_invocation (function, optional): On invocation send callback
                 will be raised on send server function ends. It may be a
                 plain function or a coroutine function.
@@ -70,7 +72,7 @@ class AIOBaseHubConnection(AIOConnectionMixin, BaseHubConnection):
 
         Raises:
             HubConnectionError: If hub is not ready to send
-            TypeError: If arguments are invalid list or Subject
+            TypeError: If arguments are invalid list or AIOSubject
         """
         if invocation_id is None:
             invocation_id = str(uuid.uuid4())
@@ -79,8 +81,14 @@ class AIOBaseHubConnection(AIOConnectionMixin, BaseHubConnection):
             raise HubConnectionError(
                 "Cannot connect to SignalR hub. Unable to transmit messages")
 
-        if type(arguments) is not list and type(arguments) is not Subject:
-            raise TypeError("Arguments of a message must be a list or subject")
+        if isinstance(arguments, Subject):
+            raise TypeError(
+                "Use AIOSubject with asyncio hub connections")
+
+        if type(arguments) is not list\
+                and not isinstance(arguments, AIOSubject):
+            raise TypeError(
+                "Arguments of a message must be a list or AIOSubject")
 
         result = InvocationResult(invocation_id)
 
@@ -100,10 +108,10 @@ class AIOBaseHubConnection(AIOConnectionMixin, BaseHubConnection):
             await self.transport.send(message)
             result.message = message
 
-        if type(arguments) is Subject:
+        if isinstance(arguments, AIOSubject):
             arguments.connection = self
             arguments.target = method
-            arguments.start()
+            await arguments.start()
             result.invocation_id = arguments.invocation_id
             result.message = arguments
 
