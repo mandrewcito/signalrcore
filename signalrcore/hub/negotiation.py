@@ -171,6 +171,84 @@ class NegotiateResponse(BaseResponse):
         )
 
 
+def skip_negotiate_response(
+        url: str,
+        headers: dict) -> Tuple[str, dict, NegotiateResponse]:
+    """Builds the connection information used when negotiation is skipped."""
+    key = base64.b64encode(os.urandom(16)).decode(DEFAULT_ENCODING)
+    return url, headers, NegotiateResponse(
+        negotiate_version=0,
+        connection_id=key,
+        connection_token=None,
+        access_token=None,
+        url=url,
+        available_transports=[
+            AvailableTransport(
+                HttpTransportType.web_sockets,
+                transfer_formats=[
+                    HubProtocolEncoding.text,
+                    HubProtocolEncoding.binary]
+            )
+        ]
+    )
+
+
+def build_negotiate_request(url: str, headers: dict) -> Tuple[str, dict]:
+    """Returns the negotiate url and the request headers."""
+    request_headers = copy.deepcopy(headers)
+    request_headers.update({'Content-Type': 'application/json'})
+    negotiate_url = Helpers.get_negotiate_url(
+        url, negotiate_version=1)
+    return negotiate_url, request_headers
+
+
+def check_negotiate_status(status_code: int) -> None:
+    """Raises the library error for a rejected negotiate request."""
+    if status_code != 200:
+        raise HubError(status_code)\
+            if status_code != 401 else UnAuthorizedHubError()
+
+
+def parse_negotiate_response(
+        url: str,
+        headers: dict,
+        data: dict) -> Tuple[str, dict, NegotiateResponse]:
+    """Validates a negotiate response and returns the updated connection
+    information. Shared by the sync and asyncio implementations."""
+    if not isinstance(data, dict):
+        raise HubError("Negotiate response is not a JSON object")
+
+    error = data.get("error", None)
+
+    if error is not None:  # pragma: no cover
+        raise HubError(error)
+
+    is_azure_response = 'url' in data.keys()\
+        and 'accessToken' in data.keys()
+
+    negotiate_response = AzureResponse.from_dict(data)\
+        if is_azure_response else NegotiateResponse.from_dict(data)
+
+    if "connectionId" in data.keys():
+        url = Helpers.encode_connection_id(
+            url, negotiate_response.get_id())
+
+    # Azure
+    if is_azure_response:
+        Helpers.get_logger().debug(
+            "Azure url, reformat headers, token and url {0}".format(data))
+
+        url = negotiate_response.url\
+            if negotiate_response.url.startswith("ws") else\
+            Helpers.http_to_websocket(negotiate_response.url)
+
+        headers = {
+            "Authorization": "Bearer " + negotiate_response.access_token
+            }
+
+    return url, headers, negotiate_response
+
+
 class NegotiationHandler(object):
     def __init__(
             self,
@@ -188,28 +266,10 @@ class NegotiationHandler(object):
 
     def negotiate(self) -> Tuple[str, dict, NegotiateResponse]:
         if self.skip_negotiation:
-            key = base64.b64encode(os.urandom(16)).decode(DEFAULT_ENCODING)
-            return self.url, self.headers, NegotiateResponse(
-                negotiate_version=0,
-                connection_id=key,
-                connection_token=None,
-                access_token=None,
-                url=self.url,
-                available_transports=[
-                    AvailableTransport(
-                        HttpTransportType.web_sockets,
-                        transfer_formats=[
-                            HubProtocolEncoding.text,
-                            HubProtocolEncoding.binary]
-                    )
-                ]
-            )
-        url = self.url
-        headers = copy.deepcopy(self.headers)
-        headers.update({'Content-Type': 'application/json'})
+            return skip_negotiate_response(self.url, self.headers)
 
-        negotiate_url = Helpers.get_negotiate_url(
-            self.url, negotiate_version=1)
+        negotiate_url, headers = build_negotiate_request(
+            self.url, self.headers)
 
         self.logger.debug("Negotiate url:{0}".format(negotiate_url))
 
@@ -224,44 +284,10 @@ class NegotiationHandler(object):
         self.logger.debug(
             "Negotiate response status code {0}".format(status_code))
 
-        if status_code != 200:
-            raise HubError(status_code)\
-                if status_code != 401 else UnAuthorizedHubError()
+        check_negotiate_status(status_code)
 
         data = response.json()
 
-        self.logger.debug(
-            "Negotiate response {0}".format(data))
+        self.logger.debug("Negotiate response {0}".format(data))
 
-        if not isinstance(data, dict):
-            raise HubError("Negotiate response is not a JSON object")
-
-        error = data.get("error", None)
-
-        if error is not None:  # pragma: no cover
-            raise HubError(error)
-
-        is_azure_response = 'url' in data.keys()\
-            and 'accessToken' in data.keys()
-
-        negotiate_response = AzureResponse.from_dict(data)\
-            if is_azure_response else NegotiateResponse.from_dict(data)
-
-        if "connectionId" in data.keys():
-            url = Helpers.encode_connection_id(
-                self.url, negotiate_response.get_id())
-
-        # Azure
-        if is_azure_response:
-            self.logger.debug(
-                "Azure url, reformat headers, token and url {0}".format(data))
-
-            url = negotiate_response.url\
-                if negotiate_response.url.startswith("ws") else\
-                Helpers.http_to_websocket(negotiate_response.url)
-
-            headers = {
-                "Authorization": "Bearer " + negotiate_response.access_token
-                }
-
-        return url, headers, negotiate_response
+        return parse_negotiate_response(self.url, headers, data)
