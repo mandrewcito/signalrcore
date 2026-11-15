@@ -24,6 +24,8 @@ HubConnectionBuilder()\
     ...
 ```
 
+Calling `configure_logging()` more than once reuses the same handler: the level and formatter are updated instead of adding another handler, so each message is logged once.
+
 ### Socket Trace
 
 ```python
@@ -46,6 +48,8 @@ HubConnectionBuilder()\
     .configure_logging(logging.DEBUG, socket_trace=True, handler=handler)\
     ...
 ```
+
+A custom handler is only attached once, even if `configure_logging()` is called repeatedly with the same handler.
 
 ---
 

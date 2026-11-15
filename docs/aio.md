@@ -51,6 +51,10 @@ await hub.start()
 await hub.stop()
 ```
 
+`start()` and `stop()` wait for the transport to reach the `connected`/`disconnected` state. The wait is bounded by `AIO_CONNECTION_TIMEOUT` (30 seconds by default); if the state is never reached, `TimeoutError` is raised instead of hanging. Exceptions raised by the underlying start/stop are propagated to the caller.
+
+`stop()` is safe to call before `start()` — a missing transport counts as disconnected and the call returns immediately.
+
 ---
 
 ## Sending Messages

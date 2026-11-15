@@ -106,7 +106,7 @@ hub_connection = HubConnectionBuilder()\
             }).build()
 ```
 ### Unauthorized errors
-A login function must provide an error controller if authorization fails. When connection starts, if authorization fails exception will be propagated.
+A login function must provide an error controller if authorization fails. When connection starts, if authorization fails exception will be propagated. Exceptions raised by the token factory are passed through unchanged; negotiate rejections raise `UnAuthorizedHubError` for HTTP 401 and `HubError` for any other non-200 status or invalid body.
 
 ```python
     def login(self):
@@ -126,10 +126,13 @@ A login function must provide an error controller if authorization fails. When c
 
 ```python
 HubConnectionBuilder()\
-    .with_url(server_url,
+    .with_url(server_url)\
     .configure_logging(logging.DEBUG)
     ...
 ```
+
+Calling `configure_logging()` more than once reuses the same handler and updates its level and formatter, so each message is logged once.
+
 ## Configure socket trace
 ```python 
 HubConnectionBuilder()\
@@ -147,6 +150,8 @@ hub_connection = HubConnectionBuilder()\
     .configure_logging(logging.DEBUG, socket_trace=True, handler=handler)
     ...
  ```
+
+A custom handler is only attached once, even if `configure_logging()` is called repeatedly with the same handler.
  
 ## Configuring reconnection
 After reaching max_attempts an exception will be thrown and on_disconnect event will be fired.
@@ -345,6 +350,9 @@ hub_connection.stream(
                 "error": self.on_error
             })
 ```
+
+`stream()` requires a running transport. If the connection is not started, stopped, or reconnecting, it raises `HubConnectionError` and does not register the stream handler. `send()` and `invoke()` behave the same way.
+
 ## Client side Streaming
 ```python
 from signalrcore.subject import  Subject
@@ -389,6 +397,8 @@ await connection.send("SendMessage", [username, message])
 await connection.stop()
 
 ```
+
+`await hub.start()` and `await hub.stop()` wait for the connection state for at most `AIO_CONNECTION_TIMEOUT` seconds (30 by default). If the state is not reached, `TimeoutError` is raised instead of hanging. `await hub.stop()` is safe to call before `start()`.
 
 # Full Examples
 

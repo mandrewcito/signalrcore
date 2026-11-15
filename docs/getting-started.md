@@ -67,7 +67,7 @@ hub_connection = HubConnectionBuilder()\
     }).build()
 ```
 
-If authorization fails, the exception is propagated when calling `hub_connection.start()`.
+If authorization fails, the exception is propagated when calling `hub_connection.start()`. Exceptions raised by the token factory are passed through unchanged. Rejections from the negotiate endpoint are mapped to the library exceptions: `401` raises `UnAuthorizedHubError`, any other non-200 status raises `HubError`, and a `200` response whose body is not a JSON object also raises `HubError`. See [Errors](errors) for the full list.
 
 ```python
 def login(self):

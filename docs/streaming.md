@@ -36,6 +36,23 @@ hub_connection.stream(
 })
 ```
 
+### Requirements
+
+`stream()` needs a running transport. If the connection is not started, has been stopped, or is reconnecting, it raises `HubConnectionError` and does not register the stream handler. The same rule applies to `send()` and `invoke()`.
+
+```python
+from signalrcore.hub.errors import HubConnectionError
+
+try:
+    hub_connection.stream("Counter", [10, 500]).subscribe({
+        "next": on_next,
+        "complete": on_complete,
+        "error": on_error
+    })
+except HubConnectionError:
+    print("Connection is not running")
+```
+
 ### Example Callbacks
 
 ```python
