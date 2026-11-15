@@ -6,15 +6,24 @@ from ...hub.base_hub_connection import (
     InvocationResult,
 )
 from ...hub.errors import HubConnectionError
-from ...hub.handlers import InvocationHandler, StreamHandler
+from ...messages.ack_message import AckMessage
+from ...messages.base_message import BaseMessage
+from ...messages.cancel_invocation_message import CancelInvocationMessage
+from ...messages.close_message import CloseMessage
 from ...messages.completion_message import CompletionMessage
 from ...messages.invocation_message import InvocationMessage
+from ...messages.message_type import MessageType
+from ...messages.ping_message import PingMessage
+from ...messages.sequence_message import SequenceMessage
 from ...messages.stream_invocation_message import StreamInvocationMessage
+from ...messages.stream_item_message import StreamItemMessage
 from ...subject import Subject
 from ...transport.base_transport import TransportState  # noqa: F401
 from ..transport.base_transport import AIOBaseTransport
+from ..utils import call_callback
 from .aio_connection_mixin import AIO_CONNECTION_TIMEOUT  # noqa: F401
 from .aio_connection_mixin import AIOConnectionMixin
+from .handlers import AIOInvocationHandler, AIOStreamHandler
 
 
 class AIOBaseHubConnection(AIOConnectionMixin, BaseHubConnection):
@@ -84,7 +93,7 @@ class AIOBaseHubConnection(AIOConnectionMixin, BaseHubConnection):
 
             if on_invocation:
                 self.stream_handlers[message.invocation_id].append(
-                    InvocationHandler(
+                    AIOInvocationHandler(
                         message.invocation_id,
                         on_invocation))
 
@@ -100,7 +109,7 @@ class AIOBaseHubConnection(AIOConnectionMixin, BaseHubConnection):
 
         return result
 
-    async def stream(self, event, event_params) -> StreamHandler:
+    async def stream(self, event, event_params) -> AIOStreamHandler:
         """Starts server streaming.
 
         connection.stream("Counter", [10, 500]).subscribe({
@@ -121,7 +130,7 @@ class AIOBaseHubConnection(AIOConnectionMixin, BaseHubConnection):
                 "Cannot connect to SignalR hub. Unable to transmit messages")
 
         invocation_id = str(uuid.uuid4())
-        stream_obj = StreamHandler(event, invocation_id)
+        stream_obj = AIOStreamHandler(event, invocation_id)
         self.stream_handlers[invocation_id].append(stream_obj)
 
         await self.transport.send(
@@ -132,3 +141,117 @@ class AIOBaseHubConnection(AIOConnectionMixin, BaseHubConnection):
                 headers=self.headers))
 
         return stream_obj
+
+    async def _on_invocation_message(self, message: InvocationMessage):
+        fired_handlers = self.handlers.get(message.target, [])
+
+        if len(fired_handlers) == 0:
+            self.logger.info(
+                f"Event '{message.target}' hasn't fired any handler")
+
+        for handler in fired_handlers:
+            await call_callback(handler, message.arguments)
+
+    async def _on_stream_item_message(self, message: StreamItemMessage):
+        fired_handlers = self.stream_handlers.get(
+            message.invocation_id, [])
+
+        if len(fired_handlers) == 0:
+            self.logger.warning(
+                "id '{0}' hasn't fire any stream handler".format(
+                    message.invocation_id))
+
+        for handler in fired_handlers:
+            await handler.next(message.item)
+
+    async def _on_completion_message(self, message: CompletionMessage):
+        fired_handlers = self.stream_handlers.get(
+            message.invocation_id, [])
+
+        if message.error is not None and len(message.error) > 0:
+            # Stream errors belong to the stream subscription. Only fall
+            # back to the connection level handler when the invocation
+            # has no stream handler (for example invoke() callbacks).
+            stream_handlers = [
+                handler for handler in fired_handlers
+                if isinstance(handler, AIOStreamHandler)]
+
+            if len(stream_handlers) > 0:
+                for handler in stream_handlers:
+                    await handler.error(message)
+            else:
+                await call_callback(self._callbacks.on_error, message)
+        else:
+            for handler in fired_handlers:
+                await handler.complete(message)
+
+        # unregister handler
+        if message.invocation_id in self.stream_handlers:
+            del self.stream_handlers[message.invocation_id]
+
+    async def _on_stream_invocation_message(
+            self, message: StreamInvocationMessage):  # pragma: no cover
+        self.logger.debug(f"Stream invocation message {message}")
+
+    async def _on_cancel_invocation_message(
+            self, message: CancelInvocationMessage):
+        fired_handlers = self.stream_handlers.get(
+            message.invocation_id, [])
+
+        if len(fired_handlers) == 0:
+            self.logger.warning(
+                "id '{0}' hasn't fire any stream handler".format(
+                    message.invocation_id))
+
+        for handler in fired_handlers:
+            await handler.error(message)
+
+        # unregister handler
+        if message.invocation_id in self.stream_handlers:
+            del self.stream_handlers[message.invocation_id]
+
+    async def _on_ping_message(self, message: PingMessage):
+        self.logger.debug(f"Ping message {message}")
+
+    async def _on_close_message(self, message: CloseMessage):
+        self.logger.info(f"Close message received from server {message}")
+
+        if self.transport is not None:
+            await self.transport.dispose()
+
+    async def _on_ack_message(self, message: AckMessage):  # pragma: no cover
+        self.logger.debug(f"Ack message {message}")
+
+    async def _on_sequence_message(
+            self, message: SequenceMessage):  # pragma: no cover
+        self.logger.debug(f"Sequence message {message}")
+
+    async def _on_binding_failure(self, message):
+        self.logger.error(message)
+        await call_callback(self._callbacks.on_error, message)
+
+    async def on_message(self, messages: List[BaseMessage]) -> None:
+        for message in messages:
+            self.logger.debug(message)
+
+            if message.type == MessageType.invocation_binding_failure:
+                await self._on_binding_failure(message)
+            elif message.type == MessageType.invocation:
+                await self._on_invocation_message(message)
+            elif message.type == MessageType.stream_item:
+                await self._on_stream_item_message(message)
+            elif message.type == MessageType.completion:
+                await self._on_completion_message(message)
+            elif message.type == MessageType.stream_invocation:
+                await self._on_stream_invocation_message(message)
+            elif message.type == MessageType.cancel_invocation:
+                await self._on_cancel_invocation_message(message)
+            elif message.type == MessageType.ping:
+                await self._on_ping_message(message)
+            elif message.type == MessageType.close:
+                await self._on_close_message(message)
+                return
+            elif message.type == MessageType.ack:  # pragma: no cover
+                await self._on_ack_message(message)
+            elif message.type == MessageType.sequence:  # pragma: no cover
+                await self._on_sequence_message(message)
