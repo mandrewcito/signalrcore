@@ -22,12 +22,11 @@ Feature list:
 * Authentication
 * Automatic reconnection with different strategies 
 * Custom ssl context passthrough ([see certificates article](https://github.com/mandrewcito/signalrcore/blob/main/docs/articles/CustomClientCert.md))
-* AsyncIO minimal implementation (will be improved on following versions)
+* AsyncIO implementation: transports, streaming, async callbacks and reconnection
 * ... 
 
 ## Upcoming changes
 
-* AsyncIO transport layer and callbacks
 * Test suite, divide test into integration and unit. Making stubs of clients which enable testing without server
   * Managed solution azure server. For testing purposes only (PRs targeting main branch)
 * Ack/Sequence implementation
@@ -371,6 +370,10 @@ subject.complete()
 
 # AIO
 
+The AIO client is an asyncio-native implementation built with the standard library. It supports WebSockets, Server-Sent Events and Long Polling, JSON and MessagePack, authentication, proxies, TLS, automatic reconnection and streaming. Every network operation is a coroutine, and callbacks may be synchronous or asynchronous.
+
+See the [AsyncIO documentation](docs/aio.md) for the complete reference.
+
 ## Create connection
 
 ```python
@@ -392,13 +395,123 @@ hub = builder.build()
 
 await hub.start()
 
-await connection.send("SendMessage", [username, message])
+await hub.invoke("SendMessage", [username, message])
 
-await connection.stop()
-
+await hub.stop()
 ```
 
-`await hub.start()` and `await hub.stop()` wait for the connection state for at most `AIO_CONNECTION_TIMEOUT` seconds (30 by default). If the state is not reached, `TimeoutError` is raised instead of hanging. `await hub.stop()` is safe to call before `start()`.
+`await hub.start()` waits until the handshake completes for at most `AIO_CONNECTION_TIMEOUT` seconds (30 by default). Negotiation and the transport connection have their own bounds, and `await hub.stop()` bounds shutdown with `AIO_CLOSE_TIMEOUT` (10 seconds by default). If a stage does not complete, `TimeoutError` is raised instead of hanging. `await hub.stop()` is safe to call before `start()`. The state can also be awaited explicitly:
+
+```python
+from signalrcore.transport.base_transport import TransportState
+
+await hub.wait_until_state(TransportState.connected, timeout=10)
+```
+
+## Transports and encoding
+
+The negotiated WebSockets transport is used by default. To force another transport, pass `HttpTransportType` in the options:
+
+```python
+from signalrcore.types import HttpTransportType
+
+hub = AIOHubConnectionBuilder()\
+    .with_url(
+        "https://localhost:5001/chatHub",
+        options={
+            "verify_ssl": False,
+            "transport": HttpTransportType.long_polling
+        })\
+    .build()
+```
+
+Use `MessagePackHubProtocol` for binary encoding. MessagePack requires a transport that supports the `Binary` transfer format, such as WebSockets or Long Polling:
+
+```python
+from signalrcore.protocol.messagepack_protocol import MessagePackHubProtocol
+
+hub = AIOHubConnectionBuilder()\
+    .with_url(server_url, options={"verify_ssl": False})\
+    .with_hub_protocol(MessagePackHubProtocol())\
+    .build()
+```
+
+## Async callbacks
+
+Event, lifecycle, invocation and stream callbacks can be plain functions or coroutine functions. Coroutine callbacks are awaited before message processing continues:
+
+```python
+async def on_open():
+    print("Connected")
+
+async def on_message(arguments):
+    await asyncio.sleep(0)
+    print(arguments)
+
+hub.on_open(on_open)
+hub.on("ReceiveMessage", on_message)
+```
+
+Do not block the event loop from a callback. Use `await asyncio.sleep()` and async clients instead of `time.sleep()` or synchronous network calls.
+
+## Streaming
+
+Server streaming uses an awaited `stream()` call followed by `subscribe()`:
+
+```python
+import asyncio
+
+done = asyncio.Event()
+
+stream = await hub.stream("Counter", [10, 500])
+stream.subscribe({
+    "next": lambda item: print("Received:", item),
+    "complete": lambda message: done.set(),
+    "error": lambda message: done.set()
+})
+
+await done.wait()
+```
+
+Client-to-server streaming uses `AIOSubject`. Its operations are coroutines:
+
+```python
+from signalrcore.aio.subject import AIOSubject
+
+subject = AIOSubject()
+await hub.send("UploadStream", subject)
+
+for i in range(10):
+    await subject.next(str(i))
+
+await subject.complete()
+```
+
+The synchronous `signalrcore.subject.Subject` is not compatible with asyncio connections; passing it raises a clear `TypeError`.
+
+## Authentication and proxies
+
+`access_token_factory` may be a normal function or a coroutine function. The token is fetched before connecting and sent as a bearer token:
+
+```python
+async def get_token():
+    return await fetch_token()
+
+hub = AIOHubConnectionBuilder()\
+    .with_url(
+        server_url,
+        options={
+            "verify_ssl": False,
+            "access_token_factory": get_token
+        })\
+    .configure_proxies({
+        "http": "http://proxy.example.com:8080",
+        "https": "http://proxy.example.com:8080"
+    })\
+    .build()
+```
+
+Plain HTTP proxy requests use the absolute-form target, while HTTPS/WSS connections use `CONNECT` tunnelling followed by TLS. Use `verify_ssl: False` for local development or pass a custom `ssl_context` for certificate configuration.
 
 # Full Examples
 

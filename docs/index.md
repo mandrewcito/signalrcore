@@ -38,7 +38,7 @@ A complete Python client for ASP.NET Core SignalR — supporting all transports,
 | **Reconnection** | Raw interval, exponential backoff strategies |
 | **SSL/TLS** | Custom SSL context passthrough |
 | **Streaming** | Server-to-client and client-to-server streaming |
-| **AsyncIO** | Async/await support via `AIOHubConnectionBuilder` |
+| **AsyncIO** | Native asyncio transports, streaming, async callbacks and reconnection |
 
 ## Quick Example
 
@@ -67,7 +67,6 @@ hub_connection.stop()
 
 ## Upcoming Changes
 
-- Enhanced AsyncIO transport layer and callbacks
 - Test suite split into integration and unit tests
 - Ack/Sequence implementation
 - Azure managed solution for testing

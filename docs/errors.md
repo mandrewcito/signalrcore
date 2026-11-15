@@ -22,7 +22,7 @@ nav_order: 6
 | `HubConnectionError` | `ValueError` | `send()`, `invoke()` or `stream()` is called without a running transport |
 | `HubError` | `OSError` | Negotiation fails with a non-200 status or an invalid body, or the server reports a hub error |
 | `UnAuthorizedHubError` | `HubError` | Negotiation returns HTTP 401 |
-| `TimeoutError` | builtin | An AIO `start()`/`stop()` wait does not reach the expected state in time |
+| `TimeoutError` | builtin | An AIO connection stage, state wait or stream lock does not complete in time |
 
 Import them from `signalrcore.hub.errors`:
 
@@ -72,17 +72,15 @@ except HubError as error:
 
 ## Async Connection Timeouts
 
-AIO `start()` and `stop()` wait for the transport to reach the requested state for at most `AIO_CONNECTION_TIMEOUT` seconds (30 by default). If the state is not reached, `TimeoutError` is raised and the background state waiter is cancelled.
+AIO `start()` waits for the transport to finish the handshake for at most `AIO_CONNECTION_TIMEOUT` seconds (30 by default). Negotiation and the transport connection have their own bounds (`AIO_NEGOTIATE_TIMEOUT` and `AIO_CONNECT_TIMEOUT`, 30 seconds each). If a stage does not complete, `TimeoutError` is raised. `stop()` bounds client shutdown with `AIO_CLOSE_TIMEOUT` (10 seconds by default).
 
 ```python
-from signalrcore.aio.hub import aio_base_hub_connection
+from signalrcore.transport.base_transport import TransportState
 
-aio_base_hub_connection.AIO_CONNECTION_TIMEOUT = 10
-
-await hub.start()
+await hub.wait_until_state(TransportState.connected, timeout=10)
 ```
 
-`stop()` is safe to call before `start()`: a missing transport counts as disconnected, so the call returns immediately instead of waiting for a state that can never be reached.
+`wait_until_state()` accepts an optional timeout; without one it waits indefinitely. `stop()` is safe to call before `start()`: a missing transport counts as disconnected, so the call returns immediately instead of waiting for a state that can never be reached.
 
 ---
 
