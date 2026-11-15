@@ -7,6 +7,7 @@ from .long_polling_client import\
     LongPollingTextClient
 from ...messages.ping_message import PingMessage
 from ..reconnection import ConnectionStateChecker
+from ...protocol.messagepack_protocol import MessagePackHubProtocol
 
 
 class LongPollingTransport(BaseTransport):
@@ -19,8 +20,11 @@ class LongPollingTransport(BaseTransport):
         super(LongPollingTransport, self).__init__(**kwargs)
         self.keep_alive_interval = keep_alive_interval
 
+        # The hub connection does not pass is_binary, derive it from
+        # the negotiated protocol.
         self._client_cls = LongPollingBinaryClient\
-            if self.is_binary else LongPollingTextClient
+            if self.is_binary or type(self.protocol) is MessagePackHubProtocol\
+            else LongPollingTextClient
 
         self.connection_checker = ConnectionStateChecker(
             self.connection_check,
@@ -98,9 +102,18 @@ class LongPollingTransport(BaseTransport):
 
         self.handshake_received = handshake_response.error is None
 
-        if self.handshake_received and not self.connection_checker.running:
-            self.connection_checker.start()
+        if self.handshake_received:
+            self._set_state(TransportState.connected)
+            if self.reconnection_handler is not None:
+                # A successful handshake means the connection is
+                # healthy again: reset the retry counter.
+                self.reconnection_handler.reset()
+            if not self.connection_checker.running:
+                self.connection_checker.start()
             self.connection_checker.last_message = time.time()
+        else:
+            self.logger.error(handshake_response.error)
+            self.on_client_error(handshake_response.error)
 
         return messages
 
@@ -109,7 +122,10 @@ class LongPollingTransport(BaseTransport):
 
         if not self.manually_closing and not self.handshake_received:
             messages = self.evaluate_handshake(raw_message)
-            self._set_state(TransportState.connected)
+
+            # A rejected handshake must not be reported as connected.
+            if not self.handshake_received:
+                return []
 
             if len(messages) > 0:
                 return self._on_message(messages)

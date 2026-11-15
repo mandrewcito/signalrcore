@@ -36,9 +36,9 @@ class StreamHandler(object):
             raise KeyError(error)
 
         if not callable(subscribe_callbacks["next"])\
-                or not callable(subscribe_callbacks["next"]) \
-                or not callable(subscribe_callbacks["next"]):
-            raise ValueError("Suscribe callbacks must be functions")
+                or not callable(subscribe_callbacks["complete"]) \
+                or not callable(subscribe_callbacks["error"]):
+            raise ValueError("Subscribe callbacks must be functions")
 
         self.next_callback = subscribe_callbacks["next"]
         self.complete_callback = subscribe_callbacks["complete"]

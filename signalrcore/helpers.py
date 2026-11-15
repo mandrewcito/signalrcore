@@ -113,22 +113,13 @@ class RequestHelpers:
             timeout: float = None,
             ssl_context: ssl.SSLContext = None) -> HTTPResponse:
 
-        request_headers = {}
-
         if headers is None:
-            # pragma: no cover
-            request_headers = {'Content-Type': 'application/json'}
-
-        request_headers = copy.deepcopy(headers)
+            request_headers = {"Content-Type": "application/json"}
+        else:
+            request_headers = copy.deepcopy(headers)
 
         if data is not None:
-            request_headers.update({"Content-Length": str(len(data))})
-
-        proxy_handler = None
-
-        if len(proxies.keys()) > 0:
-            proxy_handler = urllib.request.ProxyHandler(proxies)
-            # pragma: no cover
+            request_headers["Content-Length"] = str(len(data))
 
         updated_url = RequestHelpers.update_querystring(url, params)
 
@@ -138,15 +129,22 @@ class RequestHelpers:
                 headers=request_headers,
                 data=data)
 
-        opener = urllib.request.build_opener(proxy_handler)\
-            if proxy_handler is not None else\
-            urllib.request.urlopen
+        handlers = []
 
-        with opener(
-                req,
-                context=ssl_context,
-                timeout=timeout) as response:
+        if proxies:
+            handlers.append(urllib.request.ProxyHandler(proxies))
 
+        if ssl_context is not None:
+            handlers.append(
+                urllib.request.HTTPSHandler(context=ssl_context))
+
+        if handlers:
+            opener = urllib.request.build_opener(*handlers)
+            response = opener.open(req, timeout=timeout)
+        else:  # pragma: no cover
+            response = urllib.request.urlopen(req, timeout=timeout)
+
+        with response:
             return HTTPResponse(
                 context=ssl_context,
                 request=req,
@@ -156,21 +154,42 @@ class RequestHelpers:
 
 class Helpers:
 
+    DEFAULT_HANDLER_FLAG = "_signalrcore_default_handler"
+
+    @staticmethod
+    def _log_formatter(level):
+        debug_formatter = ""\
+            if level != logging.DEBUG else\
+            "- %(filename)s:%(lineno)d "
+        return logging.Formatter(
+            '%(asctime)s - %(name)s '
+            + debug_formatter +
+            '- %(levelname)s - %(message)s')
+
     @staticmethod
     def configure_logger(level=logging.INFO, handler=None):
         logger = Helpers.get_logger()
+
         if handler is None:
-            handler = logging.StreamHandler()
-            debug_formatter = ""\
-                if level != logging.DEBUG else\
-                "- %(filename)s:%(lineno)d "
-            handler.setFormatter(
-                logging.Formatter(
-                    '%(asctime)s - %(name)s '
-                    + debug_formatter +
-                    '- %(levelname)s - %(message)s'))
+            # Reuse the handler created by a previous call, otherwise
+            # every configure_logging() adds another one and messages
+            # are logged once per handler.
+            handler = next(
+                (existing for existing in logger.handlers
+                 if getattr(
+                     existing, Helpers.DEFAULT_HANDLER_FLAG, False)),
+                None)
+
+            if handler is None:
+                handler = logging.StreamHandler()
+                setattr(handler, Helpers.DEFAULT_HANDLER_FLAG, True)
+                logger.addHandler(handler)
+
+            handler.setFormatter(Helpers._log_formatter(level))
             handler.setLevel(level)
-        logger.addHandler(handler)
+        elif handler not in logger.handlers:
+            logger.addHandler(handler)
+
         logger.setLevel(level)
 
     @staticmethod
@@ -226,22 +245,25 @@ class Helpers:
         )
 
     @staticmethod
-    def get_negotiate_url(url):
-        querystring = ""
-        if Helpers.has_querystring(url):
-            url, querystring = Helpers.split_querystring(url)
-
+    def get_negotiate_url(url, negotiate_version=None):
         url_parts = parse.urlsplit(Helpers.websocket_to_http(url))
 
         negotiate_suffix = "negotiate"\
             if url_parts.path.endswith('/')\
             else "/negotiate"
 
-        url_parts = url_parts._replace(path=url_parts.path + negotiate_suffix)
+        url_parts = url_parts._replace(
+            path=url_parts.path + negotiate_suffix)
 
-        return parse.urlunsplit(url_parts) \
-            if querystring == "" else\
-            parse.urlunsplit(url_parts) + "?" + querystring
+        query = parse.parse_qs(url_parts.query)
+
+        if negotiate_version is not None:
+            query["negotiateVersion"] = [str(negotiate_version)]
+
+        url_parts = url_parts._replace(
+            query=parse.urlencode(query, doseq=True))
+
+        return parse.urlunsplit(url_parts)
 
     @staticmethod
     def encode_connection_id(url, id):

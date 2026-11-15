@@ -9,6 +9,7 @@ from .errors import HubConnectionError
 from signalrcore.helpers import Helpers
 from .handlers import StreamHandler, InvocationHandler
 from ..transport.base_transport import BaseTransport
+from ..transport.sockets.utils import create_ssl_context
 from ..subject import Subject
 from ..messages.invocation_message import InvocationMessage
 from collections import defaultdict
@@ -78,16 +79,18 @@ class BaseHubConnection(object):
             preferred_transport: Optional[HttpTransportType] = None,
             skip_negotiation=False,
             headers=None,
-            ssl_context: ssl.SSLContext = ssl.create_default_context(),
+            ssl_context: ssl.SSLContext = None,
             protocol=None,
-            proxies: dict = {},
+            proxies: Optional[dict] = None,
             **kwargs):
         self.preferred_protocol = preferred_protocol
         self.preferred_transport = preferred_transport
         self.kwargs = kwargs
         self.url = url
-        self.ssl_context = ssl_context
-        self.proxies = proxies
+        self.ssl_context = ssl_context\
+            if ssl_context is not None else\
+            create_ssl_context(True)
+        self.proxies = proxies if proxies is not None else {}
         self.token = None
         self._selected_protocol = protocol
 
@@ -362,13 +365,23 @@ class BaseHubConnection(object):
             handler.next_callback(message.item)
 
     def __on_completion_message(self, message: CompletionMessage) -> None:  # 3
-        if message.error is not None and len(message.error) > 0:
-            self._callbacks.on_error(message)
-        else:
-            # Send callbacks
-            fired_handlers: List[StreamHandler] = self.stream_handlers.get(
-                message.invocation_id, [])
+        fired_handlers = self.stream_handlers.get(
+            message.invocation_id, [])
 
+        if message.error is not None and len(message.error) > 0:
+            # Stream errors belong to the stream subscription. Only fall
+            # back to the connection level handler when the invocation
+            # has no stream handler (for example invoke() callbacks).
+            stream_handlers = [
+                handler for handler in fired_handlers
+                if isinstance(handler, StreamHandler)]
+
+            if len(stream_handlers) > 0:
+                for handler in stream_handlers:
+                    handler.error_callback(message)
+            else:
+                self._callbacks.on_error(message)
+        else:
             # Stream callbacks
             for handler in fired_handlers:
                 handler: StreamHandler
@@ -477,6 +490,10 @@ class BaseHubConnection(object):
         Returns:
             [StreamHandler]: stream handler
         """
+        if self.transport is None or not self.transport.is_running():
+            raise HubConnectionError(
+                "Cannot connect to SignalR hub. Unable to transmit messages")
+
         invocation_id = str(uuid.uuid4())
         stream_obj = StreamHandler(event, invocation_id)
         self.stream_handlers[invocation_id].append(stream_obj)

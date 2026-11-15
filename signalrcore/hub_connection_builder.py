@@ -34,7 +34,7 @@ class HubConnectionBuilder(object):
         self.reconnection_handler = None
         self.keep_alive_interval = 15
 
-        self.ssl_context = ssl.create_default_context()
+        self.ssl_context = create_ssl_context(True)
         self.enable_trace = False  # socket trace
         self.skip_negotiation = False  # By default do not skip negotiation
         self.proxies = dict()

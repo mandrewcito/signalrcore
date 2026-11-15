@@ -67,7 +67,7 @@ hub_connection = HubConnectionBuilder()\
     }).build()
 ```
 
-If authorization fails, the exception is propagated when calling `hub_connection.start()`.
+If authorization fails, the exception is propagated when calling `hub_connection.start()`. Exceptions raised by the token factory are passed through unchanged. Rejections from the negotiate endpoint are mapped to the library exceptions: `401` raises `UnAuthorizedHubError`, any other non-200 status raises `HubError`, and a `200` response whose body is not a JSON object also raises `HubError`. See [Errors](errors) for the full list.
 
 ```python
 def login(self):
@@ -141,7 +141,7 @@ if not send_callback_received.acquire(timeout=1):
 ## Development Setup
 
 Requirements:
-- Python >= 3.9
+- Python >= 3.10 (recommended 3.12 LTS)
 - virtualenv
 - pip
 - docker
@@ -159,7 +159,7 @@ cd signalrcore-containertestservers
 docker compose up
 
 cd ../signalrcore
-make pytest-cov
+make tests
 ```
 
 ---

@@ -8,20 +8,26 @@ from ..types import HubProtocolEncoding, RECORD_SEPARATOR
 
 
 class MyEncoder(JSONEncoder):
+    # Python attribute name -> SignalR protocol field name.
     # https://github.com/PyCQA/pylint/issues/414
+    field_names = {
+        "invocation_id": "invocationId",
+        "stream_ids": "streamIds",
+        "sequence_id": "sequenceId",
+        "allow_reconnect": "allowReconnect",
+    }
+
     def default(self, o):
         if type(o) is MessageType:
             return o.value
-        data = o.__dict__
-        if "invocation_id" in data:
-            data["invocationId"] = data["invocation_id"]
-            del data["invocation_id"]
-        if "stream_ids" in data:
-            data["streamIds"] = data["stream_ids"]
-            del data["stream_ids"]
-        if "sequence_id" in data:
-            data["sequenceId"] = data["sequence_id"]
-            del data["sequence_id"]
+        data = dict(o.__dict__)
+        for attribute, field in MyEncoder.field_names.items():
+            if attribute in data:
+                data[field] = data.pop(attribute)
+        # An invocation id of None means the message is not an
+        # invocation (client to server streaming), so it must be omitted.
+        if data.get("invocationId") is None:
+            data.pop("invocationId", None)
         return data
 
 

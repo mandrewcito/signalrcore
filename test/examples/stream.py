@@ -31,7 +31,7 @@ def bye(error, x):
         print("error {0}".format(x))
     else:
         print("complete! ")
-    global hub_connection
+    global hub_connection  # noqa: F824
 
 
 hub_connection.stream(

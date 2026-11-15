@@ -79,7 +79,7 @@ class TesTransportSelection(BaseTestCase):
         uid = str(uuid.uuid4())
 
         def release(m):
-            global LOCKS
+            global LOCKS  # noqa: F824
             self.assertTrue(m.invocation_id, uid)
             LOCKS[identifier2].release()
 

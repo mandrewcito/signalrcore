@@ -16,7 +16,7 @@ _lock = threading.Lock()
 
 
 def release():
-    global _lock
+    global _lock  # noqa: F824
     _lock.release()
 
 

@@ -1,3 +1,5 @@
+import time
+
 from signalrcore.subject import Subject
 from ...base_test_case import BaseTestCase, Urls
 
@@ -15,6 +17,10 @@ class TestClientStreamMethod(BaseTestCase):
 
         subject.complete()
 
+        time.sleep(0.5)
+        self.assertTrue(
+            self.connection.transport.is_connected(),
+            "Server closed the connection while receiving the client stream")
         self.assertTrue(len(items) == 0)
 
 

@@ -77,7 +77,7 @@ class TestSendWarning(BaseTestCase):
         LOCKS[identifier].acquire()
 
         def release(msg=None):
-            global LOCKS
+            global LOCKS  # noqa: F824
             LOCKS[identifier].release()
 
         self.connection.send("SendMessage", ["user", "msg"], release)
@@ -250,7 +250,7 @@ class TestSendMethod(BaseTestCase):
         uid = str(uuid.uuid4())
 
         def release(m):
-            global LOCKS
+            global LOCKS  # noqa: F824
             self.assertTrue(m.invocation_id, uid)
             LOCKS[identifier].release()
 

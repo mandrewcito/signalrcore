@@ -36,7 +36,7 @@ def negotiate(version):
 
 
 def long_polling_loop(ID):
-    global RUNNING
+    global RUNNING  # noqa: F824
 
     url = f"{BASE_URL}"
 

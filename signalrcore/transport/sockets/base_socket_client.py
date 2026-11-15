@@ -1,10 +1,11 @@
+import base64
 import socket
 import ssl
 import urllib.parse as parse
 import threading
 from typing import Callable, Optional, Dict
 from ...helpers import Helpers
-from .utils import WINDOW_SIZE
+from .utils import WINDOW_SIZE, create_ssl_context
 from .errors import SocketHandshakeError, \
     NoHeaderException, SocketClosedError
 from ...types import DEFAULT_ENCODING, CRLF, CRLF_CRLF
@@ -21,13 +22,15 @@ class BaseSocketClient(BaseClient):
             is_binary: bool = False,
             headers: Optional[Dict] = None,
             proxies: Optional[Dict] = None,
-            ssl_context: ssl.SSLContext = ssl.create_default_context(),
+            ssl_context: ssl.SSLContext = None,
             enable_trace: bool = False,
             on_message: Callable = None,
             on_open: Callable = None,
             on_error: Callable = None,
             on_close: Callable = None):
-        self.ssl_context = ssl_context
+        self.ssl_context = ssl_context\
+            if ssl_context is not None else\
+            create_ssl_context(True)
         self.thread_name = thread_name
         self.success_status_code = success_status_code
         self.url = url
@@ -41,12 +44,11 @@ class BaseSocketClient(BaseClient):
         self.on_error = on_error
         self.on_close = on_close
 
-        self.ssl_context = ssl_context
-
         self.logger = Helpers.get_logger()
 
         self.running: bool = False
         self.is_closing: bool = False
+        self.sock: Optional[socket.socket] = None
         self.recv_thread: threading.Thread = None
         self._lock = threading.Lock()
 
@@ -61,31 +63,101 @@ class BaseSocketClient(BaseClient):
     def get_socket_headers(self) -> str:  # pragma: no cover
         raise NotImplementedError("Clients must implement this method")
 
+    def validate_handshake_response(self, response: bytes):
+        """Validate protocol specific handshake headers.
+
+        Subclasses may raise SocketHandshakeError when the response is
+        not acceptable. The default implementation accepts everything.
+        """
+        pass
+
     def prepare_data(self, data):  # pragma: no cover
         raise NotImplementedError("Clients must implement data postprocessing")
 
     def create_socket(self):
         parsed_url = parse.urlparse(self.url)
-        host, port = parsed_url.hostname, parsed_url.port
-        is_secure_connection = parsed_url.scheme in ("wss", "https")
+        host = parsed_url.hostname
         port = Helpers.get_port(parsed_url)
+        is_secure_connection = parsed_url.scheme in ("wss", "https")
 
         proxy_info = Helpers.get_proxy_info(
             is_secure_connection,
             self.proxies
         )
 
-        if proxy_info is not None:
-            host = proxy_info.hostname,
-            port = proxy_info.port
+        if proxy_info is None:
+            raw_sock = socket.create_connection((host, port))
 
-        raw_sock = socket.create_connection((host, port))
+            if is_secure_connection:
+                raw_sock = self.ssl_context.wrap_socket(
+                    raw_sock,
+                    server_hostname=host)
+            return raw_sock
 
+        proxy_host = proxy_info.hostname
+        proxy_port = proxy_info.port or\
+            (443 if proxy_info.scheme == "https" else 80)
+
+        raw_sock = socket.create_connection((proxy_host, proxy_port))
+
+        # Secure connections must tunnel through the proxy, otherwise
+        # TLS would be negotiated with the proxy instead of the
+        # SignalR server.
         if is_secure_connection:
+            self._tunnel_through_proxy(
+                raw_sock, proxy_info, host, port)
             raw_sock = self.ssl_context.wrap_socket(
                 raw_sock,
                 server_hostname=host)
+
         return raw_sock
+
+    def _tunnel_through_proxy(
+            self,
+            sock,
+            proxy_info,
+            host: str,
+            port: int):
+        target = f"{host}:{port}"
+
+        headers = [
+            f"CONNECT {target} HTTP/1.1",
+            f"Host: {target}"
+        ]
+
+        if proxy_info.username is not None:
+            username = parse.unquote(proxy_info.username)
+            password = parse.unquote(proxy_info.password or "")
+            credentials = base64.b64encode(
+                f"{username}:{password}".encode(DEFAULT_ENCODING)
+            ).decode(DEFAULT_ENCODING)
+            headers.append(f"Proxy-Authorization: Basic {credentials}")
+
+        request = CRLF.join(headers) + CRLF_CRLF
+        sock.sendall(request.encode(DEFAULT_ENCODING))
+
+        response = b""
+        response_delimiter = CRLF_CRLF.encode(DEFAULT_ENCODING)
+
+        while response_delimiter not in response:
+            chunk = sock.recv(WINDOW_SIZE)
+
+            if not chunk:
+                raise SocketHandshakeError(
+                    "Connection closed during proxy handshake")
+
+            response += chunk
+
+        status_line = response.split(
+            CRLF.encode(DEFAULT_ENCODING), 1)[0].decode(
+                DEFAULT_ENCODING,
+                errors="replace")
+
+        status_parts = status_line.split()
+
+        if len(status_parts) < 2 or status_parts[1] != "200":
+            raise SocketHandshakeError(
+                f"Proxy handshake failed: {status_line}")
 
     def connect(self):
         self.sock = self.create_socket()
@@ -120,6 +192,8 @@ class BaseSocketClient(BaseClient):
         if self.success_status_code not in response:
             raise SocketHandshakeError(
                 f"Handshake failed: {response.decode()}")
+
+        self.validate_handshake_response(response)
 
         self.running = True
         self.recv_thread = threading.Thread(
@@ -159,38 +233,51 @@ class BaseSocketClient(BaseClient):
             self.recv_thread = None
 
     def run(self):
-        self.on_open()
         try:
+            self.on_open()
+
             while self.running:
                 message = self._recv_frame()
 
                 if self.on_message and message is not None:
                     self.on_message(self, message)
 
-        except (OSError, Exception) as e:
+        except Exception as e:
             self.running = False
 
             # is closing and no header indicates
             # that socket has not received anything
-            has_no_content = type(e) is NoHeaderException
+            has_no_content = isinstance(e, NoHeaderException)
 
-            # is closing and errno indicates
-            # that file descriptor points to a closed file
-            has_closed_fd = type(e) is OSError and e.errno == 9
-
-            # closed by the server
-            connection_closed = has_closed_fd or type(e) is SocketClosedError
+            # closed by the server, or the socket/SSL layer raised an
+            # OSError subclass (ConnectionResetError,
+            # BrokenPipeError, ssl.SSLError...). All of them mean the
+            # connection is gone and reconnection must be triggered.
+            connection_closed = isinstance(e, (SocketClosedError, OSError))
 
             if (has_no_content or connection_closed) and not self.is_closing:
                 self.on_close()
                 return
 
-            if (has_closed_fd or has_no_content) and self.is_closing:
+            if (has_no_content or connection_closed) and self.is_closing:
                 return
 
             self.logger.error(f"Receive error: {e}")
 
             self.on_error(e)
+        finally:
+            # The receive loop owns the socket: when it ends, the
+            # socket must not stay open (on_open failures included).
+            self._close_socket()
+
+    def _close_socket(self):
+        if self.sock is None:
+            return
+
+        try:
+            self.sock.close()
+        except Exception as ex:  # pragma: no cover
+            self.logger.debug(f"Error closing socket: {ex}")
 
     def _recv_frame(self):  # pragma: no cover
         raise NotImplementedError()

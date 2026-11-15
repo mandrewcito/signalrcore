@@ -1,18 +1,14 @@
-import logging
 import ssl
+import unittest
+
 from signalrcore.hub_connection_builder import HubConnectionBuilder
-from signalrcore.protocol.messagepack_protocol import MessagePackHubProtocol
 from signalrcore.types import HubProtocolEncoding
 
-from ..base_test_case import BaseTestCase
+from ..base_test_case import Urls
 
 
-class TestConfiguration(BaseTestCase):
-    def setUp(self):  # pragma: no cover
-        pass
-
-    def tearDown(self):  # pragma: no cover
-        pass
+class TestConfiguration(unittest.TestCase):
+    server_url = Urls.server_url_ssl
 
     def test_bad_auth_function(self):
         with self.assertRaises(TypeError):
@@ -112,41 +108,6 @@ class TestConfiguration(BaseTestCase):
                             "access_token_factory": ""
                         })
             _ = hub.build()
-
-    def test_enable_trace(self):
-        hub = HubConnectionBuilder()\
-            .with_url(self.server_url, options={"verify_ssl": False})\
-            .configure_logging(logging.WARNING, socket_trace=True)\
-            .with_automatic_reconnect({
-                "type": "raw",
-                "keep_alive_interval": 10,
-                "reconnect_interval": 5,
-                "max_attempts": 5
-            })\
-            .build()
-        hub.on_open(self.on_open)
-        hub.on_close(self.on_close)
-        hub.start()
-        self.assertTrue(hub.transport.is_trace_enabled())
-        hub.stop()
-
-    def test_enable_trace_messagepack(self):
-        hub = HubConnectionBuilder()\
-            .with_url(self.server_url, options={"verify_ssl": False})\
-            .configure_logging(logging.WARNING, socket_trace=True)\
-            .with_automatic_reconnect({
-                "type": "raw",
-                "keep_alive_interval": 10,
-                "reconnect_interval": 5,
-                "max_attempts": 5
-            })\
-            .with_hub_protocol(MessagePackHubProtocol())\
-            .build()
-        hub.on_open(self.on_open)
-        hub.on_close(self.on_close)
-        hub.start()
-        self.assertTrue(hub.transport.is_trace_enabled())
-        hub.stop()
 
     def test_verify_ssl_error(self):
         self.assertRaises(

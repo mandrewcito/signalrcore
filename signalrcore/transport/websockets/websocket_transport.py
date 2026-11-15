@@ -16,6 +16,7 @@ class WebsocketTransport(BaseTransport):
             **kwargs):
         super(WebsocketTransport, self).__init__(**kwargs)
         self.handshake_received = False
+        self.connection_alive = False
         self.connection_checker = ConnectionStateChecker(
             lambda: self.send(PingMessage()),
             keep_alive_interval
@@ -26,6 +27,7 @@ class WebsocketTransport(BaseTransport):
             url=self.url,
             connection_id=self.connection_id,
             headers=self.headers,
+            proxies=self.proxies,
             is_binary=type(self.protocol) is MessagePackHubProtocol,
             ssl_context=self.ssl_context,
             enable_trace=self.enable_trace,
@@ -39,9 +41,12 @@ class WebsocketTransport(BaseTransport):
         msg, messages = self.protocol.decode_handshake(message)
         if msg.error is None or msg.error == "":
             self.handshake_received = True
+            if self.reconnection_handler is not None:
+                # A successful handshake means the connection is
+                # healthy again: reset the retry counter.
+                self.reconnection_handler.reset()
             self._set_state(TransportState.connected)
             if self.reconnection_handler is not None:
-                self.reconnection_handler.reconnecting = False
                 if not self.connection_checker.running:
                     self.connection_checker.start()
         else:
@@ -77,7 +82,10 @@ class WebsocketTransport(BaseTransport):
         self.logger.debug("Message received {0}".format(raw_message))
         if not self.handshake_received:
             messages = self.evaluate_handshake(raw_message)
-            self._set_state(TransportState.connected)
+
+            # A rejected handshake must not be reported as connected.
+            if not self.handshake_received:
+                return []
 
             if len(messages) > 0:
                 return self._on_message(messages)
@@ -96,8 +104,6 @@ class WebsocketTransport(BaseTransport):
                 if type(self.protocol) is MessagePackHubProtocol else
                 0x1)
             self.connection_checker.last_message = time.time()
-            if self.reconnection_handler is not None:
-                self.reconnection_handler.reset()
         except (OSError, SocketClosedError) as ex:  # pragma: no cover
             self.handshake_received = False  # pragma: no cover
             self.logger.warning("Connection closed {0}".format(ex))
